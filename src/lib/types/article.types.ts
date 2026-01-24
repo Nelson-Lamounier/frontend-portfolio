@@ -1,6 +1,6 @@
 /**
  * Article Types for DynamoDB Integration
- * 
+ *
  * These types define the structure for articles stored in DynamoDB
  * and served via the API layer. They maintain compatibility with
  * the existing ArticleLayout and rendering components.
@@ -123,24 +123,24 @@ export interface ArticleMetadataEntity {
   pk: string // "ARTICLE#<slug>"
   sk: string // "METADATA"
   entityType: 'ARTICLE_METADATA'
-  
+
   slug: string
   title: string
   description: string
   author: string
   date: string
-  
+
   status: ArticleStatus
   tags: string[]
   category: string
   readingTimeMinutes: number
   featuredImage?: string
-  
+
   createdAt: string
   updatedAt: string
   publishedAt?: string
   version: number
-  
+
   gsi1pk: string // "STATUS#<status>"
   gsi1sk: string // "<date>#<slug>"
 }
@@ -152,14 +152,14 @@ export interface ArticleContentEntity {
   pk: string // "ARTICLE#<slug>"
   sk: string // "CONTENT#v<version>"
   entityType: 'ARTICLE_CONTENT'
-  
+
   contentType: ContentType
   content: string
   contentS3Key?: string
-  
+
   componentData?: ComponentData[]
   images: ArticleImageEntity[]
-  
+
   version: number
   createdAt: string
   changelog?: string
@@ -220,7 +220,9 @@ export function createArticleKey(slug: string) {
 /**
  * Helper to transform DynamoDB entity to API response
  */
-export function entityToArticle(entity: ArticleMetadataEntity): ArticleWithSlug {
+export function entityToArticle(
+  entity: ArticleMetadataEntity,
+): ArticleWithSlug {
   return {
     slug: entity.slug,
     title: entity.title,
@@ -240,7 +242,7 @@ export function entityToArticle(entity: ArticleMetadataEntity): ArticleWithSlug 
  */
 export function entityImageToApiImage(
   entity: ArticleImageEntity,
-  cloudfrontDomain: string
+  cloudfrontDomain: string,
 ): ArticleImage {
   return {
     id: entity.id,
