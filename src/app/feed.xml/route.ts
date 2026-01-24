@@ -28,11 +28,11 @@ export async function GET(req: Request) {
     },
   })
 
-  const articleIds = require
+  const articleIds = (require as any)
     .context('../articles', true, /\/page\.mdx$/)
     .keys()
-    .filter((key) => key.startsWith('./'))
-    .map((key) => key.slice(2).replace(/\/page\.mdx$/, ''))
+    .filter((key: string) => key.startsWith('./'))
+    .map((key: string) => key.slice(2).replace(/\/page\.mdx$/, ''))
 
   for (const id of articleIds) {
     const url = String(new URL(`/articles/${id}`, req.url))
