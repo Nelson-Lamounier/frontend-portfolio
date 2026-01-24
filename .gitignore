@@ -16,3 +16,6 @@ YARN_MIGRATION.md
 
 # Frontend-specific documentation
 docs/*
+node_modules/
+
+.env.*
