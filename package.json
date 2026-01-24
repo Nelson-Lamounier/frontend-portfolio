@@ -9,10 +9,23 @@
     "start": "next start",
     "lint": "eslint . --max-warnings 0",
     "test": "jest",
-    "test:watch": "jest --watch"
+    "test:watch": "jest --watch",
+    "test:api": "./scripts/test-api.sh",
+    "config:update-api": "./scripts/update-api-url.sh",
+    "migrate:profiles": "./scripts/list-profiles.sh",
+    "migrate:setup": "./scripts/setup-migration.sh",
+    "migrate:verify": "./scripts/verify-table.sh",
+    "migrate:articles": "tsx scripts/migrate-articles-to-dynamodb.ts",
+    "migrate:articles:dry-run": "DRY_RUN=true tsx scripts/migrate-articles-to-dynamodb.ts",
+    "migrate:add-tag-index": "tsx scripts/add-tag-index.ts",
+    "migrate:add-tag-index:dry-run": "DRY_RUN=true tsx scripts/add-tag-index.ts"
   },
   "browserslist": "defaults, not ie <= 11",
   "dependencies": {
+    "@aws-sdk/client-dynamodb": "^3.975.0",
+    "@aws-sdk/client-s3": "^3.975.0",
+    "@aws-sdk/credential-providers": "^3.975.0",
+    "@aws-sdk/lib-dynamodb": "^3.975.0",
     "@headlessui/react": "^2.2.6",
     "@mapbox/rehype-prism": "^0.9.0",
     "@mdx-js/loader": "^3.1.0",
@@ -27,7 +40,9 @@
     "feed": "^5.1.0",
     "framer-motion": "^12.0.0",
     "lucide-react": "^0.554.0",
+    "mime-types": "^3.0.2",
     "next": "^15",
+    "next-mdx-remote": "^5.0.0",
     "next-themes": "^0.4.6",
     "prom-client": "^15.1.3",
     "react": "^19",
@@ -43,6 +58,8 @@
     "@testing-library/react": "^16.3.0",
     "@testing-library/user-event": "^14.6.1",
     "@types/jest": "^30.0.0",
+    "@types/mdx": "^2.0.13",
+    "@types/mime-types": "^2.1.4",
     "@types/node": "^24.1.0",
     "@types/react": "^19",
     "@types/react-dom": "^19",
@@ -56,7 +73,8 @@
     "prettier-plugin-tailwindcss": "^0.7.1",
     "sharp": "0.34.3",
     "ts-node": "^10.9.2",
+    "tsx": "^4.21.0",
     "typescript-eslint": "^8.18.1"
   },
-  "packageManager": "yarn@4.0.0"
+  "packageManager": "yarn@4.12.0"
 }
