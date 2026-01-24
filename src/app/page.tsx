@@ -14,7 +14,9 @@ import logoFacebook from '@/images/logos/facebook.svg'
 import logoPlanetaria from '@/images/logos/planetaria.svg'
 import logoaws from '@/images/logos/aws.png'
 import logsedwick from '@/images/logos/sedwick.png'
-import { type ArticleWithSlug, getAllArticles } from '@/lib/articles'
+// Use hybrid article service with fallback to file-based articles
+import { getAllArticles } from '@/lib/article-service'
+import type { ArticleWithSlug } from '@/lib/types/article.types'
 import { formatDate } from '@/lib/formatDate'
 
 function MailIcon(props: React.ComponentPropsWithoutRef<'svg'>) {

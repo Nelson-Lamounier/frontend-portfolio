@@ -2,8 +2,11 @@ import { type Metadata } from 'next'
 
 import { Card } from '@/components/Card'
 import { SimpleLayout } from '@/components/SimpleLayout'
-import { type ArticleWithSlug, getAllArticles } from '@/lib/articles'
 import { formatDate } from '@/lib/formatDate'
+
+// Use hybrid article service with fallback to file-based articles
+import { getAllArticles } from '@/lib/article-service'
+import type { ArticleWithSlug } from '@/lib/types/article.types'
 
 function Article({ article }: { article: ArticleWithSlug }) {
   return (
