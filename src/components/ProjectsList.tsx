@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import Image from 'next/image'
+import Image, { StaticImageData } from 'next/image'
 import { Card } from '@/components/Card'
 import { FilterTabs } from '@/components/FilterTabs'
 
@@ -13,7 +13,7 @@ interface Project {
   category: string
   link: { href: string; label: string }
   icon: React.ReactNode
-  logo: any
+  logo: StaticImageData | string
 }
 
 interface ProjectsListProps {

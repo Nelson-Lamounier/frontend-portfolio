@@ -47,6 +47,7 @@ export class ErrorBoundary extends Component<Props, State> {
       });
     } catch {
       // Silently fail - don't break the app further
+      // eslint-disable-next-line no-console
       console.error('Failed to track error:', error);
     }
   }
@@ -94,6 +95,7 @@ export function useErrorTracking() {
         }),
       });
     } catch {
+      // eslint-disable-next-line no-console
       console.error('Failed to track error:', error);
     }
   };

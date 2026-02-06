@@ -28,7 +28,7 @@ export function trackRequestSize(request: NextRequest, response: NextResponse) {
 /**
  * Estimate body size for requests without content-length header
  */
-export function estimateBodySize(body: any): number {
+export function estimateBodySize(body: unknown): number {
   if (!body) return 0;
   
   try {
