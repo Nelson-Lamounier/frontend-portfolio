@@ -7,7 +7,7 @@ name: Deploy NextJS to Dev
 on:
   push:
     branches:
-      - main
+      - develop
     paths:
       - 'src/**'
       - 'public/**'
