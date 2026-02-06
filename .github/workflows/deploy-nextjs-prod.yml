@@ -1,0 +1,161 @@
+# Deploy Next.js Application to Production
+# Manual trigger only with confirmation gate
+# Can use staging-verified image or rebuild from source
+
+name: Deploy NextJS to Production
+
+on:
+  workflow_dispatch:
+    inputs:
+      confirm-deployment:
+        description: 'Type "DEPLOY" to confirm production deployment'
+        required: true
+        type: string
+      use-staging-image:
+        description: 'Use the staging-verified image (recommended)'
+        required: false
+        type: boolean
+        default: true
+      staging-image-tag:
+        description: 'Staging image tag to deploy (if use-staging-image is true)'
+        required: false
+        type: string
+        default: ''
+
+permissions:
+  id-token: write
+  contents: read
+
+env:
+  AWS_REGION: ${{ vars.AWS_REGION || 'eu-west-1' }}
+
+jobs:
+  # ===========================================================================
+  # Pre-flight Checks
+  # ===========================================================================
+  preflight:
+    name: Pre-flight Checks
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      proceed: ${{ steps.check.outputs.proceed }}
+      image-uri: ${{ steps.resolve-image.outputs.image-uri }}
+
+    steps:
+      - name: Validate Confirmation
+        id: check
+        run: |
+          if [ "${{ inputs.confirm-deployment }}" != "DEPLOY" ]; then
+            echo "ERROR: Deployment not confirmed. Type 'DEPLOY' to proceed."
+            exit 1
+          fi
+          echo "proceed=true" >> $GITHUB_OUTPUT
+          echo "✓ Deployment confirmed"
+
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_OIDC_ROLE }}
+          aws-region: ${{ env.AWS_REGION }}
+          audience: sts.amazonaws.com
+
+      - name: Resolve Image URI
+        id: resolve-image
+        if: inputs.use-staging-image
+        run: |
+          # Get ECR repository from SSM
+          ECR_URL=$(aws ssm get-parameter \
+            --name "/frontend/prod/ecr-repository-url" \
+            --query 'Parameter.Value' \
+            --output text)
+
+          if [ -n "${{ inputs.staging-image-tag }}" ]; then
+            # Use specified staging image tag
+            IMAGE_TAG="${{ inputs.staging-image-tag }}"
+          else
+            # Get latest staging image
+            IMAGE_TAG="staging-latest"
+          fi
+
+          IMAGE_URI="${ECR_URL}:${IMAGE_TAG}"
+          echo "image-uri=$IMAGE_URI" >> $GITHUB_OUTPUT
+          echo "Using image: $IMAGE_URI"
+
+  # ===========================================================================
+  # Build (Only if not using staging image)
+  # ===========================================================================
+  build:
+    name: Build Image
+    needs: [preflight]
+    if: |
+      needs.preflight.outputs.proceed == 'true' && 
+      inputs.use-staging-image != true
+    uses: ./.github/workflows/_build-push-image.yml
+    with:
+      environment: production
+      ssm-ecr-param: '/frontend/prod/ecr-repository-url'
+    secrets:
+      AWS_OIDC_ROLE: ${{ secrets.AWS_OIDC_ROLE }}
+
+  # ===========================================================================
+  # Deploy to Production
+  # ===========================================================================
+  deploy:
+    name: Deploy to Production
+    needs: [preflight, build]
+    if: always() && needs.preflight.outputs.proceed == 'true' && (needs.build.result == 'success' || needs.build.result == 'skipped')
+    uses: ./.github/workflows/_deploy-ecs-service.yml
+    with:
+      environment: production
+      image-uri: ${{ needs.build.outputs.image-uri || needs.preflight.outputs.image-uri }}
+      ssm-cluster-param: '/frontend/prod/ecs-cluster-name'
+      ssm-service-param: '/frontend/prod/ecs-service-name'
+      ssm-taskdef-family-param: '/frontend/prod/ecs-taskdef-family'
+      wait-for-stability: true
+      stability-timeout: 15
+    secrets:
+      AWS_OIDC_ROLE: ${{ secrets.AWS_OIDC_ROLE }}
+
+  # ===========================================================================
+  # Post-Deployment Notification
+  # ===========================================================================
+  notify:
+    name: Notify
+    needs: [preflight, build, deploy]
+    runs-on: ubuntu-latest
+    if: always()
+
+    steps:
+      - name: Deployment Result
+        run: |
+          TIMESTAMP=$(date -u '+%Y-%m-%d %H:%M:%S UTC')
+
+          echo "## 🚀 Production Deployment" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Timestamp**: $TIMESTAMP" >> $GITHUB_STEP_SUMMARY
+          echo "**Commit**: ${{ github.sha }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Triggered by**: ${{ github.actor }}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+
+          echo "| Step | Result |" >> $GITHUB_STEP_SUMMARY
+          echo "|------|--------|" >> $GITHUB_STEP_SUMMARY
+          echo "| Pre-flight | ${{ needs.preflight.result }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Build | ${{ needs.build.result }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Deploy | ${{ needs.deploy.result }} |" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+
+          if [ "${{ needs.deploy.result }}" == "success" ]; then
+            echo "## ✅ Production Deployment Successful" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            if [ -n "${{ needs.deploy.outputs.service-url }}" ]; then
+              echo "**Production URL**: ${{ needs.deploy.outputs.service-url }}" >> $GITHUB_STEP_SUMMARY
+            fi
+          elif [ "${{ needs.deploy.outputs.deployment-status }}" == "rolled-back" ]; then
+            echo "## ⚠️ Production Deployment Rolled Back" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "The deployment was automatically rolled back due to health check failure." >> $GITHUB_STEP_SUMMARY
+          else
+            echo "## ❌ Production Deployment Failed" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "Review the deployment logs for details." >> $GITHUB_STEP_SUMMARY
+          fi

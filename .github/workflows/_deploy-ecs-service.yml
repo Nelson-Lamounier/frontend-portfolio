@@ -1,0 +1,289 @@
+# .github/workflows/_deploy-ecs-service.yml
+# Reusable workflow for deploying to ECS via service update
+# Retrieves ECS cluster/service names from SSM Parameter Store
+# Includes automatic rollback on health check failure
+
+name: Deploy to ECS Service (Reusable)
+
+on:
+  workflow_call:
+    inputs:
+      environment:
+        description: 'Target environment (development, staging, production)'
+        required: true
+        type: string
+      image-uri:
+        description: 'Full Docker image URI to deploy'
+        required: true
+        type: string
+      ssm-cluster-param:
+        description: 'SSM parameter name for ECS cluster name'
+        required: false
+        type: string
+        default: '/nextjs/dev/ecs/cluster-name'
+      ssm-service-param:
+        description: 'SSM parameter name for ECS service name'
+        required: false
+        type: string
+        default: '/nextjs/dev/ecs/service-name'
+      ssm-taskdef-family-param:
+        description: 'SSM parameter name for task definition family'
+        required: false
+        type: string
+        default: '/nextjs/dev/ecs/taskdef-family'
+      wait-for-stability:
+        description: 'Wait for ECS service to stabilize'
+        required: false
+        type: boolean
+        default: true
+      stability-timeout:
+        description: 'Timeout in minutes for service stability'
+        required: false
+        type: number
+        default: 10
+    secrets:
+      AWS_OIDC_ROLE:
+        required: true
+    outputs:
+      deployment-status:
+        description: 'Deployment status (success/failure/rolled-back)'
+        value: ${{ jobs.deploy.outputs.status }}
+      service-url:
+        description: 'Service URL (if available)'
+        value: ${{ jobs.deploy.outputs.service-url }}
+
+env:
+  AWS_REGION: ${{ vars.AWS_REGION || 'eu-west-1' }}
+
+jobs:
+  deploy:
+    name: Deploy to ECS
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    environment: ${{ inputs.environment }}
+    outputs:
+      status: ${{ steps.final-status.outputs.status }}
+      service-url: ${{ steps.health-check.outputs.service-url }}
+
+    steps:
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_OIDC_ROLE }}
+          aws-region: ${{ env.AWS_REGION }}
+          audience: sts.amazonaws.com
+
+      - name: Get ECS Configuration from SSM
+        id: ecs-config
+        run: |
+          echo "Retrieving ECS configuration from SSM..."
+
+          CLUSTER_NAME=$(aws ssm get-parameter \
+            --name "${{ inputs.ssm-cluster-param }}" \
+            --query 'Parameter.Value' \
+            --output text 2>/dev/null || echo "")
+
+          SERVICE_NAME=$(aws ssm get-parameter \
+            --name "${{ inputs.ssm-service-param }}" \
+            --query 'Parameter.Value' \
+            --output text 2>/dev/null || echo "")
+
+          TASKDEF_FAMILY=$(aws ssm get-parameter \
+            --name "${{ inputs.ssm-taskdef-family-param }}" \
+            --query 'Parameter.Value' \
+            --output text 2>/dev/null || echo "")
+
+          # Validate required parameters
+          if [ -z "$CLUSTER_NAME" ] || [ "$CLUSTER_NAME" = "None" ]; then
+            echo "ERROR: ECS cluster name not found in SSM"
+            exit 1
+          fi
+
+          if [ -z "$SERVICE_NAME" ] || [ "$SERVICE_NAME" = "None" ]; then
+            echo "ERROR: ECS service name not found in SSM"
+            exit 1
+          fi
+
+          if [ -z "$TASKDEF_FAMILY" ] || [ "$TASKDEF_FAMILY" = "None" ]; then
+            echo "ERROR: Task definition family not found in SSM"
+            exit 1
+          fi
+
+          echo "cluster-name=$CLUSTER_NAME" >> $GITHUB_OUTPUT
+          echo "service-name=$SERVICE_NAME" >> $GITHUB_OUTPUT
+          echo "taskdef-family=$TASKDEF_FAMILY" >> $GITHUB_OUTPUT
+
+          echo "✓ ECS Cluster: $CLUSTER_NAME"
+          echo "✓ ECS Service: $SERVICE_NAME"
+          echo "✓ Task Definition Family: $TASKDEF_FAMILY"
+
+      - name: Get Current Task Definition
+        id: current-taskdef
+        run: |
+          TASKDEF_ARN=$(aws ecs describe-services \
+            --cluster "${{ steps.ecs-config.outputs.cluster-name }}" \
+            --services "${{ steps.ecs-config.outputs.service-name }}" \
+            --query 'services[0].taskDefinition' \
+            --output text)
+
+          echo "current-taskdef-arn=$TASKDEF_ARN" >> $GITHUB_OUTPUT
+          echo "Current task definition: $TASKDEF_ARN"
+
+          # Save for rollback
+          aws ecs describe-task-definition \
+            --task-definition "$TASKDEF_ARN" \
+            --query 'taskDefinition' > current-taskdef.json
+
+      - name: Create New Task Definition
+        id: new-taskdef
+        run: |
+          FAMILY="${{ steps.ecs-config.outputs.taskdef-family }}"
+          IMAGE_URI="${{ inputs.image-uri }}"
+
+          # Get the current task definition and update the image
+          TASKDEF=$(aws ecs describe-task-definition \
+            --task-definition "$FAMILY" \
+            --query 'taskDefinition')
+
+          # Update the container image in the task definition
+          NEW_TASKDEF=$(echo "$TASKDEF" | jq --arg IMAGE "$IMAGE_URI" \
+            '.containerDefinitions[0].image = $IMAGE |
+             del(.taskDefinitionArn, .revision, .status, .requiresAttributes, .compatibilities, .registeredAt, .registeredBy)')
+
+          # Register new task definition
+          NEW_TASKDEF_ARN=$(aws ecs register-task-definition \
+            --cli-input-json "$NEW_TASKDEF" \
+            --query 'taskDefinition.taskDefinitionArn' \
+            --output text)
+
+          echo "new-taskdef-arn=$NEW_TASKDEF_ARN" >> $GITHUB_OUTPUT
+          echo "✓ Registered new task definition: $NEW_TASKDEF_ARN"
+
+      - name: Update ECS Service
+        id: update-service
+        run: |
+          echo "Updating ECS service with new task definition..."
+
+          aws ecs update-service \
+            --cluster "${{ steps.ecs-config.outputs.cluster-name }}" \
+            --service "${{ steps.ecs-config.outputs.service-name }}" \
+            --task-definition "${{ steps.new-taskdef.outputs.new-taskdef-arn }}" \
+            --force-new-deployment
+
+          echo "✓ Service update initiated"
+
+      - name: Wait for Service Stability
+        id: wait-stability
+        if: inputs.wait-for-stability
+        run: |
+          echo "Waiting for service to stabilize (timeout: ${{ inputs.stability-timeout }} minutes)..."
+
+          aws ecs wait services-stable \
+            --cluster "${{ steps.ecs-config.outputs.cluster-name }}" \
+            --services "${{ steps.ecs-config.outputs.service-name }}" \
+            || echo "STABILITY_TIMEOUT=true" >> $GITHUB_ENV
+
+          if [ "$STABILITY_TIMEOUT" = "true" ]; then
+            echo "⚠ Service did not stabilize within timeout"
+            echo "stable=false" >> $GITHUB_OUTPUT
+          else
+            echo "✓ Service is stable"
+            echo "stable=true" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Health Check
+        id: health-check
+        run: |
+          echo "Running health check..."
+
+          # Get the load balancer URL from the service
+          LB_DNS=$(aws ecs describe-services \
+            --cluster "${{ steps.ecs-config.outputs.cluster-name }}" \
+            --services "${{ steps.ecs-config.outputs.service-name }}" \
+            --query 'services[0].loadBalancers[0].targetGroupArn' \
+            --output text 2>/dev/null || echo "")
+
+          if [ -n "$LB_DNS" ] && [ "$LB_DNS" != "None" ]; then
+            # Get ALB DNS from target group
+            TG_ARN="$LB_DNS"
+            ALB_ARN=$(aws elbv2 describe-target-groups \
+              --target-group-arns "$TG_ARN" \
+              --query 'TargetGroups[0].LoadBalancerArns[0]' \
+              --output text 2>/dev/null || echo "")
+            
+            if [ -n "$ALB_ARN" ] && [ "$ALB_ARN" != "None" ]; then
+              SERVICE_URL=$(aws elbv2 describe-load-balancers \
+                --load-balancer-arns "$ALB_ARN" \
+                --query 'LoadBalancers[0].DNSName' \
+                --output text)
+              
+              echo "service-url=http://$SERVICE_URL" >> $GITHUB_OUTPUT
+              
+              # Wait for ALB health check
+              sleep 30
+              
+              HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" \
+                --max-time 30 "http://$SERVICE_URL/api/health" 2>/dev/null || echo "000")
+              
+              if [ "$HTTP_CODE" = "200" ]; then
+                echo "✓ Health check passed (HTTP $HTTP_CODE)"
+                echo "healthy=true" >> $GITHUB_OUTPUT
+              else
+                echo "✗ Health check failed (HTTP $HTTP_CODE)"
+                echo "healthy=false" >> $GITHUB_OUTPUT
+              fi
+            fi
+          else
+            echo "No load balancer configured, skipping HTTP health check"
+            echo "healthy=skip" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Rollback on Failure
+        if: |
+          failure() || 
+          steps.wait-stability.outputs.stable == 'false' ||
+          steps.health-check.outputs.healthy == 'false'
+        run: |
+          echo "⚠ Deployment failed, initiating rollback..."
+
+          # Rollback to previous task definition
+          aws ecs update-service \
+            --cluster "${{ steps.ecs-config.outputs.cluster-name }}" \
+            --service "${{ steps.ecs-config.outputs.service-name }}" \
+            --task-definition "${{ steps.current-taskdef.outputs.current-taskdef-arn }}" \
+            --force-new-deployment
+
+          echo "Waiting for rollback to complete..."
+          aws ecs wait services-stable \
+            --cluster "${{ steps.ecs-config.outputs.cluster-name }}" \
+            --services "${{ steps.ecs-config.outputs.service-name }}" \
+            || true
+
+          echo "✓ Rollback completed to: ${{ steps.current-taskdef.outputs.current-taskdef-arn }}"
+          echo "ROLLBACK_PERFORMED=true" >> $GITHUB_ENV
+
+      - name: Final Status
+        id: final-status
+        if: always()
+        run: |
+          if [ "$ROLLBACK_PERFORMED" = "true" ]; then
+            echo "status=rolled-back" >> $GITHUB_OUTPUT
+            echo "## ⚠ Deployment Rolled Back" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "Deployment failed and was automatically rolled back to the previous version." >> $GITHUB_STEP_SUMMARY
+            exit 1
+          elif [ "${{ steps.health-check.outputs.healthy }}" = "true" ] || [ "${{ steps.health-check.outputs.healthy }}" = "skip" ]; then
+            echo "status=success" >> $GITHUB_OUTPUT
+            echo "## ✅ Deployment Successful" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "- **Cluster**: ${{ steps.ecs-config.outputs.cluster-name }}" >> $GITHUB_STEP_SUMMARY
+            echo "- **Service**: ${{ steps.ecs-config.outputs.service-name }}" >> $GITHUB_STEP_SUMMARY
+            echo "- **Task Definition**: ${{ steps.new-taskdef.outputs.new-taskdef-arn }}" >> $GITHUB_STEP_SUMMARY
+            if [ -n "${{ steps.health-check.outputs.service-url }}" ]; then
+              echo "- **URL**: ${{ steps.health-check.outputs.service-url }}" >> $GITHUB_STEP_SUMMARY
+            fi
+          else
+            echo "status=failure" >> $GITHUB_OUTPUT
+            echo "## ❌ Deployment Failed" >> $GITHUB_STEP_SUMMARY
+            exit 1
+          fi

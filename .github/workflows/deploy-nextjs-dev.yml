@@ -1,0 +1,83 @@
+# Deploy Next.js Application to Development
+# Triggers on push to main branch
+# Builds Docker image, pushes to ECR, and updates ECS service
+
+name: Deploy NextJS to Dev
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'src/**'
+      - 'public/**'
+      - 'Dockerfile'
+      - 'package.json'
+      - 'yarn.lock'
+      - 'next.config.*'
+  workflow_dispatch:
+
+permissions:
+  id-token: write
+  contents: read
+
+jobs:
+  # ===========================================================================
+  # Build and Push Docker Image
+  # ===========================================================================
+  build:
+    name: Build Image
+    uses: ./.github/workflows/_build-push-image.yml
+    with:
+      environment: development
+      ssm-ecr-param: '/frontend/dev/ecr-repository-url'
+    secrets:
+      AWS_OIDC_ROLE: ${{ secrets.AWS_OIDC_ROLE }}
+
+  # ===========================================================================
+  # Deploy to ECS
+  # ===========================================================================
+  deploy:
+    name: Deploy to ECS
+    needs: [build]
+    uses: ./.github/workflows/_deploy-ecs-service.yml
+    with:
+      environment: development
+      image-uri: ${{ needs.build.outputs.image-uri }}
+      ssm-cluster-param: '/frontend/dev/ecs-cluster-name'
+      ssm-service-param: '/frontend/dev/ecs-service-name'
+      ssm-taskdef-family-param: '/frontend/dev/ecs-taskdef-family'
+      wait-for-stability: true
+      stability-timeout: 10
+    secrets:
+      AWS_OIDC_ROLE: ${{ secrets.AWS_OIDC_ROLE }}
+
+  # ===========================================================================
+  # Deployment Summary
+  # ===========================================================================
+  summary:
+    name: Summary
+    needs: [build, deploy]
+    runs-on: ubuntu-latest
+    if: always()
+
+    steps:
+      - name: Deployment Result
+        run: |
+          echo "## Development Deployment" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "| Step | Result |" >> $GITHUB_STEP_SUMMARY
+          echo "|------|--------|" >> $GITHUB_STEP_SUMMARY
+          echo "| Build | ${{ needs.build.result }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Deploy | ${{ needs.deploy.result }} |" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+
+          if [ "${{ needs.deploy.result }}" == "success" ]; then
+            echo "✅ Deployment completed successfully" >> $GITHUB_STEP_SUMMARY
+            if [ -n "${{ needs.deploy.outputs.service-url }}" ]; then
+              echo "" >> $GITHUB_STEP_SUMMARY
+              echo "**URL**: ${{ needs.deploy.outputs.service-url }}" >> $GITHUB_STEP_SUMMARY
+            fi
+          else
+            echo "❌ Deployment failed" >> $GITHUB_STEP_SUMMARY
+          fi
