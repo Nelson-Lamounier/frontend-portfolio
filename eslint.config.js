@@ -19,12 +19,13 @@ export default tseslint.config(
       '.turbo/**',
       'coverage/**',
       'next-env.d.ts', // Ignore Next.js type definitions
+      'scripts/**', // Migration and deployment scripts
     ],
   },
 
-  // JavaScript config files
+  // JavaScript config files (including CommonJS)
   {
-    files: ['**/*.js', '**/*.mjs'],
+    files: ['**/*.js', '**/*.mjs', '**/*.cjs'],
     languageOptions: {
       ecmaVersion: 'latest',
       sourceType: 'module',

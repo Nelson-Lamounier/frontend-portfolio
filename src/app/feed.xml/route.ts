@@ -28,6 +28,7 @@ export async function GET(req: Request) {
     },
   })
 
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const articleIds = (require as any)
     .context('../articles', true, /\/page\.mdx$/)
     .keys()
