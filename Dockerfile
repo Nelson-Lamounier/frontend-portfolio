@@ -1,85 +1,68 @@
+# Dockerfile for Next.js Standalone Application
+# Optimized multi-stage build for production deployment
+
 FROM node:22-alpine AS base
-RUN corepack enable && \
-    apk update && \
-    apk add --no-cache libc6-compat
+RUN apk update && apk add --no-cache libc6-compat
+RUN corepack enable
 
-
-# Dependencies stage
+# Dependencies stage - install only production dependencies
 FROM base AS deps
 WORKDIR /app
 
-FROM base AS prepare
-WORKDIR /app
-RUN yarn global add turbo
-COPY . .
-# Add lockfile and package.json's of isolated subworkspace
-RUN turbo prune frontend --docker
+COPY package.json yarn.lock .yarnrc.yml ./
+RUN yarn install --frozen-lockfile
 
-# Copy root workspace files for monorepo
-# COPY package.json yarn.lock .yarnrc.yml ./
-# COPY frontend/package.json ./frontend/
-
-# Install dependencies (workspace-aware)
-# RUN yarn workspaces focus frontend
-
-# Builder stage
+# Builder stage - build the Next.js application
 FROM base AS builder
 WORKDIR /app
 
-# # Copy workspace configuration
-# COPY package.json yarn.lock .yarnrc.yml ./
-# COPY --from=deps /app/node_modules ./node_modules
+# Copy dependencies from deps stage
+COPY --from=deps /app/node_modules ./node_modules
+COPY . .
 
-COPY --from=prepare /app/out/json/ .
-RUN yarn install
+# Set build-time environment variables
+ARG NODE_ENV=production
+ARG NEXT_TELEMETRY_DISABLED=1
+ENV NODE_ENV=$NODE_ENV
+ENV NEXT_TELEMETRY_DISABLED=$NEXT_TELEMETRY_DISABLED
 
-# Build the project
-COPY --from=prepare /app/out/full/ .
+# Skip linting and type checking during Docker build
+# These checks are performed in CI pipeline
+ENV ESLINT_NO_DEV_ERRORS=true
 
-RUN yarn turbo build
-# Uncomment and use build args to enable remote caching
-# ARG TURBO_TEAM
-# ENV TURBO_TEAM=$TURBO_TEAM
+# Use file-based articles during build (API not accessible during Docker build)
+# Runtime will use API when NEXT_PUBLIC_API_URL is configured
+ENV USE_FILE_FALLBACK=true
 
-# ARG TURBO_TOKEN
-# ENV TURBO_TOKEN=$TURBO_TOKEN
-
-# Copy frontend source code
-# COPY frontend ./frontend
-
-# Build Next.js application
-# WORKDIR /app/frontend
-# RUN yarn build
+# Build Next.js application (skip lint/typecheck - validated in CI)
+RUN yarn build --no-lint
 
 # Runner stage - production image
 FROM base AS runner
 WORKDIR /app
 
+ENV NODE_ENV=production
+ENV NEXT_TELEMETRY_DISABLED=1
 
-# ENV NODE_ENV=production
-# ENV NEXT_TELEMETRY_DISABLED=1
-
-# Create non-root user
+# Create non-root user for security
 RUN addgroup --system --gid 1001 nodejs && \
-    adduser --system --uid 1001 nextjs
+  adduser --system --uid 1001 nextjs
 
-# Copy the standalone build (includes monorepo structure)
-COPY --from=builder --chown=nextjs:nodejs /app/frontend/.next/standalone ./
-
-# Copy static files to the correct location within the monorepo structure
-COPY --from=builder --chown=nextjs:nodejs /app/frontend/.next/static ./frontend/.next/static
+# Copy the standalone build output
+COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
+COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
 
 # Switch to non-root user
 USER nextjs
 
-# Expose port (can be overridden at runtime)
+# Expose port
 EXPOSE 3000
 ENV PORT=3000
 ENV HOSTNAME="0.0.0.0"
 
-# Health check with dynamic port support
+# Health check
 HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
   CMD node -e "const port = process.env.PORT || 3000; require('http').get('http://localhost:' + port + '/api/health', (r) => {process.exit(r.statusCode === 200 ? 0 : 1)})" || exit 1
 
-# Start application from the frontend directory within standalone
-CMD ["node", "frontend/server.js"]
+# Start the application
+CMD ["node", "server.js"]
