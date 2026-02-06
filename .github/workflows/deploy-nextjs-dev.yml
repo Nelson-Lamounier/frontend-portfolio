@@ -31,7 +31,7 @@ jobs:
     uses: ./.github/workflows/_build-push-image.yml
     with:
       environment: development
-      ssm-ecr-param: '/frontend/dev/ecr-repository-url'
+      ssm-ecr-param: ${{ vars.SSM_ECR_REPOSITORY_URI }}
     secrets:
       AWS_OIDC_ROLE: ${{ secrets.AWS_OIDC_ROLE }}
 
@@ -45,9 +45,9 @@ jobs:
     with:
       environment: development
       image-uri: ${{ needs.build.outputs.image-uri }}
-      ssm-cluster-param: '/frontend/dev/ecs-cluster-name'
-      ssm-service-param: '/frontend/dev/ecs-service-name'
-      ssm-taskdef-family-param: '/frontend/dev/ecs-taskdef-family'
+      ssm-cluster-param: ${{ vars.SSM_ECS_CLUSTER_NAME }}
+      ssm-service-param: ${{ vars.SSM_ECS_SERVICE_NAME }}
+      ssm-taskdef-family-param: ${{ vars.SSM_ECS_TASKDEF_FAMILY }}
       wait-for-stability: true
       stability-timeout: 10
     secrets:
