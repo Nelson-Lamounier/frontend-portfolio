@@ -1,0 +1,121 @@
+# Deploy Next.js Application to Staging
+# Triggers on push to staging branch or manual dispatch
+# Creates release candidate for production deployment
+
+name: Deploy NextJS to Staging
+
+on:
+  push:
+    branches:
+      - staging
+    paths:
+      - 'src/**'
+      - 'public/**'
+      - 'Dockerfile'
+      - 'package.json'
+      - 'yarn.lock'
+      - 'next.config.*'
+  workflow_dispatch:
+
+permissions:
+  id-token: write
+  contents: read
+
+jobs:
+  # ===========================================================================
+  # Build and Push Docker Image
+  # ===========================================================================
+  build:
+    name: Build Image
+    uses: ./.github/workflows/_build-push-image.yml
+    with:
+      environment: staging
+      ssm-ecr-param: '/nextjs/staging/ecr/repository-url'
+    secrets:
+      AWS_OIDC_ROLE: ${{ secrets.AWS_OIDC_ROLE }}
+
+  # ===========================================================================
+  # Deploy to ECS
+  # ===========================================================================
+  deploy:
+    name: Deploy to ECS
+    needs: [build]
+    uses: ./.github/workflows/_deploy-ecs-service.yml
+    with:
+      environment: staging
+      image-uri: ${{ needs.build.outputs.image-uri }}
+      ssm-cluster-param: '/nextjs/staging/ecs/cluster-name'
+      ssm-service-param: '/nextjs/staging/ecs/service-name'
+      ssm-taskdef-family-param: '/nextjs/staging/ecs/taskdef-family'
+      wait-for-stability: true
+      stability-timeout: 10
+    secrets:
+      AWS_OIDC_ROLE: ${{ secrets.AWS_OIDC_ROLE }}
+
+  # ===========================================================================
+  # Create Production-Ready Artifact
+  # ===========================================================================
+  create-release-candidate:
+    name: Create Release Candidate
+    needs: [build, deploy]
+    runs-on: ubuntu-latest
+    if: needs.deploy.result == 'success'
+
+    steps:
+      - name: Record Release Candidate
+        run: |
+          TIMESTAMP=$(date -u '+%Y-%m-%d %H:%M:%S UTC')
+
+          cat > release-candidate.json << EOF
+          {
+            "imageUri": "${{ needs.build.outputs.image-uri }}",
+            "imageTag": "${{ needs.build.outputs.image-tag }}",
+            "imageDigest": "${{ needs.build.outputs.image-digest }}",
+            "commitSha": "${{ github.sha }}",
+            "timestamp": "$TIMESTAMP",
+            "stagingDeploymentStatus": "${{ needs.deploy.outputs.deployment-status }}"
+          }
+          EOF
+
+          cat release-candidate.json
+
+      - name: Upload Release Candidate Info
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-candidate-${{ github.sha }}
+          path: release-candidate.json
+          retention-days: 30
+
+  # ===========================================================================
+  # Deployment Summary
+  # ===========================================================================
+  summary:
+    name: Summary
+    needs: [build, deploy, create-release-candidate]
+    runs-on: ubuntu-latest
+    if: always()
+
+    steps:
+      - name: Deployment Result
+        run: |
+          echo "## Staging Deployment" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "| Step | Result |" >> $GITHUB_STEP_SUMMARY
+          echo "|------|--------|" >> $GITHUB_STEP_SUMMARY
+          echo "| Build | ${{ needs.build.result }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Deploy | ${{ needs.deploy.result }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Release Candidate | ${{ needs.create-release-candidate.result }} |" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+
+          if [ "${{ needs.deploy.result }}" == "success" ]; then
+            echo "✅ Staging deployment successful" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "**Image**: ${{ needs.build.outputs.image-uri }}" >> $GITHUB_STEP_SUMMARY
+            if [ -n "${{ needs.deploy.outputs.service-url }}" ]; then
+              echo "**URL**: ${{ needs.deploy.outputs.service-url }}" >> $GITHUB_STEP_SUMMARY
+            fi
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "🚀 Ready for production deployment" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "❌ Staging deployment failed" >> $GITHUB_STEP_SUMMARY
+          fi

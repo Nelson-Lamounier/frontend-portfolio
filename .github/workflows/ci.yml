@@ -1,0 +1,387 @@
+# .github/workflows/ci.yml
+# CI pipeline for Next.js frontend application
+# Runs linting, type checking, tests, and build verification
+
+name: Continuous Integration
+
+on:
+  push:
+    branches: ['**']
+  pull_request:
+    branches: ['**']
+
+env:
+  NODE_VERSION: '22' # Fallback - prefer .nvmrc
+
+permissions:
+  contents: read
+
+jobs:
+  # ============================================================================
+  # Change Detection (Runs First - ~10 seconds)
+  # ============================================================================
+  detect-changes:
+    name: Detect Changes
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      src: ${{ steps.filter.outputs.src }}
+      tests: ${{ steps.filter.outputs.tests }}
+      styles: ${{ steps.filter.outputs.styles }}
+      config: ${{ steps.filter.outputs.config }}
+      docker: ${{ steps.filter.outputs.docker }}
+      # Computed: should we run all checks?
+      run-all: ${{ steps.compute.outputs.run-all }}
+      # Computed: should we run docker build test?
+      run-docker: ${{ steps.compute.outputs.run-docker }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Detect Changed Paths
+        uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          filters: |
+            src:
+              - 'src/**'
+              - 'public/**'
+              - 'mdx-components.tsx'
+            tests:
+              - '__tests__/**'
+              - 'jest.config.*'
+              - 'jest.setup.*'
+            styles:
+              - '**/*.css'
+              - 'tailwind.config.*'
+              - 'postcss.config.*'
+              - 'typography.ts'
+            config:
+              - '.github/**'
+              - 'package.json'
+              - 'yarn.lock'
+              - 'tsconfig*.json'
+              - 'next.config.*'
+              - 'eslint.config.*'
+            docker:
+              - 'Dockerfile'
+              - '.dockerignore'
+
+      - name: Compute Run Flags
+        id: compute
+        run: |
+          # Run all checks if config changed
+          if [[ "${{ steps.filter.outputs.config }}" == "true" ]]; then
+            echo "run-all=true" >> $GITHUB_OUTPUT
+            echo "Config changed - will run all checks"
+          else
+            echo "run-all=false" >> $GITHUB_OUTPUT
+          fi
+
+          # Run docker build if dockerfile or source changed
+          if [[ "${{ steps.filter.outputs.docker }}" == "true" ]] || \
+             [[ "${{ steps.filter.outputs.src }}" == "true" ]] || \
+             [[ "${{ steps.filter.outputs.config }}" == "true" ]]; then
+            echo "run-docker=true" >> $GITHUB_OUTPUT
+          else
+            echo "run-docker=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Summary
+        run: |
+          echo "## Change Detection Results" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "| Category | Changed |" >> $GITHUB_STEP_SUMMARY
+          echo "|----------|---------|" >> $GITHUB_STEP_SUMMARY
+          echo "| Source | ${{ steps.filter.outputs.src }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Tests | ${{ steps.filter.outputs.tests }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Styles | ${{ steps.filter.outputs.styles }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Config | ${{ steps.filter.outputs.config }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Docker | ${{ steps.filter.outputs.docker }} |" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Run All Checks:** ${{ steps.compute.outputs.run-all }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Run Docker Build:** ${{ steps.compute.outputs.run-docker }}" >> $GITHUB_STEP_SUMMARY
+
+  # ============================================================================
+  # Dependency Installation & Caching
+  # ============================================================================
+  setup:
+    name: Setup Dependencies
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    outputs:
+      node-version: ${{ steps.nvmrc.outputs.version }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Read .nvmrc
+        id: nvmrc
+        run: |
+          if [ -f .nvmrc ]; then
+            VERSION=$(cat .nvmrc | tr -d '[:space:]')
+            echo "version=$VERSION" >> $GITHUB_OUTPUT
+            echo "Using Node.js version from .nvmrc: $VERSION"
+          else
+            echo "version=${{ env.NODE_VERSION }}" >> $GITHUB_OUTPUT
+            echo "Using fallback Node.js version: ${{ env.NODE_VERSION }}"
+          fi
+
+      - name: Setup Node.js and Yarn
+        uses: ./.github/actions/setup-node-yarn
+        with:
+          node-version: ${{ steps.nvmrc.outputs.version }}
+
+  # ============================================================================
+  # Security Audit
+  # ============================================================================
+  audit:
+    name: Security Audit
+    needs: [setup, detect-changes]
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    if: |
+      needs.detect-changes.outputs.config == 'true' ||
+      needs.detect-changes.outputs.run-all == 'true'
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js and Yarn
+        uses: ./.github/actions/setup-node-yarn
+        with:
+          node-version: ${{ needs.setup.outputs.node-version }}
+
+      - name: Run Audit
+        continue-on-error: true
+        run: yarn npm audit --all
+
+  # ============================================================================
+  # Code Quality
+  # ============================================================================
+  lint:
+    name: Lint Code
+    needs: [setup, detect-changes]
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    if: |
+      needs.detect-changes.outputs.src == 'true' ||
+      needs.detect-changes.outputs.tests == 'true' ||
+      needs.detect-changes.outputs.run-all == 'true'
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js and Yarn
+        uses: ./.github/actions/setup-node-yarn
+        with:
+          node-version: ${{ needs.setup.outputs.node-version }}
+
+      - name: Run ESLint
+        run: yarn lint
+
+  typecheck:
+    name: Type Check
+    needs: [setup, detect-changes]
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    if: |
+      needs.detect-changes.outputs.src == 'true' ||
+      needs.detect-changes.outputs.tests == 'true' ||
+      needs.detect-changes.outputs.run-all == 'true'
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js and Yarn
+        uses: ./.github/actions/setup-node-yarn
+        with:
+          node-version: ${{ needs.setup.outputs.node-version }}
+
+      - name: Run TypeScript Compiler
+        run: yarn tsc --noEmit
+
+  # ============================================================================
+  # Unit Tests
+  # ============================================================================
+  test:
+    name: Unit Tests
+    needs: [setup, detect-changes]
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    if: |
+      needs.detect-changes.outputs.src == 'true' ||
+      needs.detect-changes.outputs.tests == 'true' ||
+      needs.detect-changes.outputs.run-all == 'true'
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js and Yarn
+        uses: ./.github/actions/setup-node-yarn
+        with:
+          node-version: ${{ needs.setup.outputs.node-version }}
+
+      - name: Run Tests
+        run: yarn test --ci --coverage
+
+      - name: Upload Coverage
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-report
+          path: coverage/
+          retention-days: 7
+          if-no-files-found: ignore
+
+  # ============================================================================
+  # Build Verification
+  # ============================================================================
+  build:
+    name: Build Next.js
+    needs: [setup, detect-changes]
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    if: |
+      needs.detect-changes.outputs.src == 'true' ||
+      needs.detect-changes.outputs.styles == 'true' ||
+      needs.detect-changes.outputs.run-all == 'true'
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js and Yarn
+        uses: ./.github/actions/setup-node-yarn
+        with:
+          node-version: ${{ needs.setup.outputs.node-version }}
+
+      - name: Build Next.js Application
+        run: yarn build
+        env:
+          # Suppress telemetry during CI builds
+          NEXT_TELEMETRY_DISABLED: '1'
+
+      - name: Verify Build Output
+        run: |
+          if [ -d ".next" ]; then
+            echo "✓ Build output directory exists"
+            echo "Build size:"
+            du -sh .next
+          else
+            echo "✗ Build output directory not found"
+            exit 1
+          fi
+
+  # ============================================================================
+  # Docker Build Test
+  # ============================================================================
+  docker-build:
+    name: Docker Build Test
+    needs: [setup, detect-changes, build]
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    if: |
+      needs.detect-changes.outputs.run-docker == 'true' &&
+      needs.build.result == 'success'
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build Docker Image (Test Only)
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          push: false
+          tags: frontend:ci-test
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Test Container Startup
+        run: |
+          echo "Testing container startup..."
+          docker run -d --name test-container -p 3000:3000 frontend:ci-test
+
+          # Wait for container to start
+          sleep 10
+
+          # Check if container is running
+          if docker ps | grep -q test-container; then
+            echo "✓ Container started successfully"
+          else
+            echo "✗ Container failed to start"
+            docker logs test-container
+            exit 1
+          fi
+
+          # Cleanup
+          docker stop test-container
+          docker rm test-container
+
+  # ============================================================================
+  # CI Summary
+  # ============================================================================
+  ci-success:
+    name: CI Complete
+    needs:
+      - detect-changes
+      - audit
+      - lint
+      - typecheck
+      - test
+      - build
+      - docker-build
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    if: always()
+
+    steps:
+      - name: Check Results
+        run: |
+          echo "## CI Pipeline Results" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+
+          echo "### Change Detection" >> $GITHUB_STEP_SUMMARY
+          echo "- Run All: ${{ needs.detect-changes.outputs.run-all }}" >> $GITHUB_STEP_SUMMARY
+          echo "- Run Docker: ${{ needs.detect-changes.outputs.run-docker }}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+
+          echo "### Code Quality" >> $GITHUB_STEP_SUMMARY
+          echo "- Audit: ${{ needs.audit.result }}" >> $GITHUB_STEP_SUMMARY
+          echo "- Lint: ${{ needs.lint.result }}" >> $GITHUB_STEP_SUMMARY
+          echo "- Type Check: ${{ needs.typecheck.result }}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+
+          echo "### Tests & Build" >> $GITHUB_STEP_SUMMARY
+          echo "- Unit Tests: ${{ needs.test.result }}" >> $GITHUB_STEP_SUMMARY
+          echo "- Build: ${{ needs.build.result }}" >> $GITHUB_STEP_SUMMARY
+          echo "- Docker Build: ${{ needs.docker-build.result }}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+
+          # Critical failures check
+          FAILED=false
+          for RESULT in "${{ needs.lint.result }}" "${{ needs.typecheck.result }}" "${{ needs.build.result }}"; do
+            if [[ "$RESULT" == "failure" ]]; then
+              FAILED=true
+              break
+            fi
+          done
+
+          if [[ "$FAILED" == "true" ]]; then
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "❌ CI failed due to critical job failures" >> $GITHUB_STEP_SUMMARY
+            exit 1
+          fi
+
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "✅ All critical CI checks passed" >> $GITHUB_STEP_SUMMARY
