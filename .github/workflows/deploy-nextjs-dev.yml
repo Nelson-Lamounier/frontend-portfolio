@@ -60,8 +60,6 @@ jobs:
     uses: ./.github/workflows/_deploy-ecs-service.yml
     with:
       environment: development
-      ssm-cluster-param: '/nextjs/development/ecs/cluster-name'
-      ssm-service-param: '/nextjs/development/ecs/service-name'
       wait-for-stability: true
       stability-timeout: 10
     secrets:
