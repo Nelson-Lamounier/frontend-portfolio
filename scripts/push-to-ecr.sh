@@ -131,7 +131,7 @@ docker push "${REPO_URI}:${IMAGE_TAG}"
 echo -e "${GREEN}✓ Image pushed successfully${NC}"
 
 # Step 6: Sync static assets to S3 (for CloudFront)
-echo -e "${YELLOW}[6/6] Syncing static assets to S3...${NC}"
+echo -e "${YELLOW}[6/7] Syncing static assets to S3...${NC}"
 
 # IMPORTANT: Clear any stale local .next/static to avoid hash mismatches
 rm -rf "$PROJECT_ROOT/.next/static"
@@ -156,7 +156,7 @@ if [ "$EXTRACTED_COUNT" -eq 0 ]; then
 fi
 echo -e "${GREEN}✓ Extracted $EXTRACTED_COUNT static assets${NC}"
 
-# Sync to S3 using the sync script
+# Sync to S3 and invalidate CloudFront using the sync script
 if [ -f "$SCRIPT_DIR/sync-static-to-s3.sh" ]; then
   "$SCRIPT_DIR/sync-static-to-s3.sh" \
     --env "${ENVIRONMENT}" \
@@ -169,7 +169,7 @@ fi
 
 echo ""
 echo -e "${GREEN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
-echo -e "${GREEN}✅ Build, Push & Sync Complete!${NC}"
+echo -e "${GREEN}✅ Build, Push, Sync & Invalidate Complete!${NC}"
 echo -e "${GREEN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
 echo ""
 echo "Image URI: ${REPO_URI}:${IMAGE_TAG}"

@@ -40,11 +40,23 @@ jobs:
       DOCKERHUB_TOKEN: ${{ secrets.DOCKERHUB_TOKEN }}
 
   # ===========================================================================
+  # Sync Static Assets to S3 & Invalidate CloudFront
+  # ===========================================================================
+  sync-assets:
+    name: Sync Assets
+    needs: [build]
+    uses: ./.github/workflows/_sync-assets.yml
+    with:
+      environment: development
+    secrets:
+      AWS_OIDC_ROLE: ${{ secrets.AWS_OIDC_ROLE }}
+
+  # ===========================================================================
   # Deploy to ECS (force redeployment to pull updated :latest)
   # ===========================================================================
   deploy:
     name: Deploy to ECS
-    needs: [build]
+    needs: [build, sync-assets]
     uses: ./.github/workflows/_deploy-ecs-service.yml
     with:
       environment: development
@@ -60,7 +72,7 @@ jobs:
   # ===========================================================================
   summary:
     name: Summary
-    needs: [build, deploy]
+    needs: [build, sync-assets, deploy]
     runs-on: ubuntu-latest
     if: always()
 
@@ -71,7 +83,8 @@ jobs:
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "| Step | Result |" >> $GITHUB_STEP_SUMMARY
           echo "|------|--------|" >> $GITHUB_STEP_SUMMARY
-          echo "| Build | ${{ needs.build.result }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Build & Push | ${{ needs.build.result }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Sync Assets | ${{ needs.sync-assets.result }} |" >> $GITHUB_STEP_SUMMARY
           echo "| Deploy | ${{ needs.deploy.result }} |" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
 
