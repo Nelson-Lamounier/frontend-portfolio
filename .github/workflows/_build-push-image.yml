@@ -21,9 +21,18 @@ on:
         description: 'SSM parameter name for ECR repository URL'
         required: true
         type: string
+      push-to-dockerhub:
+        description: 'Also push image to Docker Hub'
+        required: false
+        type: boolean
+        default: false
     secrets:
       AWS_OIDC_ROLE:
         required: true
+      DOCKERHUB_USERNAME:
+        required: false
+      DOCKERHUB_TOKEN:
+        required: false
     outputs:
       image-uri:
         description: 'Full Docker image URI (including tag)'
@@ -80,10 +89,10 @@ jobs:
           echo "- **Image Size**: $IMAGE_SIZE" >> $GITHUB_STEP_SUMMARY
 
   # ===========================================================================
-  # Job 2: Push to ECR (requires AWS credentials)
+  # Job 2: Push to ECR and Docker Hub
   # ===========================================================================
   push:
-    name: Push to ECR
+    name: Push to Registries
     needs: [build]
     runs-on: ubuntu-latest
     timeout-minutes: 15
@@ -119,6 +128,13 @@ jobs:
       - name: Login to Amazon ECR
         uses: aws-actions/amazon-ecr-login@v2
 
+      - name: Login to Docker Hub
+        if: inputs.push-to-dockerhub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
       - name: Download Docker Image Artifact
         uses: actions/download-artifact@v4
         with:
@@ -145,12 +161,33 @@ jobs:
           echo "image-uri=${ECR_URL}:${TAG}" >> $GITHUB_OUTPUT
           echo "✓ Image pushed to ECR"
 
+      - name: Push to Docker Hub
+        if: inputs.push-to-dockerhub
+        run: |
+          TAG="${{ inputs.image-tag }}"
+          DOCKERHUB_REPO="lamounierdev/nextjs-application"
+
+          echo "Tagging image for Docker Hub..."
+          docker tag "frontend:${TAG}" "${DOCKERHUB_REPO}:${TAG}"
+          docker tag "frontend:${TAG}" "${DOCKERHUB_REPO}:latest"
+
+          echo "Pushing to Docker Hub..."
+          docker push "${DOCKERHUB_REPO}:${TAG}"
+          docker push "${DOCKERHUB_REPO}:latest"
+
+          echo "✓ Image pushed to Docker Hub"
+
       - name: Push Summary
         run: |
-          echo "## 📦 Image Pushed to ECR" >> $GITHUB_STEP_SUMMARY
+          echo "## 📦 Image Pushed to Registries" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### ECR" >> $GITHUB_STEP_SUMMARY
           echo "- **Repository**: ${{ steps.ecr-url.outputs.ecr-url }}" >> $GITHUB_STEP_SUMMARY
           echo "- **Tag**: ${{ inputs.image-tag }}" >> $GITHUB_STEP_SUMMARY
           echo "- **URI**: ${{ steps.push-image.outputs.image-uri }}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### Docker Hub" >> $GITHUB_STEP_SUMMARY
+          echo "- **Repository**: lamounierdev/nextjs-application" >> $GITHUB_STEP_SUMMARY
+          echo "- **Pull**: \`docker pull lamounierdev/nextjs-application:latest\`" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "✅ Ready for deployment" >> $GITHUB_STEP_SUMMARY
