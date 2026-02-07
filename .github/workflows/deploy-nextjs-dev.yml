@@ -1,6 +1,7 @@
 # Deploy Next.js Application to Development
-# Triggers on push to main branch
-# Builds Docker image, pushes to ECR, and updates ECS service
+# Triggers on push to develop branch
+# Builds Docker image, pushes to ECR as :latest, then forces ECS redeployment
+# Uses mutable :latest tag strategy - no new task definition revisions
 
 name: Deploy NextJS to Dev
 
@@ -24,7 +25,7 @@ permissions:
 
 jobs:
   # ===========================================================================
-  # Build and Push Docker Image
+  # Build and Push Docker Image as :latest
   # ===========================================================================
   build:
     name: Build Image
@@ -36,7 +37,7 @@ jobs:
       AWS_OIDC_ROLE: ${{ secrets.AWS_OIDC_ROLE }}
 
   # ===========================================================================
-  # Deploy to ECS
+  # Deploy to ECS (force redeployment to pull updated :latest)
   # ===========================================================================
   deploy:
     name: Deploy to ECS
@@ -44,10 +45,8 @@ jobs:
     uses: ./.github/workflows/_deploy-ecs-service.yml
     with:
       environment: development
-      image-uri: ${{ needs.build.outputs.image-uri }}
       ssm-cluster-param: ${{ vars.SSM_ECS_CLUSTER_NAME }}
       ssm-service-param: ${{ vars.SSM_ECS_SERVICE_NAME }}
-      ssm-taskdef-family-param: ${{ vars.SSM_ECS_TASKDEF_FAMILY }}
       wait-for-stability: true
       stability-timeout: 10
     secrets:
