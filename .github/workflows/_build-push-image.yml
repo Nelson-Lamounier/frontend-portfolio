@@ -1,6 +1,7 @@
 # .github/workflows/_build-push-image.yml
 # Reusable workflow for building Next.js Docker image and pushing to ECR
-# Retrieves ECR repository URL from SSM Parameter Store
+# Decoupled into two jobs: build (no AWS needed) and push (OIDC + ECR)
+# Build failures are clearly visible at the pipeline level
 
 name: Build and Push Docker Image (Reusable)
 
@@ -12,48 +13,85 @@ on:
         required: true
         type: string
       image-tag:
-        description: 'Docker image tag (default: commit SHA)'
+        description: 'Docker image tag (default: latest)'
         required: false
         type: string
-        default: ''
+        default: 'latest'
       ssm-ecr-param:
         description: 'SSM parameter name for ECR repository URL'
-        required: false
+        required: true
         type: string
-        default: '/nextjs/dev/ecr/repository-url'
     secrets:
       AWS_OIDC_ROLE:
         required: true
     outputs:
       image-uri:
         description: 'Full Docker image URI (including tag)'
-        value: ${{ jobs.build-push.outputs.image-uri }}
-      image-digest:
-        description: 'Docker image digest'
-        value: ${{ jobs.build-push.outputs.image-digest }}
-      image-tag:
-        description: 'Docker image tag used'
-        value: ${{ jobs.build-push.outputs.image-tag }}
+        value: ${{ jobs.push.outputs.image-uri }}
 
 env:
-  NODE_VERSION: '22'
   AWS_REGION: ${{ vars.AWS_REGION || 'eu-west-1' }}
 
 jobs:
-  build-push:
-    name: Build & Push Image
+  # ===========================================================================
+  # Job 1: Build Docker Image (no AWS credentials needed)
+  # ===========================================================================
+  build:
+    name: Build Docker Image
     runs-on: ubuntu-latest
-    timeout-minutes: 25
-    environment: ${{ inputs.environment }}
-    outputs:
-      image-uri: ${{ steps.build-push.outputs.image-uri }}
-      image-digest: ${{ steps.build-push.outputs.digest }}
-      image-tag: ${{ steps.image-tag.outputs.tag }}
+    timeout-minutes: 20
 
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build Docker Image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          push: false
+          load: false
+          tags: frontend:${{ inputs.image-tag }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+          provenance: false
+          build-args: |
+            NODE_ENV=production
+            NEXT_TELEMETRY_DISABLED=1
+          outputs: type=docker,dest=/tmp/docker-image.tar
+
+      - name: Upload Docker Image Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: docker-image-${{ inputs.environment }}
+          path: /tmp/docker-image.tar
+          retention-days: 1
+          if-no-files-found: error
+
+      - name: Build Summary
+        run: |
+          IMAGE_SIZE=$(du -sh /tmp/docker-image.tar | cut -f1)
+          echo "## 🐳 Docker Build Successful" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "- **Tag**: ${{ inputs.image-tag }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Image Size**: $IMAGE_SIZE" >> $GITHUB_STEP_SUMMARY
+
+  # ===========================================================================
+  # Job 2: Push to ECR (requires AWS credentials)
+  # ===========================================================================
+  push:
+    name: Push to ECR
+    needs: [build]
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    environment: ${{ inputs.environment }}
+    outputs:
+      image-uri: ${{ steps.push-image.outputs.image-uri }}
+
+    steps:
       - name: Configure AWS Credentials
         uses: aws-actions/configure-aws-credentials@v4
         with:
@@ -78,60 +116,41 @@ jobs:
           echo "ecr-url=$ECR_URL" >> $GITHUB_OUTPUT
           echo "✓ Retrieved ECR repository URL from SSM"
 
-      - name: Determine Image Tag
-        id: image-tag
-        run: |
-          if [ -n "${{ inputs.image-tag }}" ]; then
-            TAG="${{ inputs.image-tag }}"
-          else
-            # Use commit SHA with environment prefix
-            TAG="${{ inputs.environment }}-${GITHUB_SHA::8}"
-          fi
-
-          echo "tag=$TAG" >> $GITHUB_OUTPUT
-          echo "Using image tag: $TAG"
-
       - name: Login to Amazon ECR
-        id: login-ecr
         uses: aws-actions/amazon-ecr-login@v2
 
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
-
-      - name: Extract Metadata for Docker
-        id: meta
-        uses: docker/metadata-action@v5
+      - name: Download Docker Image Artifact
+        uses: actions/download-artifact@v4
         with:
-          images: ${{ steps.ecr-url.outputs.ecr-url }}
-          tags: |
-            type=raw,value=${{ steps.image-tag.outputs.tag }}
-            type=raw,value=${{ inputs.environment }}-latest
-            type=sha,prefix=${{ inputs.environment }}-
+          name: docker-image-${{ inputs.environment }}
+          path: /tmp
 
-      - name: Build and Push Docker Image
-        id: build-push
-        uses: docker/build-push-action@v6
-        with:
-          context: .
-          push: true
-          tags: ${{ steps.meta.outputs.tags }}
-          labels: ${{ steps.meta.outputs.labels }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
-          provenance: false
-          build-args: |
-            NODE_ENV=production
-            NEXT_TELEMETRY_DISABLED=1
-
-      - name: Output Image URI
+      - name: Load, Tag, and Push Image
+        id: push-image
         run: |
-          IMAGE_URI="${{ steps.ecr-url.outputs.ecr-url }}:${{ steps.image-tag.outputs.tag }}"
-          echo "image-uri=$IMAGE_URI" >> $GITHUB_OUTPUT
+          echo "Loading Docker image from artifact..."
+          docker load -i /tmp/docker-image.tar
 
-          echo "## Docker Image Built" >> $GITHUB_STEP_SUMMARY
+          ECR_URL="${{ steps.ecr-url.outputs.ecr-url }}"
+          TAG="${{ inputs.image-tag }}"
+
+          echo "Tagging image for ECR..."
+          docker tag "frontend:${TAG}" "${ECR_URL}:${TAG}"
+          docker tag "frontend:${TAG}" "${ECR_URL}:latest"
+
+          echo "Pushing to ECR..."
+          docker push "${ECR_URL}:${TAG}"
+          docker push "${ECR_URL}:latest"
+
+          echo "image-uri=${ECR_URL}:${TAG}" >> $GITHUB_OUTPUT
+          echo "✓ Image pushed to ECR"
+
+      - name: Push Summary
+        run: |
+          echo "## 📦 Image Pushed to ECR" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "- **Repository**: ${{ steps.ecr-url.outputs.ecr-url }}" >> $GITHUB_STEP_SUMMARY
-          echo "- **Tag**: ${{ steps.image-tag.outputs.tag }}" >> $GITHUB_STEP_SUMMARY
-          echo "- **Digest**: ${{ steps.build-push.outputs.digest }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Tag**: ${{ inputs.image-tag }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **URI**: ${{ steps.push-image.outputs.image-uri }}" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
-          echo "✅ Image pushed successfully" >> $GITHUB_STEP_SUMMARY
+          echo "✅ Ready for deployment" >> $GITHUB_STEP_SUMMARY
