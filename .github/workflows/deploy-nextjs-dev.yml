@@ -32,7 +32,7 @@ jobs:
     uses: ./.github/workflows/_build-push-image.yml
     with:
       environment: development
-      ssm-ecr-param: ${{ vars.SSM_ECR_REPOSITORY_URI }}
+      ssm-ecr-param: '/shared/ecr/development/repository-uri'
     secrets:
       AWS_OIDC_ROLE: ${{ secrets.AWS_OIDC_ROLE }}
 
@@ -45,8 +45,8 @@ jobs:
     uses: ./.github/workflows/_deploy-ecs-service.yml
     with:
       environment: development
-      ssm-cluster-param: ${{ vars.SSM_ECS_CLUSTER_NAME }}
-      ssm-service-param: ${{ vars.SSM_ECS_SERVICE_NAME }}
+      ssm-cluster-param: '/nextjs/development/ecs/cluster-name'
+      ssm-service-param: '/nextjs/development/ecs/service-name'
       wait-for-stability: true
       stability-timeout: 10
     secrets:
