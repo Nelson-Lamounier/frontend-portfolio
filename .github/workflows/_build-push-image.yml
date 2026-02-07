@@ -1,6 +1,6 @@
 # .github/workflows/_build-push-image.yml
 # Reusable workflow for building Next.js Docker image and pushing to ECR
-# Decoupled into two jobs: build (no AWS needed) and push (OIDC + ECR)
+# Decoupled into two jobs: build (no AWS needed) and push (calls scripts/push-to-ecr.sh)
 # Build failures are clearly visible at the pipeline level
 
 name: Build and Push Docker Image (Reusable)
@@ -89,7 +89,7 @@ jobs:
           echo "- **Image Size**: $IMAGE_SIZE" >> $GITHUB_STEP_SUMMARY
 
   # ===========================================================================
-  # Job 2: Push to ECR and Docker Hub
+  # Job 2: Push to ECR and Docker Hub (calls scripts/push-to-ecr.sh)
   # ===========================================================================
   push:
     name: Push to Registries
@@ -101,6 +101,9 @@ jobs:
       image-uri: ${{ steps.push-image.outputs.image-uri }}
 
     steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
       - name: Configure AWS Credentials
         uses: aws-actions/configure-aws-credentials@v4
         with:
@@ -125,53 +128,49 @@ jobs:
           echo "ecr-url=$ECR_URL" >> $GITHUB_OUTPUT
           echo "✓ Retrieved ECR repository URL from SSM"
 
-      - name: Login to Amazon ECR
-        uses: aws-actions/amazon-ecr-login@v2
-
-      - name: Login to Docker Hub
-        if: inputs.push-to-dockerhub
-        uses: docker/login-action@v3
-        with:
-          username: ${{ secrets.DOCKERHUB_USERNAME }}
-          password: ${{ secrets.DOCKERHUB_TOKEN }}
-
       - name: Download Docker Image Artifact
         uses: actions/download-artifact@v4
         with:
           name: docker-image-${{ inputs.environment }}
           path: /tmp
 
-      - name: Load, Tag, and Push Image
-        id: push-image
+      - name: Load Docker Image
         run: |
           echo "Loading Docker image from artifact..."
           docker load -i /tmp/docker-image.tar
+          echo "✓ Image loaded"
 
-          ECR_URL="${{ steps.ecr-url.outputs.ecr-url }}"
-          TAG="${{ inputs.image-tag }}"
+      - name: Push to ECR
+        id: push-image
+        run: |
+          chmod +x scripts/push-to-ecr.sh
+          ./scripts/push-to-ecr.sh \
+            --env "${{ inputs.environment }}" \
+            --tag "${{ inputs.image-tag }}" \
+            --ecr-url "${{ steps.ecr-url.outputs.ecr-url }}" \
+            --image-name "frontend:${{ inputs.image-tag }}" \
+            --skip-build \
+            --skip-sync \
+            --region "${{ env.AWS_REGION }}"
 
-          echo "Tagging image for ECR..."
-          docker tag "frontend:${TAG}" "${ECR_URL}:${TAG}"
-          docker tag "frontend:${TAG}" "${ECR_URL}:latest"
-
-          echo "Pushing to ECR..."
-          docker push "${ECR_URL}:${TAG}"
-          docker push "${ECR_URL}:latest"
-
-          echo "image-uri=${ECR_URL}:${TAG}" >> $GITHUB_OUTPUT
-          echo "✓ Image pushed to ECR"
+          echo "image-uri=${{ steps.ecr-url.outputs.ecr-url }}:${{ inputs.image-tag }}" >> $GITHUB_OUTPUT
 
       - name: Push to Docker Hub
+        if: inputs.push-to-dockerhub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Tag and Push to Docker Hub
         if: inputs.push-to-dockerhub
         run: |
           TAG="${{ inputs.image-tag }}"
           DOCKERHUB_REPO="lamounierdev/nextjs-application"
 
-          echo "Tagging image for Docker Hub..."
           docker tag "frontend:${TAG}" "${DOCKERHUB_REPO}:${TAG}"
           docker tag "frontend:${TAG}" "${DOCKERHUB_REPO}:latest"
 
-          echo "Pushing to Docker Hub..."
           docker push "${DOCKERHUB_REPO}:${TAG}"
           docker push "${DOCKERHUB_REPO}:latest"
 

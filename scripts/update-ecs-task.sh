@@ -3,7 +3,13 @@
 # Script to trigger ECS service update with force-new-deployment
 # Uses SSM Parameter Store to discover cluster/service names
 #
-# Usage: ./scripts/update-ecs-task.sh --env <environment> [--profile <aws-profile>] [--region <aws-region>]
+# Auth modes:
+#   - CI/Pipeline: Uses OIDC (credentials from env vars, no --profile needed)
+#   - Local/Manual: Uses AWS CLI profile (--profile flag)
+#
+# Usage:
+#   Local:    ./scripts/update-ecs-task.sh --env dev --profile dev-account
+#   Pipeline: ./scripts/update-ecs-task.sh --env development
 
 set -euo pipefail
 
@@ -21,8 +27,10 @@ NC='\033[0m' # No Color
 
 # Parse command line arguments
 AWS_REGION="${AWS_REGION:-$DEFAULT_REGION}"
-AWS_PROFILE="${AWS_PROFILE:-$DEFAULT_PROFILE}"
+AWS_PROFILE="${AWS_PROFILE:-}"
 ENVIRONMENT="${ENVIRONMENT:-$DEFAULT_ENV}"
+WAIT_FOR_STABILITY=false
+STABILITY_TIMEOUT=10
 
 while [[ $# -gt 0 ]]; do
   case $1 in
@@ -38,6 +46,14 @@ while [[ $# -gt 0 ]]; do
       AWS_REGION="$2"
       shift 2
       ;;
+    --wait)
+      WAIT_FOR_STABILITY=true
+      shift
+      ;;
+    --timeout)
+      STABILITY_TIMEOUT="$2"
+      shift 2
+      ;;
     --help)
       echo "Usage: $0 --env <environment> [OPTIONS]"
       echo ""
@@ -45,8 +61,14 @@ while [[ $# -gt 0 ]]; do
       echo ""
       echo "Options:"
       echo "  --env      Environment: dev, staging, prod (required)"
-      echo "  --profile  AWS CLI profile (default: dev-account)"
+      echo "  --profile  AWS CLI profile (default: auto-detect)"
       echo "  --region   AWS region (default: eu-west-1)"
+      echo "  --wait     Wait for service stability after deployment"
+      echo "  --timeout  Stability timeout in minutes (default: 10, used with --wait)"
+      echo ""
+      echo "Auth modes:"
+      echo "  CI/Pipeline:  Omit --profile; uses OIDC credentials from env vars"
+      echo "  Local/Manual: Use --profile <name>; uses AWS CLI named profile"
       echo ""
       echo "SSM Parameters (auto-discovered based on --env):"
       echo "  /nextjs/{env}/ecs/cluster-name"
@@ -64,12 +86,22 @@ echo -e "${GREEN}━━━━━━━━━━━━━━━━━━━━━
 echo -e "${GREEN}🔄 ECS Task Update Script${NC}"
 echo -e "${GREEN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
 
-# Export AWS profile
-export AWS_PROFILE="$AWS_PROFILE"
+# Determine auth mode: profile (local) vs OIDC (CI)
+if [ -n "$AWS_PROFILE" ]; then
+  export AWS_PROFILE="$AWS_PROFILE"
+  AUTH_MODE="profile ($AWS_PROFILE)"
+elif [ -n "${AWS_ACCESS_KEY_ID:-}" ]; then
+  AUTH_MODE="OIDC (env credentials)"
+else
+  # Fallback to default profile for local usage
+  AWS_PROFILE="$DEFAULT_PROFILE"
+  export AWS_PROFILE="$AWS_PROFILE"
+  AUTH_MODE="profile ($AWS_PROFILE, default)"
+fi
 export AWS_REGION="$AWS_REGION"
 
 echo -e "${YELLOW}📋 Configuration:${NC}"
-echo "   AWS Profile:  $AWS_PROFILE"
+echo "   Auth Mode:    $AUTH_MODE"
 echo "   AWS Region:   $AWS_REGION"
 echo "   Environment:  $ENVIRONMENT"
 echo ""
@@ -129,6 +161,21 @@ aws ecs update-service \
   --output text > /dev/null
 
 echo -e "${GREEN}✓ ECS service update triggered${NC}"
+
+# Optional: Wait for service stability
+if [ "$WAIT_FOR_STABILITY" = true ]; then
+  echo ""
+  echo -e "${YELLOW}⏳ Waiting for service to stabilize (timeout: ${STABILITY_TIMEOUT} minutes)...${NC}"
+
+  if aws ecs wait services-stable \
+    --cluster "$CLUSTER_NAME" \
+    --services "$SERVICE_NAME"; then
+    echo -e "${GREEN}✓ Service is stable${NC}"
+  else
+    echo -e "${RED}⚠ Service did not stabilize within timeout${NC}"
+    exit 1
+  fi
+fi
 
 echo ""
 echo -e "${GREEN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
