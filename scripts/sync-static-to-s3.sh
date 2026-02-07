@@ -116,15 +116,29 @@ echo -e "${GREEN}✓ Found $ASSET_COUNT static assets${NC}"
 
 # Step 2: Get S3 bucket name from SSM
 echo -e "${YELLOW}[2/5] Discovering S3 bucket from SSM...${NC}"
-SSM_BUCKET_PARAM="/nextjs/${ENVIRONMENT}/s3/static-assets-bucket"
 
-echo "   Looking up: $SSM_BUCKET_PARAM"
-BUCKET_NAME=$(aws ssm get-parameter \
-  --name "$SSM_BUCKET_PARAM" \
-  --query 'Parameter.Value' \
-  --output text 2>/dev/null || echo "")
+# Try known SSM paths in order of preference
+SSM_PATHS=(
+  "/nextjs/${ENVIRONMENT}/assets-bucket-name"
+  "/nextjs/${ENVIRONMENT}/s3/static-assets-bucket"
+)
 
-if [ -z "$BUCKET_NAME" ] || [ "$BUCKET_NAME" = "None" ]; then
+BUCKET_NAME=""
+for SSM_PARAM in "${SSM_PATHS[@]}"; do
+  echo "   Trying: $SSM_PARAM"
+  BUCKET_NAME=$(aws ssm get-parameter \
+    --name "$SSM_PARAM" \
+    --query 'Parameter.Value' \
+    --output text 2>/dev/null || echo "")
+
+  if [ -n "$BUCKET_NAME" ] && [ "$BUCKET_NAME" != "None" ]; then
+    echo -e "${GREEN}   ✓ Found via: $SSM_PARAM${NC}"
+    break
+  fi
+  BUCKET_NAME=""
+done
+
+if [ -z "$BUCKET_NAME" ]; then
   echo -e "${YELLOW}⚠️ SSM parameter not found. Trying alternative discovery...${NC}"
   
   # Fallback: Try common bucket naming patterns
@@ -134,8 +148,10 @@ if [ -z "$BUCKET_NAME" ] || [ "$BUCKET_NAME" = "None" ]; then
   # Verify bucket exists
   if ! aws s3api head-bucket --bucket "$BUCKET_NAME" 2>/dev/null; then
     echo -e "${RED}❌ Could not find S3 bucket.${NC}"
-    echo -e "${YELLOW}   Create the SSM parameter: $SSM_BUCKET_PARAM${NC}"
-    echo -e "${YELLOW}   Or ensure bucket exists: $BUCKET_NAME${NC}"
+    echo -e "${YELLOW}   Create one of these SSM parameters:${NC}"
+    for P in "${SSM_PATHS[@]}"; do
+      echo -e "${YELLOW}     - $P${NC}"
+    done
     exit 1
   fi
 fi
