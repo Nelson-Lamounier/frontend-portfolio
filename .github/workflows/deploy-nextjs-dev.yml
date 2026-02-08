@@ -2,6 +2,7 @@
 # Triggers on push to develop branch
 # Builds Docker image, pushes to ECR as :latest, then forces ECS redeployment
 # Uses mutable :latest tag strategy - no new task definition revisions
+# Test last infra deployment
 
 name: Deploy NextJS to Dev
 
