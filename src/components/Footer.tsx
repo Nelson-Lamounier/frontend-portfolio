@@ -1,6 +1,9 @@
+'use client'
+
 import Link from 'next/link'
 
 import { ContainerInner, ContainerOuter } from '@/components/Container'
+import { ManageCookiesButton } from '@/components/CookieConsent'
 
 function NavLink({
   href,
@@ -32,10 +35,14 @@ export function Footer() {
                 <NavLink href="/music">Music</NavLink>
                 <NavLink href="/uses">Uses</NavLink>
               </div>
-              <p className="text-sm text-zinc-400 dark:text-zinc-500">
-                &copy; {new Date().getFullYear()} Nelson Lamounier. All rights
-                reserved.
-              </p>
+              <div className="flex items-center gap-4">
+                <p className="text-sm text-zinc-400 dark:text-zinc-500">
+                  &copy; {new Date().getFullYear()} Nelson Lamounier. All rights
+                  reserved.
+                </p>
+                <span className="text-zinc-300 dark:text-zinc-600">|</span>
+                <ManageCookiesButton />
+              </div>
             </div>
           </ContainerInner>
         </div>
