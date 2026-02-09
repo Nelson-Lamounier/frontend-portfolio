@@ -57,18 +57,27 @@ jobs:
           aws-region: ${{ env.AWS_REGION }}
           audience: sts.amazonaws.com
 
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Enable Corepack
+        run: corepack enable
+
+      - name: Install Dependencies
+        run: yarn install --frozen-lockfile
+
       - name: Force New Deployment
         id: deploy
         run: |
-          chmod +x scripts/update-ecs-task.sh
-
           DEPLOY_ARGS="--env ${{ inputs.environment }} --region ${{ env.AWS_REGION }}"
 
           if [ "${{ inputs.wait-for-stability }}" = "true" ]; then
             DEPLOY_ARGS="$DEPLOY_ARGS --wait --timeout ${{ inputs.stability-timeout }}"
           fi
 
-          ./scripts/update-ecs-task.sh $DEPLOY_ARGS
+          npx tsx scripts/update-ecs-task.ts $DEPLOY_ARGS
 
           echo "deployed=true" >> $GITHUB_OUTPUT
 

@@ -26,6 +26,11 @@ on:
         required: false
         type: boolean
         default: false
+      api-url:
+        description: 'Articles API URL (NEXT_PUBLIC_API_URL) to inject at build time'
+        required: false
+        type: string
+        default: ''
     secrets:
       AWS_OIDC_ROLE:
         required: true
@@ -70,6 +75,7 @@ jobs:
           build-args: |
             NODE_ENV=production
             NEXT_TELEMETRY_DISABLED=1
+            NEXT_PUBLIC_API_URL=${{ inputs.api-url }}
           outputs: type=docker,dest=/tmp/docker-image.tar
 
       - name: Upload Docker Image Artifact
@@ -89,7 +95,7 @@ jobs:
           echo "- **Image Size**: $IMAGE_SIZE" >> $GITHUB_STEP_SUMMARY
 
   # ===========================================================================
-  # Job 2: Push to ECR and Docker Hub (calls scripts/push-to-ecr.sh)
+  # Job 2: Push to ECR and Docker Hub (calls scripts/push-to-ecr.ts)
   # ===========================================================================
   push:
     name: Push to Registries
@@ -103,6 +109,17 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Enable Corepack
+        run: corepack enable
+
+      - name: Install Dependencies
+        run: yarn install --frozen-lockfile
 
       - name: Configure AWS Credentials
         uses: aws-actions/configure-aws-credentials@v4
@@ -143,8 +160,7 @@ jobs:
       - name: Push to ECR
         id: push-image
         run: |
-          chmod +x scripts/push-to-ecr.sh
-          ./scripts/push-to-ecr.sh \
+          npx tsx scripts/push-to-ecr.ts \
             --env "${{ inputs.environment }}" \
             --tag "${{ inputs.image-tag }}" \
             --ecr-url "${{ steps.ecr-url.outputs.ecr-url }}" \
