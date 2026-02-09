@@ -4,35 +4,41 @@ import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 
 /**
- * Middleware to track HTTP requests
+ * Middleware to track HTTP requests for Prometheus metrics
  * Runs on all routes except static files and internal Next.js routes
+ *
+ * Middleware always executes server-side in Next.js Edge Runtime,
+ * so no `typeof window` guard is needed.
  */
 export function middleware(request: NextRequest) {
   const start = Date.now();
   const response = NextResponse.next();
+  const duration = (Date.now() - start) / 1000;
 
   // Track metrics asynchronously (fire and forget)
-  if (typeof window === 'undefined') {
-    // Only run on server-side
-    const duration = (Date.now() - start) / 1000;
-    
-    // Import metrics dynamically to avoid circular dependencies
-    import('@/lib/metrics').then(({ trackRequestDuration, trackApiCall }) => {
+  Promise.all([
+    import('@/lib/metrics'),
+    import('@/lib/request-tracker'),
+  ])
+    .then(([{ trackRequestDuration, trackApiCall }, { trackRequestSize }]) => {
       const status = response.status;
       const method = request.method;
       const path = request.nextUrl.pathname;
 
-      // Track request duration
+      // Track request duration (Prometheus histogram)
       trackRequestDuration(method, path, status, duration);
+
+      // Track request/response sizes (Prometheus histogram)
+      trackRequestSize(request, response);
 
       // Track API calls specifically
       if (path.startsWith('/api/')) {
         trackApiCall(path, method, status);
       }
-    }).catch(() => {
+    })
+    .catch(() => {
       // Silently fail - don't break the request
     });
-  }
 
   return response;
 }

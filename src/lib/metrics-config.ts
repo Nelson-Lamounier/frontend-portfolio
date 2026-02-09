@@ -37,8 +37,7 @@ export const metricsConfig = {
     gcDurationBuckets: [0.001, 0.01, 0.1, 1, 2, 5],
   },
 
-  // Scrape interval (should match Prometheus config)
-  scrapeInterval: 30000, // 30 seconds
+
 
   // Metric name prefix
   prefix: 'nextjs_',
@@ -48,8 +47,6 @@ export const metricsConfig = {
     // Collect default Node.js metrics (memory, CPU, etc.)
     collectDefaultMetrics: true,
     
-    // Track individual page views
-    trackPageViews: true,
     
     // Track API calls
     trackApiCalls: true,
@@ -72,8 +69,6 @@ export const metricsConfig = {
     // Sample rate for error tracking
     errors: 1.0,
     
-    // Sample rate for page view tracking
-    pageViews: 1.0,
   },
 
   // Rate limiting

@@ -4,6 +4,8 @@ import { Button } from '@/components/Button'
 import { Card } from '@/components/Card'
 import { Container } from '@/components/Container'
 import { DevOpsPipelineAnimation } from '@/components/DevOpsPipelineAnimation'
+import { TrackedSocialLinks } from '@/components/TrackedSocialLinks'
+import { TrackedResumeButton } from '@/components/TrackedResumeButton'
 import {
   GitHubIcon,
   InstagramIcon,
@@ -236,10 +238,12 @@ function Resume() {
           <Role key={roleIndex} role={role} />
         ))}
       </ol>
-      <Button href="#" variant="secondary" className="group mt-6 w-full">
-        Download CV
-        <ArrowDownIcon className="h-4 w-4 stroke-zinc-400 transition group-active:stroke-zinc-600 dark:group-hover:stroke-zinc-50 dark:group-active:stroke-zinc-50" />
-      </Button>
+      <TrackedResumeButton>
+        <Button href="#" variant="secondary" className="group mt-6 w-full">
+          Download CV
+          <ArrowDownIcon className="h-4 w-4 stroke-zinc-400 transition group-active:stroke-zinc-600 dark:group-hover:stroke-zinc-50 dark:group-active:stroke-zinc-50" />
+        </Button>
+      </TrackedResumeButton>
     </div>
   )
 }
@@ -262,6 +266,7 @@ export default async function Home() {
             DevOps problems into clear tutorials and catchy study songs.
           </p>
           <div className="mt-6 flex gap-6">
+            <TrackedSocialLinks>
             <SocialLink href="#" aria-label="Follow on X" icon={XIcon} />
             <SocialLink
               href="#"
@@ -278,6 +283,7 @@ export default async function Home() {
               aria-label="Follow on LinkedIn"
               icon={LinkedInIcon}
             />
+            </TrackedSocialLinks>
           </div>
         </div>
       </Container>
