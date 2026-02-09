@@ -3,6 +3,7 @@ import Image from 'next/image'
 import clsx from 'clsx'
 
 import { Container } from '@/components/Container'
+import { TrackedSocialLinks } from '@/components/TrackedSocialLinks'
 import {
   GitHubIcon,
   InstagramIcon,
@@ -119,6 +120,7 @@ export default function About() {
           </div>
         </div>
         <div className="lg:pl-20">
+          <TrackedSocialLinks>
           <ul role="list">
             <SocialLink href="#" icon={XIcon}>
               Follow on X
@@ -148,6 +150,7 @@ export default function About() {
               lamounierleao@outlook.com
             </SocialLink>
           </ul>
+          </TrackedSocialLinks>
         </div>
       </div>
     </Container>

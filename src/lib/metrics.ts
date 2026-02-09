@@ -44,22 +44,7 @@ appInfo.set(
   1
 );
 
-// ============================================
-// Page View Metrics
-// ============================================
 
-export const pageViews = new Counter({
-  name: 'nextjs_page_views_total',
-  help: 'Total number of page views',
-  labelNames: ['page', 'method', 'status'],
-  registers: [register],
-});
-
-export const uniqueVisitors = new Gauge({
-  name: 'nextjs_unique_visitors',
-  help: 'Number of unique visitors (approximate)',
-  registers: [register],
-});
 
 // ============================================
 // API Metrics
@@ -107,36 +92,7 @@ export const httpResponseSize = new Histogram({
   registers: [register],
 });
 
-// ============================================
-// Business Metrics
-// ============================================
 
-export const articleViews = new Counter({
-  name: 'nextjs_article_views_total',
-  help: 'Total number of article views',
-  labelNames: ['article_slug'],
-  registers: [register],
-});
-
-export const projectViews = new Counter({
-  name: 'nextjs_project_views_total',
-  help: 'Total number of project views',
-  labelNames: ['project_name'],
-  registers: [register],
-});
-
-export const contactFormSubmissions = new Counter({
-  name: 'nextjs_contact_form_submissions_total',
-  help: 'Total number of contact form submissions',
-  labelNames: ['status'],
-  registers: [register],
-});
-
-export const rssSubscribers = new Gauge({
-  name: 'nextjs_rss_subscribers',
-  help: 'Number of RSS feed requests (approximate)',
-  registers: [register],
-});
 
 // ============================================
 // Error Tracking
@@ -198,17 +154,6 @@ export const externalApiDuration = new Histogram({
 // ============================================
 
 /**
- * Track page view
- */
-export function trackPageView(page: string, status: number = 200) {
-  pageViews.inc({
-    page,
-    method: 'GET',
-    status: status.toString(),
-  });
-}
-
-/**
  * Track API call
  */
 export function trackApiCall(
@@ -248,21 +193,6 @@ export function trackRequestDuration(
     },
     durationSeconds
   );
-}
-
-/**
- * Track article view
- */
-export function trackArticleView(slug: string) {
-  articleViews.inc({ article_slug: slug });
-  trackPageView(`/articles/${slug}`);
-}
-
-/**
- * Track project view
- */
-export function trackProjectView(projectName: string) {
-  projectViews.inc({ project_name: projectName });
 }
 
 /**

@@ -1,12 +1,13 @@
 'use client'
 
-import { useContext } from 'react'
+import { useContext, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 
 import { AppContext } from '@/app/providers'
 import { Container } from '@/components/Container'
 import { Prose } from '@/components/Prose'
 import { formatDate } from '@/lib/formatDate'
+import { trackArticleView } from '@/lib/analytics'
 
 // Support both old and new article types during migration
 import type { ArticleWithSlug } from '@/lib/types/article.types'
@@ -33,6 +34,11 @@ export function ArticleLayout({
 }) {
   const router = useRouter()
   const { previousPathname } = useContext(AppContext)
+
+  // Track article view in Google Analytics on mount
+  useEffect(() => {
+    trackArticleView(article.slug, article.title)
+  }, [article.slug, article.title])
 
   return (
     <Container className="mt-16 lg:mt-32">
