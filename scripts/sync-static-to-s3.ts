@@ -20,6 +20,7 @@ import {
   S3Client,
   PutObjectCommand,
   ListObjectsV2Command,
+  ListObjectsV2CommandOutput,
   DeleteObjectsCommand,
 } from '@aws-sdk/client-s3'
 import {
@@ -209,7 +210,7 @@ async function main(): Promise<void> {
   let totalInS3 = 0
   continuationToken = undefined
   do {
-    const listResult = await s3.send(
+    const listResult: ListObjectsV2CommandOutput = await s3.send(
       new ListObjectsV2Command({
         Bucket: bucketName,
         Prefix: '_next/static/',
