@@ -1,0 +1,25 @@
+────────────────────────────────────────────────────────────────────────────┐
+│                         RECOMMENDED ARCHITECTURE                            │
+├────────────────────────────────────────────────────────────────────────────┤
+│                                                                            │
+│  Route 53 (nelsonlamounier.com)                                            │
+│      │                                                                     │
+│      ▼                                                                     │
+│  CloudFront (single entry point)                                          │
+│  ┌────────────────────────────────────────────────────────────────┐       │
+│  │  WAF (AWS Managed Rules):                                      │       │
+│  │    • AWSManagedRulesCommonRuleSet                              │       │
+│  │    • AWSManagedRulesKnownBadInputsRuleSet                      │       │
+│  │    • AWSManagedRulesAmazonIpReputationList                     │       │
+│  │    • Rate-based rule (5000 req/5min per IP)                    │       │
+│  └────────────────────────────────────────────────────────────────┘       │
+│      │                                                                     │
+│      ├─► /_next/static/* ──► S3 (immutable, 1yr cache)                    │
+│      ├─► /images/*       ──► S3 (long cache)                              │
+│      ├─► /api/*          ──► ALB ──► ECS (NextJS API routes)              │
+│      ├─► /articles/*     ──► API Gateway ──► Lambda ──► DynamoDB (NEW)    │
+│      └─► /*              ──► ALB ──► ECS (NextJS SSR pages)               │
+│                                                                            │
+│  ⚠️  Remove REGIONAL WAF from API Gateway (redundant)                      │
+│                                                                            │
+└────────────────────────────────────────────────────────────────────────────┘

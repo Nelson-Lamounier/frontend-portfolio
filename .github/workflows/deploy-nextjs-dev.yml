@@ -26,15 +26,52 @@ permissions:
 
 jobs:
   # ===========================================================================
+  # Prepare: Fetch configuration from SSM
+  # ===========================================================================
+  prepare:
+    name: Prepare Config
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    environment: development
+    outputs:
+      api-url: ${{ steps.ssm.outputs.api-url }}
+
+    steps:
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_OIDC_ROLE }}
+          aws-region: ${{ env.AWS_REGION }}
+          audience: sts.amazonaws.com
+
+      - name: Get API URL from SSM
+        id: ssm
+        run: |
+          API_URL=$(aws ssm get-parameter \
+            --name "/nextjs/development/api-gateway-url" \
+            --query 'Parameter.Value' \
+            --output text 2>/dev/null || echo "")
+
+          if [ -n "$API_URL" ] && [ "$API_URL" != "None" ]; then
+            echo "api-url=$API_URL" >> $GITHUB_OUTPUT
+            echo "✓ API URL retrieved from SSM"
+          else
+            echo "⚠️ API URL not found in SSM, build will use file fallback"
+            echo "api-url=" >> $GITHUB_OUTPUT
+          fi
+
+  # ===========================================================================
   # Build and Push Docker Image as :latest
   # ===========================================================================
   build:
     name: Build Image
+    needs: [prepare]
     uses: ./.github/workflows/_build-push-image.yml
     with:
       environment: development
       ssm-ecr-param: '/shared/ecr/development/repository-uri'
       push-to-dockerhub: true
+      api-url: ${{ needs.prepare.outputs.api-url }}
     secrets:
       AWS_OIDC_ROLE: ${{ secrets.AWS_OIDC_ROLE }}
       DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
@@ -53,11 +90,23 @@ jobs:
       AWS_OIDC_ROLE: ${{ secrets.AWS_OIDC_ROLE }}
 
   # ===========================================================================
+  # Migrate Articles to DynamoDB
+  # ===========================================================================
+  migrate-articles:
+    name: Migrate Articles
+    needs: [build]
+    uses: ./.github/workflows/_migrate-articles.yml
+    with:
+      environment: development
+    secrets:
+      AWS_OIDC_ROLE: ${{ secrets.AWS_OIDC_ROLE }}
+
+  # ===========================================================================
   # Deploy to ECS (force redeployment to pull updated :latest)
   # ===========================================================================
   deploy:
     name: Deploy to ECS
-    needs: [build, sync-assets]
+    needs: [build, sync-assets, migrate-articles]
     uses: ./.github/workflows/_deploy-ecs-service.yml
     with:
       environment: development
@@ -71,7 +120,7 @@ jobs:
   # ===========================================================================
   summary:
     name: Summary
-    needs: [build, sync-assets, deploy]
+    needs: [prepare, build, sync-assets, migrate-articles, deploy]
     runs-on: ubuntu-latest
     if: always()
 
@@ -82,8 +131,10 @@ jobs:
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "| Step | Result |" >> $GITHUB_STEP_SUMMARY
           echo "|------|--------|" >> $GITHUB_STEP_SUMMARY
+          echo "| Prepare Config | ${{ needs.prepare.result }} |" >> $GITHUB_STEP_SUMMARY
           echo "| Build & Push | ${{ needs.build.result }} |" >> $GITHUB_STEP_SUMMARY
           echo "| Sync Assets | ${{ needs.sync-assets.result }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Migrate Articles | ${{ needs.migrate-articles.result }} |" >> $GITHUB_STEP_SUMMARY
           echo "| Deploy | ${{ needs.deploy.result }} |" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
 
