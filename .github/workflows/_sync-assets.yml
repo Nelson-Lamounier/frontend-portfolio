@@ -61,11 +61,21 @@ jobs:
           ASSET_COUNT=$(find .next/static -type f | wc -l | tr -d ' ')
           echo "✓ Extracted $ASSET_COUNT static assets"
 
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Enable Corepack
+        run: corepack enable
+
+      - name: Install Dependencies
+        run: yarn install --frozen-lockfile
+
       - name: Sync to S3 & Invalidate CloudFront
         run: |
-          chmod +x scripts/sync-static-to-s3.sh
           ENVIRONMENT="${{ inputs.environment }}"
-          ./scripts/sync-static-to-s3.sh --env "$ENVIRONMENT" --region "${{ env.AWS_REGION }}"
+          npx tsx scripts/sync-static-to-s3.ts --env "$ENVIRONMENT" --region "${{ env.AWS_REGION }}"
 
       - name: Sync Summary
         run: |
