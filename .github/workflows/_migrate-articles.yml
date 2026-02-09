@@ -1,0 +1,98 @@
+# .github/workflows/_migrate-articles.yml
+# Reusable workflow for running article migration (MDX to DynamoDB)
+# Idempotent: skips articles that already exist in DynamoDB
+
+name: Migrate Articles (Reusable)
+
+on:
+  workflow_call:
+    inputs:
+      environment:
+        description: 'Target environment (development, staging, production)'
+        required: true
+        type: string
+    secrets:
+      AWS_OIDC_ROLE:
+        required: true
+
+env:
+  AWS_REGION: ${{ vars.AWS_REGION || 'eu-west-1' }}
+
+jobs:
+  migrate:
+    name: Migrate Articles to DynamoDB
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    environment: ${{ inputs.environment }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Enable Corepack
+        run: corepack enable
+
+      - name: Install Dependencies
+        run: yarn install --frozen-lockfile
+
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_OIDC_ROLE }}
+          aws-region: ${{ env.AWS_REGION }}
+          audience: sts.amazonaws.com
+
+      - name: Get Migration Config from SSM
+        id: config
+        run: |
+          # Fetch DynamoDB table name
+          TABLE_NAME=$(aws ssm get-parameter \
+            --name "/nextjs/${{ inputs.environment }}/dynamodb/table-name" \
+            --query 'Parameter.Value' \
+            --output text 2>/dev/null || echo "")
+
+          # Fetch S3 bucket name
+          BUCKET_NAME=$(aws ssm get-parameter \
+            --name "/nextjs/${{ inputs.environment }}/s3/article-assets-bucket" \
+            --query 'Parameter.Value' \
+            --output text 2>/dev/null || echo "")
+
+          if [ -z "$TABLE_NAME" ] || [ "$TABLE_NAME" = "None" ]; then
+            echo "⚠️ DynamoDB table name not found in SSM, using default"
+            TABLE_NAME="nextjs-articles-${{ inputs.environment }}"
+          fi
+
+          if [ -z "$BUCKET_NAME" ] || [ "$BUCKET_NAME" = "None" ]; then
+            echo "⚠️ S3 bucket name not found in SSM, using default"
+            BUCKET_NAME="nextjs-article-assets-${{ inputs.environment }}"
+          fi
+
+          echo "table-name=$TABLE_NAME" >> $GITHUB_OUTPUT
+          echo "bucket-name=$BUCKET_NAME" >> $GITHUB_OUTPUT
+          echo "✓ Migration config: table=$TABLE_NAME, bucket=$BUCKET_NAME"
+
+      - name: Run Article Migration
+        env:
+          AWS_REGION: ${{ env.AWS_REGION }}
+          DYNAMODB_TABLE_NAME: ${{ steps.config.outputs.table-name }}
+          S3_BUCKET_NAME: ${{ steps.config.outputs.bucket-name }}
+        run: |
+          echo "## 📝 Article Migration" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "- **Environment**: ${{ inputs.environment }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Table**: $DYNAMODB_TABLE_NAME" >> $GITHUB_STEP_SUMMARY
+          echo "- **Bucket**: $S3_BUCKET_NAME" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+
+          yarn migrate:articles 2>&1 | tee /tmp/migration-output.txt
+
+          echo "✅ Migration completed" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
+          tail -20 /tmp/migration-output.txt >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY

@@ -20,6 +20,10 @@ WORKDIR /app
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 
+# Inject API URL at build time (Next.js inlines NEXT_PUBLIC_* during build)
+ARG NEXT_PUBLIC_API_URL
+ENV NEXT_PUBLIC_API_URL=$NEXT_PUBLIC_API_URL
+
 # Set build-time environment variables
 ARG NODE_ENV=production
 ARG NEXT_TELEMETRY_DISABLED=1
