@@ -11,7 +11,7 @@
  * - S3 bucket created for article assets
  *
  * Usage:
- *   npx ts-node scripts/migrate-articles-to-dynamodb.ts
+ *   npx tsx scripts/dynamodb/migrate-articles-to-dynamodb.ts
  *
  * Environment Variables:
  *   AWS_REGION          - AWS region (default: eu-west-1)
@@ -19,6 +19,7 @@
  *   S3_BUCKET_NAME      - S3 bucket for article assets
  *   CLOUDFRONT_DOMAIN   - CloudFront domain for image URLs
  *   DRY_RUN             - Set to 'true' to preview without writing
+ *   FORCE_UPDATE        - Set to 'true' to overwrite existing articles
  */
 
 import { readFileSync, readdirSync, statSync, existsSync } from 'fs'
@@ -43,10 +44,11 @@ import { lookup } from 'mime-types'
 const CONFIG = {
   region: process.env.AWS_REGION || 'eu-west-1',
   profile: process.env.AWS_PROFILE || undefined,
-  tableName: process.env.DYNAMODB_TABLE_NAME || 'webapp-articles-development',
+  tableName: process.env.DYNAMODB_TABLE_NAME || 'nextjs-personal-portfolio-development',
   bucketName: process.env.S3_BUCKET_NAME || 'webapp-article-assets-development',
   cloudfrontDomain: process.env.CLOUDFRONT_DOMAIN || '',
   dryRun: process.env.DRY_RUN === 'true',
+  forceUpdate: process.env.FORCE_UPDATE === 'true',
   articlesDir: join(process.cwd(), 'src', 'app', 'articles'),
 }
 
@@ -441,10 +443,10 @@ async function writeMetadataToDynamoDB(
     readingTimeMinutes: readingTime,
     featuredImage,
 
-    createdAt: now,
+    createdAt: now, // PutCommand overwrites; for updates, updatedAt changes
     updatedAt: now,
     publishedAt: now,
-    version: 1,
+    version: CONFIG.forceUpdate ? 2 : 1,
 
     gsi1pk: 'STATUS#published',
     gsi1sk: `${metadata.date}#${slug}`,
@@ -490,9 +492,9 @@ async function writeContentToDynamoDB(
     componentData: componentData.length > 0 ? componentData : undefined,
     images,
 
-    version: 1,
+    version: CONFIG.forceUpdate ? 2 : 1,
     createdAt: now,
-    changelog: 'Initial migration from MDX files',
+    changelog: CONFIG.forceUpdate ? 'Updated via FORCE_UPDATE' : 'Initial migration from MDX files',
   }
 
   if (CONFIG.dryRun) {
@@ -560,14 +562,18 @@ async function migrateArticle(slug: string): Promise<MigrationResult> {
     }
 
     // Check if already migrated
-    if (await articleExists(slug)) {
-      console.log(`  Skipping: Already exists in DynamoDB`)
+    const exists = await articleExists(slug)
+    if (exists && !CONFIG.forceUpdate) {
+      console.log(`  Skipping: Already exists in DynamoDB (use FORCE_UPDATE=true to overwrite)`)
       return {
         slug,
         success: true,
         imagesUploaded: 0,
         error: 'Already migrated',
       }
+    }
+    if (exists && CONFIG.forceUpdate) {
+      console.log(`  Updating: Overwriting existing article`)
     }
 
     // Read MDX content
@@ -687,6 +693,7 @@ async function main() {
   console.log(`  S3 Bucket:   ${CONFIG.bucketName}`)
   console.log(`  CloudFront:  ${CONFIG.cloudfrontDomain || '(not configured)'}`)
   console.log(`  Dry Run:     ${CONFIG.dryRun}`)
+  console.log(`  Force Update:${CONFIG.forceUpdate}`)
   console.log(`  Articles:    ${CONFIG.articlesDir}`)
 
   if (CONFIG.dryRun) {
@@ -714,13 +721,22 @@ async function main() {
   const successful = results.filter(
     (r) => r.success && !r.error?.includes('Already'),
   )
+  const updated = successful.filter(() => CONFIG.forceUpdate)
+  const created = successful.filter(() => !CONFIG.forceUpdate)
   const skipped = results.filter((r) => r.error?.includes('Already'))
   const failed = results.filter((r) => !r.success)
 
-  console.log(`\nSuccessfully migrated: ${successful.length}`)
-  successful.forEach((r) =>
-    console.log(`  - ${r.slug} (${r.imagesUploaded} images)`),
-  )
+  if (CONFIG.forceUpdate) {
+    console.log(`\nUpdated: ${updated.length}`)
+    updated.forEach((r) =>
+      console.log(`  - ${r.slug} (${r.imagesUploaded} images)`),
+    )
+  } else {
+    console.log(`\nSuccessfully migrated: ${created.length}`)
+    created.forEach((r) =>
+      console.log(`  - ${r.slug} (${r.imagesUploaded} images)`),
+    )
+  }
 
   if (skipped.length > 0) {
     console.log(`\nSkipped (already exists): ${skipped.length}`)
