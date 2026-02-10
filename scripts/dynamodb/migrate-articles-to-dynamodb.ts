@@ -11,18 +11,26 @@
  * - S3 bucket created for article assets
  *
  * Usage:
- *   npx tsx scripts/dynamodb/migrate-articles-to-dynamodb.ts
+ *   npx tsx scripts/dynamodb/migrate-articles-to-dynamodb.ts --env development
+ *   npx tsx scripts/dynamodb/migrate-articles-to-dynamodb.ts --env dev --profile dev-account
  *
- * Environment Variables:
+ * CLI Arguments:
+ *   --env           Environment (dev, development, staging, production)
+ *   --profile       AWS CLI profile (optional, for local usage)
+ *   --region        AWS region (default: eu-west-1)
+ *   --dry-run       Preview without writing
+ *   --force-update  Overwrite existing articles
+ *
+ * Environment Variables (legacy, CLI args take precedence):
  *   AWS_REGION          - AWS region (default: eu-west-1)
- *   DYNAMODB_TABLE_NAME - DynamoDB table name
- *   S3_BUCKET_NAME      - S3 bucket for article assets
+ *   DYNAMODB_TABLE_NAME - DynamoDB table name (overrides SSM)
+ *   S3_BUCKET_NAME      - S3 bucket for article assets (overrides SSM)
  *   CLOUDFRONT_DOMAIN   - CloudFront domain for image URLs
  *   DRY_RUN             - Set to 'true' to preview without writing
  *   FORCE_UPDATE        - Set to 'true' to overwrite existing articles
  */
 
-import { readFileSync, readdirSync, statSync, existsSync } from 'fs'
+import { readFileSync, readdirSync, existsSync } from 'fs'
 import { join, extname, basename } from 'path'
 import { DynamoDBClient } from '@aws-sdk/client-dynamodb'
 import {
@@ -36,36 +44,41 @@ import {
   HeadObjectCommand,
 } from '@aws-sdk/client-s3'
 import { lookup } from 'mime-types'
+import * as log from '../lib/logger.js'
+import {
+  parseArgs,
+  buildAwsConfig,
+  getSSMParameterWithFallbacks,
+} from '../lib/aws-helpers.js'
 
 // ========================================
-// Configuration
+// CLI Arguments
 // ========================================
 
-const CONFIG = {
-  region: process.env.AWS_REGION || 'eu-west-1',
-  profile: process.env.AWS_PROFILE || undefined,
-  tableName: process.env.DYNAMODB_TABLE_NAME || 'nextjs-personal-portfolio-development',
-  bucketName: process.env.S3_BUCKET_NAME || 'webapp-article-assets-development',
-  cloudfrontDomain: process.env.CLOUDFRONT_DOMAIN || '',
-  dryRun: process.env.DRY_RUN === 'true',
-  forceUpdate: process.env.FORCE_UPDATE === 'true',
-  articlesDir: join(process.cwd(), 'src', 'app', 'articles'),
+const args = parseArgs(
+  [
+    { name: 'env', description: 'Environment: dev, development, staging, prod', hasValue: true, default: 'dev' },
+    { name: 'profile', description: 'AWS CLI profile', hasValue: true },
+    { name: 'region', description: 'AWS region', hasValue: true, default: 'eu-west-1' },
+    { name: 'dry-run', description: 'Preview without writing', hasValue: false, default: false },
+    { name: 'force-update', description: 'Overwrite existing articles', hasValue: false, default: false },
+  ],
+  'Migrate MDX articles to DynamoDB and upload images to S3',
+)
+
+// ========================================
+// Configuration (resolved at runtime)
+// ========================================
+
+interface MigrationConfig {
+  region: string
+  tableName: string
+  bucketName: string
+  cloudfrontDomain: string
+  dryRun: boolean
+  forceUpdate: boolean
+  articlesDir: string
 }
-
-// ========================================
-// AWS Clients
-// ========================================
-
-const clientConfig = {
-  region: CONFIG.region,
-  ...(CONFIG.profile && {
-    credentials: undefined, // Let SDK use profile from AWS_PROFILE env var
-  }),
-}
-
-const dynamoClient = new DynamoDBClient(clientConfig)
-const docClient = DynamoDBDocumentClient.from(dynamoClient)
-const s3Client = new S3Client(clientConfig)
 
 // ========================================
 // Types
@@ -158,7 +171,7 @@ function extractComponentData(mdxContent: string): ComponentData[] {
 
   // Extract ScenarioKeywords components
   const scenarioKeywordsRegex =
-    /<ScenarioKeywords\s+keywords=\{(\[[\s\S]*?\])\}\s*\/>/g
+    /<ScenarioKeywords\s+keywords=\{([\s\S]*?)\}\s*\/>/g
   let match: RegExpExecArray | null
 
   while ((match = scenarioKeywordsRegex.exec(mdxContent)) !== null) {
@@ -185,7 +198,7 @@ function extractComponentData(mdxContent: string): ComponentData[] {
 
   // Extract EliminationList components
   const eliminationListRegex =
-    /<EliminationList\s+items=\{(\[[\s\S]*?\])\}\s*\/>/g
+    /<EliminationList\s+items=\{([\s\S]*?)\}\s*\/>/g
 
   while ((match = eliminationListRegex.exec(mdxContent)) !== null) {
     try {
@@ -295,13 +308,15 @@ function calculateReadingTime(content: string): number {
 async function uploadImageToS3(
   image: ImageData,
   slug: string,
+  config: MigrationConfig,
+  s3Client: S3Client,
 ): Promise<string> {
   const fileName = basename(image.localPath)
   const s3Key = `articles/${slug}/${fileName}`
 
-  if (CONFIG.dryRun) {
+  if (config.dryRun) {
     console.log(
-      `  [DRY RUN] Would upload: ${image.localPath} -> s3://${CONFIG.bucketName}/${s3Key}`,
+      `  [DRY RUN] Would upload: ${image.localPath} -> s3://${config.bucketName}/${s3Key}`,
     )
     return s3Key
   }
@@ -310,7 +325,7 @@ async function uploadImageToS3(
   try {
     await s3Client.send(
       new HeadObjectCommand({
-        Bucket: CONFIG.bucketName,
+        Bucket: config.bucketName,
         Key: s3Key,
       }),
     )
@@ -325,7 +340,7 @@ async function uploadImageToS3(
 
   await s3Client.send(
     new PutObjectCommand({
-      Bucket: CONFIG.bucketName,
+      Bucket: config.bucketName,
       Key: s3Key,
       Body: fileContent,
       ContentType: contentType,
@@ -340,15 +355,19 @@ async function uploadImageToS3(
 /**
  * Checks if article already exists in DynamoDB
  */
-async function articleExists(slug: string): Promise<boolean> {
-  if (CONFIG.dryRun) {
+async function articleExists(
+  slug: string,
+  config: MigrationConfig,
+  docClient: DynamoDBDocumentClient,
+): Promise<boolean> {
+  if (config.dryRun) {
     return false
   }
 
   try {
     const result = await docClient.send(
       new GetCommand({
-        TableName: CONFIG.tableName,
+        TableName: config.tableName,
         Key: {
           pk: `ARTICLE#${slug}`,
           sk: 'METADATA',
@@ -372,6 +391,8 @@ async function createTagIndexItems(
   description: string,
   author: string,
   readingTime: number,
+  config: MigrationConfig,
+  docClient: DynamoDBDocumentClient,
 ): Promise<void> {
   if (!tags || tags.length === 0) {
     return
@@ -398,19 +419,19 @@ async function createTagIndexItems(
       createdAt: new Date().toISOString(),
     }
 
-    if (CONFIG.dryRun) {
+    if (config.dryRun) {
       console.log(`  [DRY RUN] Would create tag index: TAG#${tag.toLowerCase()}`)
     } else {
       await docClient.send(
         new PutCommand({
-          TableName: CONFIG.tableName,
+          TableName: config.tableName,
           Item: tagIndexItem,
         }),
       )
     }
   }
 
-  if (!CONFIG.dryRun) {
+  if (!config.dryRun) {
     console.log(`  Created ${tags.length} tag index items`)
   }
 }
@@ -422,6 +443,8 @@ async function writeMetadataToDynamoDB(
   slug: string,
   metadata: ArticleMetadata,
   readingTime: number,
+  config: MigrationConfig,
+  docClient: DynamoDBDocumentClient,
   featuredImage?: string,
 ): Promise<void> {
   const now = new Date().toISOString()
@@ -446,13 +469,13 @@ async function writeMetadataToDynamoDB(
     createdAt: now, // PutCommand overwrites; for updates, updatedAt changes
     updatedAt: now,
     publishedAt: now,
-    version: CONFIG.forceUpdate ? 2 : 1,
+    version: config.forceUpdate ? 2 : 1,
 
     gsi1pk: 'STATUS#published',
     gsi1sk: `${metadata.date}#${slug}`,
   }
 
-  if (CONFIG.dryRun) {
+  if (config.dryRun) {
     console.log(
       `  [DRY RUN] Would write metadata:`,
       JSON.stringify(item, null, 2),
@@ -462,7 +485,7 @@ async function writeMetadataToDynamoDB(
 
   await docClient.send(
     new PutCommand({
-      TableName: CONFIG.tableName,
+      TableName: config.tableName,
       Item: item,
     }),
   )
@@ -478,6 +501,8 @@ async function writeContentToDynamoDB(
   content: string,
   componentData: ComponentData[],
   images: Array<{ id: string; s3Key: string; alt: string }>,
+  config: MigrationConfig,
+  docClient: DynamoDBDocumentClient,
 ): Promise<void> {
   const now = new Date().toISOString()
 
@@ -492,12 +517,12 @@ async function writeContentToDynamoDB(
     componentData: componentData.length > 0 ? componentData : undefined,
     images,
 
-    version: CONFIG.forceUpdate ? 2 : 1,
+    version: config.forceUpdate ? 2 : 1,
     createdAt: now,
-    changelog: CONFIG.forceUpdate ? 'Updated via FORCE_UPDATE' : 'Initial migration from MDX files',
+    changelog: config.forceUpdate ? 'Updated via FORCE_UPDATE' : 'Initial migration from MDX files',
   }
 
-  if (CONFIG.dryRun) {
+  if (config.dryRun) {
     console.log(
       `  [DRY RUN] Would write content (${content.length} chars, ${images.length} images)`,
     )
@@ -506,7 +531,7 @@ async function writeContentToDynamoDB(
 
   await docClient.send(
     new PutCommand({
-      TableName: CONFIG.tableName,
+      TableName: config.tableName,
       Item: item,
     }),
   )
@@ -544,8 +569,13 @@ function extractTagsFromSlug(slug: string): string[] {
 /**
  * Migrates a single article
  */
-async function migrateArticle(slug: string): Promise<MigrationResult> {
-  const articleDir = join(CONFIG.articlesDir, slug)
+async function migrateArticle(
+  slug: string,
+  config: MigrationConfig,
+  docClient: DynamoDBDocumentClient,
+  s3Client: S3Client,
+): Promise<MigrationResult> {
+  const articleDir = join(config.articlesDir, slug)
   const mdxPath = join(articleDir, 'page.mdx')
 
   console.log(`\nMigrating: ${slug}`)
@@ -562,9 +592,9 @@ async function migrateArticle(slug: string): Promise<MigrationResult> {
     }
 
     // Check if already migrated
-    const exists = await articleExists(slug)
-    if (exists && !CONFIG.forceUpdate) {
-      console.log(`  Skipping: Already exists in DynamoDB (use FORCE_UPDATE=true to overwrite)`)
+    const exists = await articleExists(slug, config, docClient)
+    if (exists && !config.forceUpdate) {
+      console.log(`  Skipping: Already exists in DynamoDB (use --force-update to overwrite)`)
       return {
         slug,
         success: true,
@@ -572,7 +602,7 @@ async function migrateArticle(slug: string): Promise<MigrationResult> {
         error: 'Already migrated',
       }
     }
-    if (exists && CONFIG.forceUpdate) {
+    if (exists && config.forceUpdate) {
       console.log(`  Updating: Overwriting existing article`)
     }
 
@@ -602,7 +632,7 @@ async function migrateArticle(slug: string): Promise<MigrationResult> {
     let featuredImage: string | undefined
 
     for (const [id, image] of imageImports) {
-      const s3Key = await uploadImageToS3(image, slug)
+      const s3Key = await uploadImageToS3(image, slug, config, s3Client)
       uploadedImages.push({
         id,
         s3Key,
@@ -610,8 +640,8 @@ async function migrateArticle(slug: string): Promise<MigrationResult> {
       })
 
       // Use first image as featured image
-      if (!featuredImage && CONFIG.cloudfrontDomain) {
-        featuredImage = `https://${CONFIG.cloudfrontDomain}/${s3Key}`
+      if (!featuredImage && config.cloudfrontDomain) {
+        featuredImage = `https://${config.cloudfrontDomain}/${s3Key}`
       }
     }
 
@@ -626,12 +656,14 @@ async function migrateArticle(slug: string): Promise<MigrationResult> {
 
     // Write to DynamoDB
     const tags = extractTagsFromSlug(slug)
-    await writeMetadataToDynamoDB(slug, metadata, readingTime, featuredImage)
+    await writeMetadataToDynamoDB(slug, metadata, readingTime, config, docClient, featuredImage)
     await writeContentToDynamoDB(
       slug,
       cleanContent,
       componentData,
       uploadedImages,
+      config,
+      docClient,
     )
     await createTagIndexItems(
       slug,
@@ -641,6 +673,8 @@ async function migrateArticle(slug: string): Promise<MigrationResult> {
       metadata.description,
       metadata.author,
       readingTime,
+      config,
+      docClient,
     )
 
     return {
@@ -664,13 +698,13 @@ async function migrateArticle(slug: string): Promise<MigrationResult> {
 /**
  * Gets all article slugs from filesystem
  */
-function getArticleSlugs(): string[] {
-  const entries = readdirSync(CONFIG.articlesDir, { withFileTypes: true })
+function getArticleSlugs(articlesDir: string): string[] {
+  const entries = readdirSync(articlesDir, { withFileTypes: true })
 
   return entries
     .filter((entry) => {
       if (!entry.isDirectory()) return false
-      const mdxPath = join(CONFIG.articlesDir, entry.name, 'page.mdx')
+      const mdxPath = join(articlesDir, entry.name, 'page.mdx')
       return existsSync(mdxPath)
     })
     .map((entry) => entry.name)
@@ -681,80 +715,169 @@ function getArticleSlugs(): string[] {
 // ========================================
 
 async function main() {
-  console.log('='.repeat(60))
-  console.log('Article Migration Script - MDX to DynamoDB')
-  console.log('='.repeat(60))
-  console.log(`\nConfiguration:`)
-  console.log(`  Region:      ${CONFIG.region}`)
-  if (CONFIG.profile) {
-    console.log(`  Profile:     ${CONFIG.profile}`)
-  }
-  console.log(`  Table:       ${CONFIG.tableName}`)
-  console.log(`  S3 Bucket:   ${CONFIG.bucketName}`)
-  console.log(`  CloudFront:  ${CONFIG.cloudfrontDomain || '(not configured)'}`)
-  console.log(`  Dry Run:     ${CONFIG.dryRun}`)
-  console.log(`  Force Update:${CONFIG.forceUpdate}`)
-  console.log(`  Articles:    ${CONFIG.articlesDir}`)
+  const awsConfig = buildAwsConfig(args)
+  const dryRun = (args['dry-run'] as boolean) || process.env.DRY_RUN === 'true'
+  const forceUpdate = (args['force-update'] as boolean) || process.env.FORCE_UPDATE === 'true'
 
-  if (CONFIG.dryRun) {
-    console.log('\n** DRY RUN MODE - No changes will be made **\n')
+  log.header('📝 Article Migration — MDX to DynamoDB')
+  log.config('Configuration', {
+    'AWS Region': awsConfig.region,
+    'Environment': awsConfig.environment,
+    'Dry Run': String(dryRun),
+    'Force Update': String(forceUpdate),
+  })
+
+  const totalSteps = 4
+
+  // Step 1: Resolve DynamoDB table name from SSM
+  log.step(1, totalSteps, 'Discovering DynamoDB table from SSM...')
+
+  let tableName = process.env.DYNAMODB_TABLE_NAME
+  if (!tableName) {
+    const tableResult = await getSSMParameterWithFallbacks(
+      [
+        `/nextjs/${awsConfig.environment}/dynamodb-table-name`,
+        `/nextjs/${awsConfig.environment}/dynamodb/table-name`,
+      ],
+      awsConfig,
+    )
+    if (tableResult) {
+      tableName = tableResult.value
+    } else {
+      log.fatal(
+        `DynamoDB table name not found in SSM.\n` +
+        `   Searched paths:\n` +
+        `     /nextjs/${awsConfig.environment}/dynamodb-table-name\n` +
+        `     /nextjs/${awsConfig.environment}/dynamodb/table-name\n` +
+        `   Set DYNAMODB_TABLE_NAME env var or create the SSM parameter.`,
+      )
+    }
+  } else {
+    log.success(`Using table from env: ${tableName}`)
+  }
+  log.success(`Table: ${tableName}`)
+
+  // Step 2: Resolve S3 bucket name from SSM
+  log.step(2, totalSteps, 'Discovering S3 bucket from SSM...')
+
+  let bucketName = process.env.S3_BUCKET_NAME
+  if (!bucketName) {
+    const bucketResult = await getSSMParameterWithFallbacks(
+      [
+        `/nextjs/${awsConfig.environment}/assets-bucket-name`,
+        `/nextjs/${awsConfig.environment}/s3/article-assets-bucket`,
+      ],
+      awsConfig,
+    )
+    if (bucketResult) {
+      bucketName = bucketResult.value
+    } else {
+      log.fatal(
+        `S3 bucket name not found in SSM.\n` +
+        `   Searched paths:\n` +
+        `     /nextjs/${awsConfig.environment}/assets-bucket-name\n` +
+        `     /nextjs/${awsConfig.environment}/s3/article-assets-bucket\n` +
+        `   Set S3_BUCKET_NAME env var or create the SSM parameter.`,
+      )
+    }
+  } else {
+    log.success(`Using bucket from env: ${bucketName}`)
+  }
+  // Strip s3:// prefix and trailing slash if present
+  bucketName = bucketName!.replace(/^s3:\/\//, '').replace(/\/$/, '')
+  log.success(`Bucket: ${bucketName}`)
+
+  const cloudfrontDomain = process.env.CLOUDFRONT_DOMAIN || ''
+
+  // Build resolved config
+  const config: MigrationConfig = {
+    region: awsConfig.region,
+    tableName: tableName!,
+    bucketName,
+    cloudfrontDomain,
+    dryRun,
+    forceUpdate,
+    articlesDir: join(process.cwd(), 'src', 'app', 'articles'),
   }
 
-  // Get all article slugs
-  const slugs = getArticleSlugs()
-  console.log(`\nFound ${slugs.length} articles to migrate:`)
+  // Step 3: Discover articles
+  log.step(3, totalSteps, 'Discovering articles from filesystem...')
+
+  const slugs = getArticleSlugs(config.articlesDir)
+  if (slugs.length === 0) {
+    log.fatal(`No articles found in ${config.articlesDir}`)
+  }
+
+  log.success(`Found ${slugs.length} articles to migrate`)
   slugs.forEach((slug) => console.log(`  - ${slug}`))
 
-  // Migrate each article
+  // Step 4: Migrate articles
+  log.step(4, totalSteps, 'Running migration...')
+
+  // Create AWS clients
+  const clientConfig = {
+    region: config.region,
+    credentials: awsConfig.credentials,
+  }
+  const dynamoClient = new DynamoDBClient(clientConfig)
+  const docClient = DynamoDBDocumentClient.from(dynamoClient)
+  const s3Client = new S3Client(clientConfig)
+
   const results: MigrationResult[] = []
 
   for (const slug of slugs) {
-    const result = await migrateArticle(slug)
+    const result = await migrateArticle(slug, config, docClient, s3Client)
     results.push(result)
   }
 
   // Summary
-  console.log('\n' + '='.repeat(60))
-  console.log('Migration Summary')
-  console.log('='.repeat(60))
-
   const successful = results.filter(
     (r) => r.success && !r.error?.includes('Already'),
   )
-  const updated = successful.filter(() => CONFIG.forceUpdate)
-  const created = successful.filter(() => !CONFIG.forceUpdate)
-  const skipped = results.filter((r) => r.error?.includes('Already'))
+  const alreadyExisted = results.filter((r) => r.error?.includes('Already'))
   const failed = results.filter((r) => !r.success)
 
-  if (CONFIG.forceUpdate) {
-    console.log(`\nUpdated: ${updated.length}`)
-    updated.forEach((r) =>
-      console.log(`  - ${r.slug} (${r.imagesUploaded} images)`),
-    )
-  } else {
-    console.log(`\nSuccessfully migrated: ${created.length}`)
-    created.forEach((r) =>
-      console.log(`  - ${r.slug} (${r.imagesUploaded} images)`),
+  const totalImages = results.reduce((sum, r) => sum + r.imagesUploaded, 0)
+
+  log.summary('Migration Complete', {
+    'Migrated': String(successful.length),
+    'Already Existed': String(alreadyExisted.length),
+    'Failed': String(failed.length),
+    'Images Uploaded': String(totalImages),
+  })
+
+  if (successful.length > 0) {
+    console.log('Migrated articles:')
+    successful.forEach((r) =>
+      console.log(`  ✓ ${r.slug} (${r.imagesUploaded} images)`),
     )
   }
 
-  if (skipped.length > 0) {
-    console.log(`\nSkipped (already exists): ${skipped.length}`)
-    skipped.forEach((r) => console.log(`  - ${r.slug}`))
+  if (alreadyExisted.length > 0) {
+    console.log('Already existed (skipped):')
+    alreadyExisted.forEach((r) => console.log(`  - ${r.slug}`))
   }
 
   if (failed.length > 0) {
-    console.log(`\nFailed: ${failed.length}`)
-    failed.forEach((r) => console.log(`  - ${r.slug}: ${r.error}`))
+    console.log('Failed:')
+    failed.forEach((r) => console.log(`  ✗ ${r.slug}: ${r.error}`))
   }
 
-  const totalImages = results.reduce((sum, r) => sum + r.imagesUploaded, 0)
-  console.log(`\nTotal images uploaded: ${totalImages}`)
-
-  if (CONFIG.dryRun) {
+  if (dryRun) {
     console.log(
-      '\n** This was a dry run. Run without DRY_RUN=true to apply changes. **',
+      '\n** This was a dry run. Run without --dry-run to apply changes. **',
     )
+  }
+
+  // Exit non-zero if ALL articles failed (nothing was migrated or already present)
+  const totalSuccess = successful.length + alreadyExisted.length
+  if (totalSuccess === 0 && !dryRun) {
+    log.fatal(`Migration failed: no articles were successfully migrated out of ${slugs.length} found.`)
+  }
+
+  if (failed.length > 0) {
+    console.error(`\n⚠️  ${failed.length} article(s) failed to migrate.`)
+    process.exit(1)
   }
 }
 
