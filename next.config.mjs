@@ -10,6 +10,16 @@ const nextConfig = {
   },
   // Keep standalone for server components
   output: 'standalone',
+  // Enable OpenTelemetry instrumentation hook
+  experimental: {
+    instrumentationHook: true,
+  },
+  // Prevent Next.js from bundling gRPC native modules (used by OTLP exporter)
+  serverExternalPackages: [
+    '@opentelemetry/auto-instrumentations-node',
+    '@opentelemetry/exporter-trace-otlp-grpc',
+    '@grpc/grpc-js',
+  ],
 }
 
 const withMDX = nextMDX({
