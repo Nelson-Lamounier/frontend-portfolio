@@ -64,6 +64,11 @@ EXPOSE 3000
 ENV PORT=3000
 ENV HOSTNAME="0.0.0.0"
 
+# OpenTelemetry configuration (disabled by default, enabled in ECS via task definition)
+ENV OTEL_SDK_DISABLED=true
+ENV OTEL_SERVICE_NAME=nextjs-portfolio
+ENV OTEL_EXPORTER_OTLP_ENDPOINT=http://localhost:4317
+
 # Health check
 HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
   CMD node -e "const port = process.env.PORT || 3000; require('http').get('http://localhost:' + port + '/api/health', (r) => {process.exit(r.statusCode === 200 ? 0 : 1)})" || exit 1
