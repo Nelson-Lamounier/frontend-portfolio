@@ -15,8 +15,9 @@
     "migrate:setup:profiles": "tsx scripts/setup-migration.ts --list-profiles",
     "migrate:verify": "tsx scripts/verify-table.ts",
     "migrate:articles": "tsx scripts/dynamodb/migrate-articles-to-dynamodb.ts",
-    "migrate:articles:dry-run": "DRY_RUN=true tsx scripts/dynamodb/migrate-articles-to-dynamodb.ts",
-    "migrate:articles:force": "FORCE_UPDATE=true tsx scripts/dynamodb/migrate-articles-to-dynamodb.ts",
+    "migrate:articles:dry-run": "tsx scripts/dynamodb/migrate-articles-to-dynamodb.ts --dry-run",
+    "migrate:articles:force": "tsx scripts/dynamodb/migrate-articles-to-dynamodb.ts --force-update",
+    "migrate:verify-data": "tsx scripts/dynamodb/verify-migration.ts",
     "migrate:add-tag-index": "tsx scripts/dynamodb/add-tag-index.ts",
     "migrate:add-tag-index:dry-run": "DRY_RUN=true tsx scripts/dynamodb/add-tag-index.ts"
   },

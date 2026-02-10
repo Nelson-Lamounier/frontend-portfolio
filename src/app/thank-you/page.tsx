@@ -3,15 +3,15 @@ import { type Metadata } from 'next'
 import { SimpleLayout } from '@/components/SimpleLayout'
 
 export const metadata: Metadata = {
-  title: 'You’re subscribed',
-  description: 'Thanks for subscribing to my newsletter.',
+  title: 'Check your inbox',
+  description: 'Thanks for subscribing — please verify your email.',
 }
 
 export default function ThankYou() {
   return (
     <SimpleLayout
-      title="Thanks for subscribing."
-      intro="I’ll send you an email any time I publish a new blog post, release a new project, or have anything interesting to share that I think you’d want to hear about. You can unsubscribe at any time, no hard feelings."
+      title="Check your inbox."
+      intro="We've sent you a verification email. Please click the link to confirm your subscription — the link expires in 48 hours. Once verified, you'll hear from me whenever I publish a new article or have something interesting to share. You can unsubscribe at any time, no hard feelings."
     />
   )
 }
