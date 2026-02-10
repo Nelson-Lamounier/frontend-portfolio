@@ -5,7 +5,7 @@ import { SimpleLayout } from '@/components/SimpleLayout'
 import { formatDate } from '@/lib/formatDate'
 
 // Use hybrid article service with fallback to file-based articles
-import { getAllArticles } from '@/lib/article-service'
+import { getAllArticles, getDataSource } from '@/lib/article-service'
 import type { ArticleWithSlug } from '@/lib/types/article.types'
 
 function Article({ article }: { article: ArticleWithSlug }) {
@@ -46,12 +46,19 @@ export const metadata: Metadata = {
 export default async function ArticlesIndex() {
   const articles = await getAllArticles()
 
+  // Determine article source for observability
+  const source = getDataSource()
+
   return (
     <SimpleLayout
       title="Writing on AWS infrastructure, DevOps practices, and cloud architecture decisions."
       intro="Practical guides on CI/CD pipelines, infrastructure-as-code, AWS services, and real implementation challenges—born from building production systems as a solo developer."
     >
-      <div className="md:border-l md:border-zinc-100 md:pl-6 md:dark:border-zinc-700/40">
+      <div
+        className="md:border-l md:border-zinc-100 md:pl-6 md:dark:border-zinc-700/40"
+        data-article-source={source}
+        data-article-count={articles.length}
+      >
         <div className="flex max-w-3xl flex-col space-y-16">
           {articles.map((article) => (
             <Article key={article.slug} article={article} />
