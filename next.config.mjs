@@ -19,6 +19,7 @@ const nextConfig = {
     '@opentelemetry/auto-instrumentations-node',
     '@opentelemetry/exporter-trace-otlp-grpc',
     '@grpc/grpc-js',
+    'prom-client',
   ],
 }
 
