@@ -242,3 +242,126 @@ export function trackExternalApi(
 
   externalApiDuration.observe({ service }, durationSeconds);
 }
+
+// ============================================
+// DynamoDB & Article Service Metrics
+// ============================================
+
+/**
+ * DynamoDB SDK query/get duration in seconds.
+ * Labels: operation (Query, GetItem), index (primary, gsi1, gsi2)
+ */
+export const dynamoDBDuration = new Histogram({
+  name: 'nextjs_dynamodb_query_duration_seconds',
+  help: 'DynamoDB SDK call duration in seconds',
+  labelNames: ['operation', 'index'],
+  buckets: metricsConfig.buckets.dbQueryDuration,
+  registers: [register],
+});
+
+/**
+ * DynamoDB SDK errors.
+ * Labels: operation, error_type
+ */
+export const dynamoDBErrors = new Counter({
+  name: 'nextjs_dynamodb_errors_total',
+  help: 'DynamoDB SDK call errors',
+  labelNames: ['operation', 'error_type'],
+  registers: [register],
+});
+
+/**
+ * Article service requests.
+ * Labels: operation, source (dynamodb-sdk, file-based, file-based-fallback), status (success, error)
+ */
+export const articleServiceRequests = new Counter({
+  name: 'nextjs_article_service_requests_total',
+  help: 'Total article service requests by operation and data source',
+  labelNames: ['operation', 'source', 'status'],
+  registers: [register],
+});
+
+/**
+ * Article service latency in seconds.
+ * Labels: operation, source
+ */
+export const articleServiceDuration = new Histogram({
+  name: 'nextjs_article_service_duration_seconds',
+  help: 'Article service latency by operation and data source',
+  labelNames: ['operation', 'source'],
+  buckets: metricsConfig.buckets.dbQueryDuration,
+  registers: [register],
+});
+
+/**
+ * Current data source gauge (1 = active).
+ * Labels: source (dynamodb-sdk, file-based, none)
+ */
+export const articleDataSource = new Gauge({
+  name: 'nextjs_article_data_source',
+  help: 'Currently active data source (1 = active)',
+  labelNames: ['source'],
+  registers: [register],
+});
+
+/**
+ * In-memory TTL cache hit/miss counts for the DynamoDB data layer.
+ * Labels: cache_key_prefix (published-articles, metadata, tag)
+ */
+export const dynamoDBCacheHits = new Counter({
+  name: 'nextjs_dynamodb_cache_hits_total',
+  help: 'DynamoDB TTL cache hits',
+  labelNames: ['cache_key_prefix'],
+  registers: [register],
+});
+
+export const dynamoDBCacheMisses = new Counter({
+  name: 'nextjs_dynamodb_cache_misses_total',
+  help: 'DynamoDB TTL cache misses',
+  labelNames: ['cache_key_prefix'],
+  registers: [register],
+});
+
+// ============================================
+// DynamoDB & Article Service Helpers
+// ============================================
+
+/**
+ * Track a DynamoDB SDK call
+ */
+export function trackDynamoDB(
+  operation: string,
+  index: string,
+  durationSeconds: number,
+  error?: string
+) {
+  dynamoDBDuration.observe({ operation, index }, durationSeconds);
+  if (error) {
+    dynamoDBErrors.inc({ operation, error_type: error });
+  }
+}
+
+/**
+ * Track an article service request
+ */
+export function trackArticleRequest(
+  operation: string,
+  source: string,
+  status: 'success' | 'error',
+  durationSeconds: number
+) {
+  articleServiceRequests.inc({ operation, source, status });
+  articleServiceDuration.observe({ operation, source }, durationSeconds);
+}
+
+/**
+ * Track DynamoDB TTL cache hit/miss
+ */
+export function trackDynamoDBCache(cacheKeyPrefix: string, hit: boolean) {
+  if (hit) {
+    dynamoDBCacheHits.inc({ cache_key_prefix: cacheKeyPrefix });
+  } else {
+    dynamoDBCacheMisses.inc({ cache_key_prefix: cacheKeyPrefix });
+  }
+}
+

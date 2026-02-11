@@ -3799,7 +3799,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@opentelemetry/exporter-prometheus@npm:0.211.0":
+"@opentelemetry/exporter-prometheus@npm:0.211.0, @opentelemetry/exporter-prometheus@npm:^0.211.0":
   version: 0.211.0
   resolution: "@opentelemetry/exporter-prometheus@npm:0.211.0"
   dependencies:
@@ -4579,7 +4579,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@opentelemetry/sdk-metrics@npm:2.5.0":
+"@opentelemetry/sdk-metrics@npm:2.5.0, @opentelemetry/sdk-metrics@npm:^2.5.0":
   version: 2.5.0
   resolution: "@opentelemetry/sdk-metrics@npm:2.5.0"
   dependencies:
@@ -8732,10 +8732,12 @@ __metadata:
     "@next/mdx": "npm:^15"
     "@opentelemetry/api": "npm:^1.9.0"
     "@opentelemetry/auto-instrumentations-node": "npm:^0.69.0"
+    "@opentelemetry/exporter-prometheus": "npm:^0.211.0"
     "@opentelemetry/exporter-trace-otlp-grpc": "npm:^0.211.0"
     "@opentelemetry/id-generator-aws-xray": "npm:^2.1.0"
     "@opentelemetry/propagator-aws-xray": "npm:^2.2.0"
     "@opentelemetry/resource-detector-aws": "npm:^2.11.0"
+    "@opentelemetry/sdk-metrics": "npm:^2.5.0"
     "@opentelemetry/sdk-node": "npm:^0.211.0"
     "@tailwindcss/postcss": "npm:^4.1.15"
     "@tailwindcss/typography": "npm:^0.5.16"

@@ -29,6 +29,7 @@ import type {
   ArticleContentEntity,
 } from './types/article.types'
 import { entityToArticle } from './types/article.types'
+import { trackDynamoDBCache, trackDynamoDB } from './metrics'
 
 // ========================================
 // Configuration
@@ -124,9 +125,14 @@ function getDocClient(): DynamoDBDocumentClient {
 export async function queryPublishedArticles(): Promise<ArticleWithSlug[]> {
   const cacheKey = 'published-articles'
   const cached = cache.get<ArticleWithSlug[]>(cacheKey)
-  if (cached) return cached
+  if (cached) {
+    trackDynamoDBCache('published-articles', true)
+    return cached
+  }
+  trackDynamoDBCache('published-articles', false)
 
   const docClient = getDocClient()
+  const start = Date.now()
 
   const result = await docClient.send(
     new QueryCommand({
@@ -139,6 +145,8 @@ export async function queryPublishedArticles(): Promise<ArticleWithSlug[]> {
       ScanIndexForward: false, // newest first
     }),
   )
+
+  trackDynamoDB('Query', 'gsi1', (Date.now() - start) / 1000)
 
   if (!result.Items || result.Items.length === 0) {
     return []
@@ -161,9 +169,14 @@ export async function getArticleMetadataBySlug(
 ): Promise<ArticleWithSlug | null> {
   const cacheKey = `metadata:${slug}`
   const cached = cache.get<ArticleWithSlug | null>(cacheKey)
-  if (cached !== null) return cached
+  if (cached !== null) {
+    trackDynamoDBCache('metadata', true)
+    return cached
+  }
+  trackDynamoDBCache('metadata', false)
 
   const docClient = getDocClient()
+  const start = Date.now()
 
   const result = await docClient.send(
     new GetCommand({
@@ -174,6 +187,8 @@ export async function getArticleMetadataBySlug(
       },
     }),
   )
+
+  trackDynamoDB('GetItem', 'primary', (Date.now() - start) / 1000)
 
   if (!result.Item) {
     return null
@@ -261,9 +276,14 @@ export async function queryArticlesByTag(
   const normalizedTag = tag.toLowerCase()
   const cacheKey = `tag:${normalizedTag}`
   const cached = cache.get<ArticleWithSlug[]>(cacheKey)
-  if (cached) return cached
+  if (cached) {
+    trackDynamoDBCache('tag', true)
+    return cached
+  }
+  trackDynamoDBCache('tag', false)
 
   const docClient = getDocClient()
+  const start = Date.now()
 
   const result = await docClient.send(
     new QueryCommand({
@@ -276,6 +296,8 @@ export async function queryArticlesByTag(
       ScanIndexForward: false,
     }),
   )
+
+  trackDynamoDB('Query', 'gsi2', (Date.now() - start) / 1000)
 
   if (!result.Items || result.Items.length === 0) {
     return []
