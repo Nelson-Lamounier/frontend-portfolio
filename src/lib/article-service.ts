@@ -43,6 +43,9 @@ import {
   queryArticlesByTag,
 } from './dynamodb-articles'
 
+// Import Prometheus metrics helpers
+import { trackArticleRequest } from './metrics'
+
 // ========================================
 // Configuration
 // ========================================
@@ -128,16 +131,19 @@ export async function getAllArticles(options?: {
           const articles = await queryPublishedArticles()
           span.setAttributes({ 'article.source': 'dynamodb-sdk', 'article.count': articles.length })
           slog({ service: 'article-service', operation: 'getAllArticles', source: 'dynamodb-sdk', count: articles.length, latencyMs: Date.now() - start, level: 'info' })
+          trackArticleRequest('getAllArticles', 'dynamodb-sdk', 'success', (Date.now() - start) / 1000)
           return articles
         } catch (error) {
           const errMsg = error instanceof Error ? error.message : String(error)
           span.setAttributes({ 'article.source': 'dynamodb-sdk', 'article.error': errMsg })
           slog({ service: 'article-service', operation: 'getAllArticles', source: 'dynamodb-sdk', error: errMsg, latencyMs: Date.now() - start, level: 'error' })
+          trackArticleRequest('getAllArticles', 'dynamodb-sdk', 'error', (Date.now() - start) / 1000)
           if (USE_FILE_FALLBACK) {
             slog({ service: 'article-service', operation: 'getAllArticles', source: 'file-based', level: 'warn', fallback: true })
             const articles = await getFileBasedArticles()
             span.setAttributes({ 'article.source': 'file-based-fallback', 'article.count': articles.length })
             slog({ service: 'article-service', operation: 'getAllArticles', source: 'file-based', count: articles.length, latencyMs: Date.now() - start, level: 'info', fallback: true })
+            trackArticleRequest('getAllArticles', 'file-based-fallback', 'success', (Date.now() - start) / 1000)
             return articles
           }
           span.setStatus({ code: SpanStatusCode.ERROR, message: errMsg })
@@ -150,6 +156,7 @@ export async function getAllArticles(options?: {
         const articles = await getFileBasedArticles()
         span.setAttributes({ 'article.source': 'file-based', 'article.count': articles.length })
         slog({ service: 'article-service', operation: 'getAllArticles', source: 'file-based', count: articles.length, latencyMs: Date.now() - start, level: 'info' })
+        trackArticleRequest('getAllArticles', 'file-based', 'success', (Date.now() - start) / 1000)
         return articles
       }
 
