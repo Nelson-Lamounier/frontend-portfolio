@@ -8,12 +8,10 @@ const nextConfig = {
   outputFileTracingIncludes: {
     '/articles/*': ['./src/app/articles/**/*.mdx'],
   },
-  // Keep standalone for server components
+  // Standalone output for ECS container deployments
   output: 'standalone',
-  // Enable OpenTelemetry instrumentation hook
-  experimental: {
-    instrumentationHook: true,
-  },
+  // instrumentationHook is built-in since Next.js 15.5 — no longer needed
+
   // Prevent Next.js from bundling gRPC native modules (used by OTLP exporter)
   serverExternalPackages: [
     '@opentelemetry/auto-instrumentations-node',
