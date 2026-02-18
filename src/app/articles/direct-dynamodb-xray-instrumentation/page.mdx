@@ -1,0 +1,497 @@
+import { ArticleLayout } from '@/components/ArticleLayout'
+
+export const article = {
+  author: 'Nelson Lamounier',
+  date: '2026-02-10',
+  title:
+    'Killing API Gateway: Direct DynamoDB SSR with X-Ray Tracing for Solo-Dev Infrastructure',
+  description:
+    'How I eliminated a 5-hop API round-trip and replaced it with a sub-5ms VPC Gateway Endpoint read — traced end-to-end — for $0/month incremental cost. A real-world walkthrough of FinOps-driven architecture decisions, OpenTelemetry instrumentation, and building a self-healing data layer for a portfolio powered by Next.js on ECS Fargate.',
+}
+
+export const metadata = {
+  title: article.title,
+  description: article.description,
+}
+
+export default (props) => <ArticleLayout article={article} {...props} />
+
+I stared at my AWS bill and felt a familiar sting. Not the sting of a failed certification this time — the sting of paying $8.45 a month for a data layer that serves four articles to approximately twelve people.
+
+My portfolio site reads articles from DynamoDB. Simple enough. But the architecture I had inherited from my own "best practices" phase was anything but simple. Every single server-side render triggered a five-hop odyssey across the public internet:
+
+```
+ECS Task → Internet Gateway → API Gateway → Lambda → DynamoDB
+```
+
+One person. One AWS account. Four articles that change once a week. And yet every SSR render was paying API Gateway per-request fees, cold-starting a Lambda, and traversing a NAT Gateway — just to read a handful of rows from a table.
+
+**That is when I decided to kill API Gateway.**
+
+<Callout variant="insight" title="FinOps-Driven Decision">
+  The VPC Gateway Endpoint for DynamoDB is **free** — no hourly charge, no data
+  processing fee. Unlike Interface Endpoints ($7.20/month per AZ), Gateway
+  Endpoints add a route table entry and cost nothing. This single fact made the
+  entire architectural shift viable.
+</Callout>
+
+## The Architecture Shift
+
+The "API Gateway for everything" pattern served the industry well for years. But in 2026, for read-heavy, low-write solo workloads, it is recognised as over-engineering. Direct SDK access via VPC Gateway Endpoints is the FinOps-optimal path for server-side data layers.
+
+Here is the transformation — five hops to one, 120ms to 5ms, $8.45 to $0.51:
+
+<Mermaid chart={`flowchart LR
+    subgraph Old["❌ Old Architecture — $8.45/month"]
+        direction LR
+        ECS1["ECS Task<br/>Next.js SSR"]
+        IGW["Internet<br/>Gateway"]
+        APIGW["API Gateway<br/>~$3.50/mo"]
+        Lambda["Lambda<br/>~$0.20/mo"]
+        DDB1["DynamoDB"]
+        NAT["NAT Gateway<br/>~$4.50/mo"]
+    end
+
+    subgraph New["✅ New Architecture — $0.51/month"]
+        direction LR
+        ECS2["ECS Task<br/>Next.js SSR"]
+        VPCE["VPC Gateway<br/>Endpoint<br/>$0/mo"]
+        DDB2["DynamoDB<br/>~$0.01/mo"]
+    end
+
+    ECS1 --> NAT --> IGW --> APIGW --> Lambda --> DDB1
+    ECS2 --> VPCE --> DDB2
+
+    style Old fill:#fff0f0,stroke:#b71c1c,color:#333
+    style New fill:#f0fff0,stroke:#1b5e20,color:#333
+    style ECS1 fill:#e65100,color:#fff
+    style IGW fill:#b71c1c,color:#fff
+    style APIGW fill:#b71c1c,color:#fff
+    style Lambda fill:#b71c1c,color:#fff
+    style NAT fill:#b71c1c,color:#fff
+    style DDB1 fill:#0d47a1,color:#fff
+    style ECS2 fill:#1b5e20,color:#fff
+    style VPCE fill:#1b5e20,color:#fff
+    style DDB2 fill:#0d47a1,color:#fff
+
+`} />
+
+The key insight was brutally simple: **my ECS task and DynamoDB live in the same VPC.** Why was I routing traffic through the public internet to access a table sitting three metres away (in cloud terms)?
+
+## The Production Architecture
+
+The production data flow is now a single VPC-internal hop. The observability path runs in parallel through an ADOT Collector sidecar — meaning I get full distributed tracing without adding latency to the data path.
+
+<Mermaid chart={`flowchart TD
+    subgraph VPC["VPC (eu-west-1)"]
+        subgraph ECSTask["ECS Fargate Task"]
+            NextJS["Next.js<br/>SSR Container"]
+            ADOT["ADOT Collector<br/>Sidecar"]
+        end
+
+        subgraph Endpoints["VPC Endpoints"]
+            GWEP["DynamoDB<br/>Gateway Endpoint<br/>(FREE)"]
+        end
+    end
+
+    subgraph AWSServices["AWS Services"]
+        DDB["DynamoDB<br/>Articles Table"]
+        XRay["X-Ray<br/>Traces"]
+        CW["CloudWatch<br/>Logs"]
+    end
+
+    NextJS -->|"① Data Path<br/>(~5ms)"| GWEP
+    GWEP --> DDB
+    NextJS -->|"OTLP/gRPC<br/>:4317"| ADOT
+    ADOT -->|"② Trace Path"| XRay
+    NextJS -->|"③ Log Path<br/>JSON"| CW
+
+    style VPC fill:#e8eaf6,stroke:#283593,color:#333
+    style ECSTask fill:#e3f2fd,stroke:#1565c0,color:#333
+    style NextJS fill:#1b5e20,color:#fff
+    style ADOT fill:#4a148c,color:#fff
+    style GWEP fill:#1b5e20,color:#fff
+    style DDB fill:#0d47a1,color:#fff
+    style XRay fill:#4a148c,color:#fff
+    style CW fill:#00838f,color:#fff
+
+`} />
+
+<ProcessTimeline
+  steps={[
+    {
+      title: 'Data Path (Green)',
+      description:
+        'Next.js queries DynamoDB directly via @aws-sdk/lib-dynamodb through the VPC Gateway Endpoint. No Lambda, no API Gateway, no NAT Gateway. ~5ms latency.',
+    },
+    {
+      title: 'Trace Path (Purple)',
+      description:
+        'The ADOT Collector sidecar receives OpenTelemetry spans via OTLP/gRPC on port 4317 and forwards X-Ray-formatted segments for distributed tracing.',
+    },
+    {
+      title: 'Log Path (Cyan)',
+      description:
+        'Structured JSON logs flow directly to CloudWatch via the awslogs driver for machine-parseable diagnostics and anomaly detection.',
+    },
+  ]}
+/>
+
+### DynamoDB Access Patterns
+
+| Operation               | Access Pattern | Index              | Key Structure                         |
+| ----------------------- | -------------- | ------------------ | ------------------------------------- |
+| List published articles | GSI1 Query     | `gsi1-status-date` | `pk=STATUS#published`, `sk=date#slug` |
+| Get article metadata    | GetItem        | Primary            | `pk=ARTICLE#<slug>`, `sk=METADATA`    |
+| Get article content     | GetItem        | Primary            | `pk=ARTICLE#<slug>`, `sk=CONTENT#v1`  |
+| Articles by tag         | GSI2 Query     | `gsi2-tag-date`    | `pk=TAG#<tag>`, `sk=date#slug`        |
+
+## The "Golden Path" Implementation
+
+### Cache-Aside with TTL: Why Not DAX?
+
+The first question any AWS architect asks is: _"Why not use DAX?"_ DynamoDB Accelerator is the official caching layer. But DAX costs approximately $29 per month idle. For a portfolio with fewer than 100 articles that change weekly, an in-process `Map<string, {data, expiresAt}>` is free and more than sufficient.
+
+<Mermaid chart={`flowchart TD
+    REQ["Incoming SSR<br/>Request"] --> CHECK{"TTL Cache<br/>Check"}
+    CHECK -->|"HIT"| RETURN["Return Cached<br/>Articles<br/><1ms"]
+    CHECK -->|"MISS / EXPIRED"| QUERY["Query DynamoDB<br/>via VPC Endpoint<br/>~5ms"]
+    QUERY --> STORE["Store in Cache<br/>TTL = 5 min"]
+    STORE --> RETURN2["Return Fresh<br/>Articles"]
+
+    style REQ fill:#0d47a1,color:#fff
+    style CHECK fill:#e65100,color:#fff
+    style RETURN fill:#1b5e20,color:#fff
+    style QUERY fill:#4a148c,color:#fff
+    style STORE fill:#00838f,color:#fff
+    style RETURN2 fill:#1b5e20,color:#fff
+
+`} />
+
+<ProcessTimeline
+  steps={[
+    {
+      title: 'Cache Check',
+      description:
+        'Every article query first checks the in-memory TTL cache. If data exists and has not expired, return immediately (<1ms).',
+    },
+    {
+      title: 'Cache Miss → DynamoDB Query',
+      description:
+        'On cache miss, query DynamoDB directly via the VPC Gateway Endpoint. The SDK call takes ~5ms for the first read.',
+    },
+    {
+      title: 'OTel Span Creation',
+      description:
+        'Each DynamoDB call is wrapped in a tracer.startActiveSpan() call that creates a business-level span in X-Ray with article.source and article.count attributes.',
+    },
+    {
+      title: 'Structured Log Emission',
+      description:
+        'A JSON log record is emitted with service, operation, source, count, and latencyMs fields — machine-parseable for CloudWatch metric filters.',
+    },
+  ]}
+/>
+
+The data layer wraps all DynamoDB calls with a lightweight in-memory TTL cache. For 99%+ of requests, articles are served from cache in under 1ms:
+
+```typescript
+class TTLCache {
+  private store = new Map<string, CacheEntry<unknown>>()
+
+  get<T>(key: string): T | null {
+    const entry = this.store.get(key)
+    if (!entry) return null
+    if (Date.now() > entry.expiresAt) {
+      this.store.delete(key)
+      return null
+    }
+    return entry.data as T
+  }
+
+  set<T>(key: string, data: T, ttlMs: number = CACHE_TTL_MS): void {
+    this.store.set(key, { data, expiresAt: Date.now() + ttlMs })
+  }
+}
+```
+
+Every query function follows the same cache-aside pattern:
+
+```typescript
+export async function queryPublishedArticles(): Promise<ArticleWithSlug[]> {
+  const cacheKey = 'published-articles'
+  const cached = cache.get<ArticleWithSlug[]>(cacheKey)
+  if (cached) return cached  // <1ms return
+
+  const result = await docClient.send(new QueryCommand({ /* GSI1 query */ }))
+  const articles = result.Items.map(entityToArticle)
+  cache.set(cacheKey, articles)  // cached for 5 minutes
+  return articles
+}
+```
+
+### Embedding OpenTelemetry in the Service Layer
+
+The service layer implements a priority chain with three observability layers baked in. This is where the tracing magic happens — every article fetch creates a business-level span in X-Ray:
+
+```typescript
+import { trace, SpanStatusCode } from '@opentelemetry/api'
+
+const tracer = trace.getTracer('article-service', '1.0.0')
+
+export async function getAllArticles(): Promise<ArticleWithSlug[]> {
+  return tracer.startActiveSpan('ArticleService.getAllArticles', async (span) => {
+    const start = Date.now()
+    try {
+      if (isDynamoDBConfigured()) {
+        const articles = await queryPublishedArticles()
+        span.setAttributes({
+          'article.source': 'dynamodb-sdk',
+          'article.count': articles.length
+        })
+        slog({
+          service: 'article-service',
+          operation: 'getAllArticles',
+          source: 'dynamodb-sdk',
+          count: articles.length,
+          latencyMs: Date.now() - start,
+          level: 'info'
+        })
+        return articles
+      }
+      // ... file-based fallback with its own span attributes
+    } finally {
+      span.end()
+    }
+  })
+}
+```
+
+<Callout variant="info" title="No-Op Tracer Safety">
+  The OTel tracer is a no-op without a collector. When `OTEL_SDK_DISABLED=true`
+  (the Dockerfile default), `tracer.startActiveSpan()` creates a no-op span with
+  zero overhead. The code is always safe to run locally — no collector, no
+  crash, no performance penalty.
+</Callout>
+
+This gives **two layers of tracing** in X-Ray:
+
+1. **Infrastructure spans** (auto-generated): `HTTP GET /articles` → `DynamoDB Query`
+2. **Business spans** (custom): `ArticleService.getAllArticles` → `source=dynamodb-sdk, count=4`
+
+<ScreenshotPlaceholder alt="X-Ray service map showing distributed traces from Next.js through DynamoDB with business-level spans" />
+
+### The Structured Logging Strategy
+
+The structured JSON logs are designed to be machine-parseable. An LLM agent, or even CloudWatch Anomaly Detection, can read these logs and auto-diagnose issues:
+
+```json
+{
+  "timestamp": "2026-02-10T12:00:00.000Z",
+  "service": "article-service",
+  "operation": "getAllArticles",
+  "source": "dynamodb-sdk",
+  "count": 4,
+  "latencyMs": 3,
+  "level": "info"
+}
+```
+
+If `source` changes from `dynamodb-sdk` to `file-based`, something has gone wrong with the DynamoDB connection. No human needs to parse log files — the schema itself is the alert.
+
+<ScreenshotPlaceholder
+  type="terminal"
+  alt="CloudWatch Logs Insights showing structured JSON log entries with service, operation, source, and latencyMs fields"
+/>
+
+### OTel Instrumentation Hook
+
+Next.js's `instrumentation.ts` initialises the full OTel stack at server startup. This single file wires up X-Ray ID generation, OTLP exporting, and auto-instrumentation:
+
+```typescript
+export async function register() {
+  if (process.env.NEXT_RUNTIME === 'nodejs') {
+    if (process.env.OTEL_SDK_DISABLED === 'true') return
+
+    const sdk = new NodeSDK({
+      serviceName: process.env.OTEL_SERVICE_NAME || 'nextjs-portfolio',
+      traceExporter: new OTLPTraceExporter({
+        url: process.env.OTEL_EXPORTER_OTLP_ENDPOINT || 'http://localhost:4317',
+      }),
+      idGenerator: new AWSXRayIdGenerator(),
+      textMapPropagator: new AWSXRayPropagator(),
+      resourceDetectors: [awsEcsDetector],
+      instrumentations: [
+        getNodeAutoInstrumentations({
+          '@opentelemetry/instrumentation-aws-sdk': {
+            suppressInternalInstrumentation: true,
+          },
+          '@opentelemetry/instrumentation-fs': { enabled: false },
+          '@opentelemetry/instrumentation-dns': { enabled: false },
+          '@opentelemetry/instrumentation-net': { enabled: false },
+        }),
+      ],
+    })
+
+    sdk.start()
+  }
+}
+```
+
+## The "Oh No" Moment: What If DynamoDB Goes Down?
+
+This is the question that separates a demo from production. **What happens when DynamoDB is unreachable from ECS?**
+
+There are several ways this can happen — and I have experienced two of them:
+
+- VPC Gateway Endpoint route deleted (infrastructure drift after a CDK deploy)
+- IAM task role loses `dynamodb:Query` permission (policy update gone wrong)
+- DynamoDB throttling (unlikely at portfolio scale, but possible during migration)
+
+The failover chain ensures the site **never goes fully down** due to a data layer issue:
+
+<Mermaid chart={`stateDiagram-v2
+    [*] --> Healthy: Normal operation
+    Healthy --> CacheHit: TTL cache valid
+    CacheHit --> Healthy: Return cached data (<1ms)
+
+    Healthy --> CacheMiss: TTL expired
+    CacheMiss --> QueryDynamoDB: SDK call via VPC Endpoint
+
+    QueryDynamoDB --> Healthy: Success → cache result
+    QueryDynamoDB --> Degraded: SDK timeout / permission error
+
+    Degraded --> FileFallback: USE_FILE_FALLBACK=true
+    Degraded --> Error500: USE_FILE_FALLBACK=false
+
+    FileFallback --> SelfHeal: Next cache TTL expiry
+    SelfHeal --> QueryDynamoDB: Retry DynamoDB
+
+    note right of Degraded
+      Structured log emits
+      source: "file-based"
+      alerting signal
+    end note
+
+    note right of FileFallback
+      Stale-but-valid articles
+      from Docker image MDX files
+    end note
+
+`} />
+
+When a DynamoDB query throws — whether from a timeout, permission error, or throttle — the service checks `USE_FILE_FALLBACK`. If enabled, it serves articles from MDX files baked into the Docker image at build time. Users see stale-but-valid articles while the structured logs emit a `source: "file-based"` signal.
+
+On the next request after the cache TTL expires, the service retries DynamoDB. If the infrastructure issue has been resolved, it silently self-heals. No restart, no redeployment, no manual intervention.
+
+<Callout variant="warning" title="Silent Killer: SDK Timeout">
+  If the VPC Gateway Endpoint route is removed, the DynamoDB client **hangs**
+  for the SDK timeout (default 3000ms) before failing over. That's 3 full
+  seconds of user-facing latency on every cache miss. Setting `requestTimeout:
+  500` would trigger the fallback sooner — this is on the improvement backlog.
+</Callout>
+
+## The Payoff: FinOps Impact
+
+This is the part I enjoy most. Every architectural decision above was driven by one goal: **eliminate unnecessary cost without sacrificing reliability or observability.**
+
+<Mermaid chart={`flowchart LR
+    subgraph OldCost["❌ Old — $8.45/month"]
+        direction TB
+        OAPIGW["API Gateway<br/>$3.50"]
+        ONAT["NAT Gateway<br/>$4.50"]
+        OLambda["Lambda<br/>$0.20"]
+        ODDB["DynamoDB<br/>$0.25"]
+    end
+
+    subgraph NewCost["✅ New — $0.51/month"]
+        direction TB
+        NVPCE["VPC Gateway EP<br/>$0.00"]
+        NDDB["DynamoDB<br/>$0.01"]
+        NXRay["X-Ray Traces<br/>$0.50"]
+    end
+
+    OldCost -->|"94% reduction"| NewCost
+
+    style OldCost fill:#ffebee,stroke:#b71c1c,color:#333
+    style NewCost fill:#e8f5e9,stroke:#1b5e20,color:#333
+    style OAPIGW fill:#b71c1c,color:#fff
+    style ONAT fill:#b71c1c,color:#fff
+    style OLambda fill:#b71c1c,color:#fff
+    style ODDB fill:#0d47a1,color:#fff
+    style NVPCE fill:#1b5e20,color:#fff
+    style NDDB fill:#0d47a1,color:#fff
+    style NXRay fill:#4a148c,color:#fff
+
+`} />
+
+| Component            | Old Architecture     | New Architecture        | Monthly Savings  |
+| -------------------- | -------------------- | ----------------------- | ---------------- |
+| API Gateway          | ~$3.50/million req   | $0 (removed)            | $3.50            |
+| Lambda               | ~$0.20 (invocations) | $0 (removed)            | $0.20            |
+| NAT Gateway          | ~$4.50 (egress)      | $0 (VPC endpoint)       | $4.50            |
+| VPC Gateway Endpoint | N/A                  | $0 (free)               | —                |
+| DynamoDB Reads       | ~$0.25 (via Lambda)  | ~$0.01 (direct, cached) | $0.24            |
+| OTel / X-Ray         | N/A                  | ~$0.50 (trace sampling) | —                |
+| **Total**            | **~$8.45/month**     | **~$0.51/month**        | **~$7.94 (94%)** |
+
+<Callout variant="security" title="VPC Gateway Endpoint vs Interface Endpoint">
+  Gateway Endpoints (DynamoDB, S3) are **free** — they add a route table entry
+  with no hourly charge. Interface Endpoints (all other services) cost
+  **$7.20/month per AZ** plus data processing fees. For solo workloads, this
+  distinction is the difference between $0 and $14.40/month for a single
+  service.
+</Callout>
+
+<ScreenshotPlaceholder alt="AWS Cost Explorer showing month-over-month comparison of data layer costs before and after the architecture shift" />
+
+### Performance ROI
+
+Beyond cost, the latency improvement is dramatic:
+
+- **~100ms → ~5ms** SSR latency (first DynamoDB read)
+- **&lt;1ms** for cached reads (99%+ of requests)
+- **Zero Lambda cold starts** affecting page render time
+
+### Maintenance
+
+This setup requires **less than 1 hour of maintenance per month**:
+
+- The DynamoDB client is a singleton with no connection pool to manage
+- File-based fallback means infrastructure failures do not cause outages
+- Structured logs surface issues before users report them
+
+## Being Honest: What Is Missing
+
+No architecture post is complete without acknowledging the gaps. Here is what I know needs improvement:
+
+1. **Custom SDK `requestTimeout`:** The default 3000ms is too long. Setting `requestTimeout: 500` would trigger the fallback sooner and reduce user-facing latency during failures.
+
+2. **CloudWatch Metric Filters:** The structured JSON logs are ready for metric filters — for example, alarming when `source` changes from `dynamodb-sdk` to `file-based` — but the filters are not deployed yet.
+
+3. **No Circuit Breaker:** If DynamoDB is consistently failing, every request still attempts the SDK call before falling back. A circuit breaker would skip the attempt entirely after N consecutive failures, reducing latency during sustained outages.
+
+4. **In-Memory Cache Limitations:** The cache does not survive container restarts. For a portfolio site with a 5-minute TTL and low traffic, this is acceptable. For a team application, you would want Redis or ElastiCache.
+
+5. **File Fallback Dependency:** The fallback only works because article MDX files are baked into the Docker image at build time. If articles were dynamic-only, this safety net would not exist.
+
+<Callout variant="insight" title="Production Readiness Gaps">
+  These gaps are **intentional trade-offs**, not oversights. Each one has a
+  clear fix (circuit breaker, metric filters, shorter timeout) that adds
+  complexity without proportional value at solo-dev scale. The maturity path is
+  documented; the priority is low until traffic grows.
+</Callout>
+
+## What I Learned
+
+Killing API Gateway felt wrong at first. It goes against years of "best practice" muscle memory. But the reality is clear: **best practices are context-dependent.** A solo developer running a portfolio site has fundamentally different constraints than a team running a multi-tenant SaaS platform.
+
+The API Gateway + Lambda pattern is excellent for multi-consumer APIs, rate limiting, and request transformation. For a single container reading four articles from a table in the same VPC, it is an expensive abstraction.
+
+Sometimes the best architecture is the one you remove.
+
+---
+
+_Building cloud infrastructure in Dublin, applying FinOps principles to every line of Terraform and every CDK construct. If you are questioning whether your architecture is over-engineered for your scale, reach out._
+
+---

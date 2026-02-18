@@ -1,0 +1,977 @@
+---
+title: 'Enterprise CDK Architecture: The Project Factory Pattern — Managing 4 Projects and 11 Stacks from a Single Entry Point'
+subtitle: 'How a solo DevOps engineer built a construct-to-factory pipeline with typed config modules, SSM-based cross-stack discovery, generic factory interfaces, CDK Aspects for governance, and a 31-file L3 construct library — all orchestrated by a 105-line entry point that delegates everything to project-specific factories.'
+date: 2026-02-17
+author: Nelson Lamounier
+tags:
+  [
+    aws-cdk,
+    typescript,
+    infrastructure-as-code,
+    design-patterns,
+    platform-engineering,
+    constructs,
+    devops,
+    factory-pattern,
+    project-registry,
+    cdk-aspects,
+    ssm-parameter-store,
+  ]
+category: infrastructure
+stack:
+  - AWS CDK v2 (TypeScript)
+  - CDK Constructs (L1, L2, L3) — 31-File Library
+  - Project Factory (Generic `IProjectFactory<TContext>`)
+  - Strategy Pattern Registry (4 Factories)
+  - Typed Config Modules (per-project, per-environment)
+  - CDK Aspects (Tagging, Compliance, DynamoDB Guard)
+  - CDK-Nag (AWS Solutions Pack)
+  - SSM Parameter Store (271 lines — Cross-Stack Discovery)
+  - GitHub Actions (CI/CD Synthesis)
+---
+
+# Enterprise CDK Architecture: The Project Factory Pattern
+
+> **TL;DR** — AWS CDK gives you constructs. What it doesn't give you is an opinion on how to
+> organize them across projects, environments, and teams. This article walks through a
+> production implementation of the **Project Factory Pattern** — a design that lets a solo
+> engineer manage **4 projects, 11 CloudFormation stacks, 31 reusable constructs, and 3
+> environments** from a **105-line entry point** that delegates _everything_ to project-specific
+> factories. The key insight: CDK's three construct levels (L1, L2, L3) aren't just an
+> abstraction ladder — they're the foundation of a repeatable, type-safe infrastructure
+> platform where factories own their own context resolution, typed config modules replace
+> scattered environment variables, and CDK Aspects enforce governance compile-time.
+
+---
+
+## 1. The "Solo-Preneur" Context
+
+### The Constraint
+
+I run four production-grade projects from a single CDK monorepo:
+
+| Project        | Stacks | Resources | Key Services                                             |
+| :------------- | :----: | :-------: | :------------------------------------------------------- |
+| **Next.js**    |   6    |   ~200    | ECS, ALB, CloudFront, API Gateway, Lambda, DynamoDB, WAF |
+| **Monitoring** |   3    |    ~80    | EC2/ASG, EBS, Prometheus, Grafana, Loki, Docker Compose  |
+| **Shared**     |   1    |    ~15    | VPC, Subnets, Flow Logs, ECR                             |
+| **Org**        |   1    |    ~5     | Cross-account IAM DNS role (root account)                |
+| **Total**      | **11** | **~300**  | Across 3 environments × 3 AWS accounts                   |
+
+Every project shares a VPC but has wildly different resource profiles. Next.js needs ECS
+clusters, ALBs, CloudFront distributions, API Gateway, Lambda functions, and DynamoDB tables.
+Monitoring needs EC2 instances, EBS volumes, security groups, and SSM documents. Both need
+hardened security, thoughtful IAM policies, and CDK-Nag compliance.
+
+I needed an architecture where adding a new project is a _configuration change_, not a
+rearchitecture.
+
+### The 2026 Architecture Shift
+
+| Old Way (2020)                                                  | New Way (2026)                                                    |
+| :-------------------------------------------------------------- | :---------------------------------------------------------------- |
+| One CDK app per project, each with its own patterns             | Single mono-CDK app with project-specific factories               |
+| Copy-paste constructs between projects                          | 31-file L3 construct library with hardened defaults               |
+| Environment config scattered across `.env`, context, secrets    | Typed config modules per project with `fromEnv()` resolution      |
+| Manual cross-stack wiring with CloudFormation exports           | SSM Parameter Store with centralized path conventions (271 lines) |
+| `app.ts` owned context parsing, VPC lookup, secrets, everything | 105-line `app.ts` that delegates ALL resolution to factories      |
+| CDK-Nag as an afterthought                                      | CDK-Nag in CI — zero suppressions without documented rationale    |
+| No compile-time governance                                      | CDK Aspects enforce tagging, DynamoDB read-only, compliance       |
+
+{/* SCREENSHOT: Repository directory tree showing the lib/ folder structure with config/, factories/, projects/, stacks/, common/, and aspects/ directories */}
+
+---
+
+## 2. Architecture Diagram
+
+```mermaid
+flowchart TD
+    subgraph EntryPoint["bin/app.ts — 105-line Slim Orchestrator"]
+        CLI["CDK Context<br/>-c project=nextjs<br/>-c environment=dev"]
+        Parse["Parse & Validate<br/>project + environment<br/>(structural routing only)"]
+    end
+
+    subgraph Registry["lib/factories/project-registry.ts"]
+        RegMap["Factory Registry<br/>Record&lt;Project, FactoryConstructor&gt;"]
+        GetFactory["getProjectFactoryFromContext()<br/>resolveEnvironment() short→full names"]
+    end
+
+    subgraph ConfigLayer["Typed Config Modules"]
+        EC["environments.ts<br/>account, region,<br/>cdkEdgeEnvironment()"]
+        NC["nextjs/configurations.ts<br/>getNextJsConfigs()"]
+        MC["monitoring/configurations.ts<br/>getMonitoringConfigs()"]
+        SP["ssm-paths.ts<br/>4 namespace conventions<br/>271 lines"]
+        RN["resource-names.ts<br/>Naming conventions"]
+    end
+
+    subgraph Factories["Project Factories (Own Context Resolution)"]
+        direction LR
+        NextJSFactory["NextJSProjectFactory<br/>6 stacks | 370 lines<br/>ConsolidatedFactoryContext"]
+        MonitoringFactory["MonitoringProjectFactory<br/>3 stacks | 214 lines<br/>MonitoringFactoryContext"]
+        SharedFactory["SharedProjectFactory<br/>1 stack | 73 lines"]
+        OrgFactory["OrgProjectFactory<br/>1 stack | 157 lines<br/>OrgFactoryContext"]
+    end
+
+    subgraph NextJSStacks["Next.js Stack Family (eu-west-1 + us-east-1)"]
+        direction TB
+        DataStack["1. Data Stack<br/>DynamoDB + S3 + SSM"]
+        ComputeStack["2. Compute Stack<br/>ECS + IAM + ASG"]
+        NetworkStack["3. Networking Stack<br/>ALB + Task SG"]
+        AppStack["4. Application Stack<br/>Task Def + ECS Service"]
+        ApiStack["5. API Stack<br/>API Gateway + Lambda"]
+        EdgeStack["6. Edge Stack<br/>CloudFront + WAF + ACM<br/>(us-east-1)"]
+    end
+
+    subgraph Constructs["Shared Construct Library (lib/common/) — 31 Files"]
+        direction LR
+        L3["L3 Constructs<br/>Lambda, ALB, CloudFront,<br/>ASG, SecurityGroup hierarchy"]
+        L2["L2 Wrappers<br/>ec2.SG, elbv2.ALB,<br/>lambda.NodejsFunction"]
+        L1["L1 Escape Hatches<br/>wafv2.CfnWebACL,<br/>CfnCustomResource"]
+    end
+
+    subgraph Aspects["CDK Aspects (Governance)"]
+        TagAspect["TaggingAspect<br/>5-key tag schema"]
+        NagAspect["CDK-Nag<br/>AwsSolutions Pack"]
+        DynamoAspect["EnforceReadOnlyDynamoDB<br/>8 forbidden actions"]
+    end
+
+    CLI --> Parse
+    Parse --> GetFactory
+    GetFactory --> RegMap
+    RegMap --> NextJSFactory & MonitoringFactory & SharedFactory & OrgFactory
+    NextJSFactory --> NC & EC & SP & RN
+    MonitoringFactory --> MC & EC & SP
+    NextJSFactory --> DataStack
+    NextJSFactory --> ComputeStack
+    NextJSFactory --> NetworkStack
+    NextJSFactory --> AppStack
+    NextJSFactory --> ApiStack
+    NextJSFactory --> EdgeStack
+    DataStack & ComputeStack & NetworkStack & AppStack & ApiStack --> L3
+    EdgeStack --> L1
+    L3 --> L2
+    L2 --> L1
+    Aspects -.->|"applied to cdk.App"| NextJSStacks
+
+    style CLI fill:#0d47a1,color:#fff
+    style Parse fill:#0d47a1,color:#fff
+    style NextJSFactory fill:#e65100,color:#fff
+    style MonitoringFactory fill:#e65100,color:#fff
+    style SharedFactory fill:#e65100,color:#fff
+    style OrgFactory fill:#e65100,color:#fff
+    style DataStack fill:#1b5e20,color:#fff
+    style ComputeStack fill:#1b5e20,color:#fff
+    style NetworkStack fill:#1b5e20,color:#fff
+    style AppStack fill:#1b5e20,color:#fff
+    style ApiStack fill:#1b5e20,color:#fff
+    style EdgeStack fill:#b71c1c,color:#fff
+    style L3 fill:#4a148c,color:#fff
+    style L2 fill:#4a148c,color:#fff
+    style L1 fill:#b71c1c,color:#fff
+```
+
+---
+
+## 3. CDK Construct Levels: The Foundation
+
+Before explaining the factory pattern, you need to understand CDK's construct taxonomy — because the factory's power comes from _which level_ each resource lives at.
+
+### L1: CloudFormation Resource Wrappers (`Cfn*`)
+
+L1 constructs are 1:1 mappings to CloudFormation resources. CDK auto-generates them from the CloudFormation Resource Specification. They give you full control, zero abstraction, and zero safety net. In this project, L1 constructs appear in exactly one place: **WAFv2**. As of February 2026, AWS CDK still has no L2 construct for WAFv2:
+
+```typescript
+// lib/stacks/nextjs/edge/edge-stack.ts — L1 construct (no L2 available)
+this.webAcl = new wafv2.CfnWebACL(this, "CloudFrontWebAcl", {
+  scope: "CLOUDFRONT", // Must be literal string, not an enum
+  defaultAction: { allow: {} }, // Raw CFN property bag
+  visibilityConfig: {
+    cloudWatchMetricsEnabled: true,
+    metricName: `${namePrefix}-waf-metrics`,
+    sampledRequestsEnabled: true,
+  },
+  rules: buildWafRules({
+    enableRateLimiting: true,
+    rateLimitPerIp: 5000,
+    enableIpReputationList: true,
+  }),
+});
+
+// Association is also L1 — no .associate() method exists
+new wafv2.CfnWebACLAssociation(this, "AlbWafAssociation", {
+  resourceArn: this.api.api.deploymentStage.stageArn,
+  webAclArn: this.webAcl.attrArn, // .attrArn, not .arn — L1 pattern
+});
+```
+
+:::warning L1 Pain Points
+L1 constructs use `attrArn` instead of `arn`, camelCase property bags instead of builder patterns, and raw strings instead of enums. Every property is optional in TypeScript but required in CloudFormation — you'll only discover missing fields at deploy time. The `buildWafRules()` helper in `lib/common/security/waf-rules.ts` exists to create a reusable, type-safe wrapper around this raw L1 surface.
+:::
+
+### L2: AWS Construct Library (Curated Abstractions)
+
+L2 constructs are CDK's curated abstractions — one per AWS resource, with sensible defaults, grant methods, and cross-service integration. This project uses L2 constructs extensively, but rarely directly in stacks. Instead, they appear _inside_ L3 constructs as implementation details:
+
+```typescript
+// lib/common/security/security-group.ts — L2 used inside L3
+export class BaseSecurityGroupConstruct extends Construct {
+  public readonly securityGroup: ec2.SecurityGroup; // L2 construct
+
+  constructor(
+    scope: Construct,
+    id: string,
+    props: BaseSecurityGroupConstructProps,
+  ) {
+    super(scope, id);
+
+    // L2 gives us: grant methods, .connections, .addIngressRule()
+    this.securityGroup = new ec2.SecurityGroup(this, "SG", {
+      vpc: props.vpc,
+      securityGroupName: props.securityGroupName,
+      description: props.description,
+      allowAllOutbound: props.allowAllOutbound ?? true,
+    });
+
+    cdk.Tags.of(this.securityGroup).add("Component", "SecurityGroup");
+  }
+}
+```
+
+The critical pattern: a stack should never create an `ec2.SecurityGroup` directly — it should use the project's L3 construct which wraps the L2 with hardened defaults.
+
+### L3: Domain-Specific Patterns (Your Golden Paths)
+
+L3 constructs are your organization's opinionated blueprints — they compose multiple L2 constructs into a single unit with validated defaults, helper methods, and CDK-Nag compliance baked in. This project has **31 L3 construct files** in `lib/common/`, organized by domain:
+
+| Domain         | L3 Constructs                                                                                                                                                                               | Files | Key Pattern                                          |
+| :------------- | :------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | :---: | :--------------------------------------------------- |
+| **Compute**    | `LambdaFunctionConstruct`, `AutoScalingGroupConstruct`, `Ec2InstanceConstruct`, `LaunchTemplateConstruct`, `UserDataBuilder`                                                                |   6   | Log group created first, IAM grants on any role type |
+| **Networking** | `ApplicationLoadBalancerConstruct`, `CloudFrontConstruct`, `ApiGatewayConstruct`, `VpcFlowLogs`, `GatewayEndpoints`                                                                         |   5   | VPC stored internally, 8+ helper methods             |
+| **Security**   | `BaseSecurityGroupConstruct` → `EcsSecurityGroupConstruct` → `NextJsTaskSecurityGroupConstruct` → `SecurityGroupConstruct`, `KmsKeyConstruct`, `AcmCertificateConstruct`, `buildWafRules()` |   4   | 4-level inheritance hierarchy                        |
+| **Storage**    | `EbsVolumeConstruct`, `S3BucketConstruct`, `DynamoDbTableConstruct`, `EcrRepositoryConstruct`                                                                                               |   4   | DLM snapshots, encryption, lifecycle management      |
+| **SSM**        | `SsmRunCommandDocument`                                                                                                                                                                     |   2   | SSM document provisioning                            |
+| **Events**     | `EventBridgeRule`                                                                                                                                                                           |   2   | EventBridge patterns                                 |
+| **IAM**        | Index + barrel                                                                                                                                                                              |   1   | Policy helpers                                       |
+
+Here's the `LambdaFunctionConstruct` — arguably the most feature-rich L3:
+
+```typescript
+// lib/common/compute/constructs/lambda-function.ts — L3 construct
+export class LambdaFunctionConstruct extends Construct {
+  public readonly function: NodejsFunction;
+  public readonly logGroup: logs.LogGroup;
+  public readonly role: iam.IRole;
+
+  constructor(
+    scope: Construct,
+    id: string,
+    props: LambdaFunctionConstructProps,
+  ) {
+    super(scope, id);
+
+    // 1. Log group created FIRST — prevents CDK race condition
+    //    where Lambda creates an implicit log group that conflicts
+    this.logGroup = new logs.LogGroup(this, "LogGroup", {
+      logGroupName: `/aws/lambda/${functionName}`,
+      retention: props.logRetention ?? logs.RetentionDays.ONE_MONTH,
+      removalPolicy: cdk.RemovalPolicy.DESTROY,
+    });
+
+    // 2. Merge NODE_OPTIONS — don't clobber caller's flags
+    const nodeOptions = ["--enable-source-maps", callerNodeOptions]
+      .filter(Boolean)
+      .join(" ");
+
+    // 3. Auto-detect lock file (yarn → npm → pnpm)
+    const depsLockFilePath = props.depsLockFilePath ?? detectLockFile();
+
+    // 4. Bundling with escape hatch
+    const baseBundling: BundlingOptions = {
+      sourceMap: true,
+      format: OutputFormat.CJS, // Safer for Lambda — documented rationale
+      target: "node22",
+      externalModules: ["@aws-sdk/*"],
+      ...props.bundlingOverrides, // Consumer can override any default
+    };
+
+    // 5. Function creation (wraps NodejsFunction L3 → lambda.Function L2)
+    this.function = new NodejsFunction(this, "Function", {
+      functionName,
+      runtime: props.runtime ?? lambda.Runtime.NODEJS_22_X,
+      handler: props.handler ?? "handler",
+      entry: props.entry,
+      depsLockFilePath,
+      bundling: baseBundling,
+      environment,
+      timeout: props.timeout ?? cdk.Duration.seconds(30),
+      memorySize: props.memorySize ?? 256,
+      deadLetterQueue: props.deadLetterQueue,
+      logGroup: this.logGroup,
+      ...(props.existingRole ? { role: props.existingRole } : {}),
+    });
+
+    // 6. IAM grants work on BOTH new and imported roles
+    if (props.additionalPolicyStatements) {
+      for (const statement of props.additionalPolicyStatements) {
+        this.role.addToPrincipalPolicy(statement);
+      }
+    }
+  }
+}
+```
+
+:::tip Why L3 Constructs Are Your Internal Developer Platform
+Every `LambdaFunctionConstruct` in this project gets: source maps, lock file detection, log
+group race condition prevention, CDK-Nag compliance, and environment variable merging — _without
+the stack author knowing_. That's the golden path concept from Platform Engineering: the right
+thing is the easy thing.
+:::
+
+---
+
+## 4. The "Golden Path" Implementation: The Project Factory
+
+### Layer 1: The Interface Contract — Generic `IProjectFactory<TContext>`
+
+The factory pattern starts with a **generic** TypeScript interface that every project implements
+with its own typed context:
+
+```typescript
+// lib/factories/project-interfaces.ts
+export interface ProjectFactoryContext {
+  readonly environment: Environment;
+  readonly [key: string]: unknown; // Escape hatch for extensibility
+}
+
+export interface ProjectStackFamily {
+  readonly stacks: cdk.Stack[];
+  readonly stackMap: Record<string, cdk.Stack>;
+}
+
+export interface IProjectFactory<
+  TContext extends ProjectFactoryContext = ProjectFactoryContext,
+> {
+  readonly project: Project;
+  readonly environment: Environment;
+  readonly namespace: string;
+  createAllStacks(scope: cdk.App, context: TContext): ProjectStackFamily;
+}
+
+export type ProjectFactoryConstructor = new (
+  environment: Environment,
+) => IProjectFactory<any>;
+```
+
+The generic `<TContext>` parameter is the key design decision — each factory defines its own
+extended context type with type-safe fields:
+
+| Factory        | Context Type                 | Project-Specific Fields                                                                               |
+| :------------- | :--------------------------- | :---------------------------------------------------------------------------------------------------- |
+| **NextJS**     | `ConsolidatedFactoryContext` | `domainName`, `hostedZoneId`, `crossAccountRoleArn`, `imageTag`, `sesFromEmail`, `verificationSecret` |
+| **Monitoring** | `MonitoringFactoryContext`   | `computeMode`, `trustedCidrs`, `grafanaPassword`                                                      |
+| **Org**        | `OrgFactoryContext`          | `hostedZoneIds`, `trustedAccountIds`, `externalId`                                                    |
+| **Shared**     | `ProjectFactoryContext`      | (no extensions needed)                                                                                |
+
+### Layer 2: The Registry (Strategy Pattern)
+
+The registry maps project names to factory constructors using the **Strategy Pattern**.
+Adding a new project is three steps: create a factory, register it, add the enum value:
+
+```typescript
+// lib/factories/project-registry.ts
+const projectFactoryRegistry: Record<Project, ProjectFactoryConstructor> = {
+  [Project.SHARED]: SharedProjectFactory,
+  [Project.MONITORING]: MonitoringProjectFactory,
+  [Project.NEXTJS]: NextJSProjectFactory,
+  [Project.ORG]: OrgProjectFactory,
+};
+
+export function getProjectFactoryFromContext(
+  projectStr: string,
+  environmentStr: string,
+): IProjectFactory {
+  if (!isValidProject(projectStr)) {
+    const available = getAvailableProjects().join(", ");
+    throw new Error(`Invalid project: '${projectStr}'. Valid: ${available}`);
+  }
+
+  // resolveEnvironment handles short names: dev → development, prod → production
+  const resolvedEnv = resolveEnvironment(environmentStr);
+  return getProjectFactory(projectStr as Project, resolvedEnv);
+}
+
+// Escape hatch for runtime extensibility
+export function registerProjectFactory(
+  project: Project,
+  factory: ProjectFactoryConstructor,
+): void {
+  projectFactoryRegistry[project] = factory;
+}
+```
+
+### Layer 3: The Factory Implementation — Context Override > Config Default
+
+Here's where the architectural shift from the old codebase is most visible. Factories now
+own **ALL context resolution** using a cascading pattern: `context override > typed config > default`:
+
+```typescript
+// lib/projects/nextjs/factory.ts (370 lines)
+export class ConsolidatedNextJSFactory implements IProjectFactory<ConsolidatedFactoryContext> {
+  readonly project = Project.NEXTJS;
+  readonly environment: Environment;
+  readonly namespace: string;
+
+  createAllStacks(
+    scope: cdk.App,
+    context: ConsolidatedFactoryContext,
+  ): ProjectStackFamily {
+    // 1. Load typed config for this environment
+    const config = getNextJsConfigs(this.environment);
+
+    // 2. CDK environment from per-account config (NOT CDK_DEFAULT_*)
+    const env = cdkEnvironment(this.environment);
+
+    // 3. SSM paths from centralized module — single source of truth
+    const ssmPaths = nextjsSsmPaths(this.environment, namePrefix);
+    const resourceNames = nextjsResourceNames(namePrefix, this.environment);
+
+    // 4. Context override > config default (Edge / CloudFront)
+    const edgeConfig = {
+      domainName: context.domainName ?? config.domainName,
+      hostedZoneId: context.hostedZoneId ?? config.hostedZoneId,
+      crossAccountRoleArn:
+        context.crossAccountRoleArn ?? config.crossAccountRoleArn,
+    };
+
+    // 5. Soft validation — warn, don't throw (CDK --exclusively means
+    //    not all stacks are deployed at once)
+    if (!edgeConfig.domainName || !edgeConfig.hostedZoneId) {
+      cdk.Annotations.of(scope).addWarning(
+        `Edge config incomplete: ${missing.join(", ")}. ` +
+          `Edge stack will fail if deployed without these values.`,
+      );
+    }
+
+    // 6. Domain sanity check (dev.example.com for development, etc.)
+    if (edgeConfig.domainName && this.environment !== "production") {
+      const expectedPrefix =
+        this.environment === "development" ? "dev." : "staging.";
+      if (!edgeConfig.domainName.startsWith(expectedPrefix)) {
+        cdk.Annotations.of(scope).addWarning(
+          `Domain "${edgeConfig.domainName}" does not match ${expectedPrefix}...`,
+        );
+      }
+    }
+
+    // 7. Create stacks in dependency order...
+  }
+}
+```
+
+This pattern is replicated in the Monitoring factory with Grafana password cascading:
+
+```typescript
+// lib/projects/monitoring/factory.ts — Production fail-fast
+const grafanaPassword =
+  context.grafanaPassword ??
+  config.grafanaAdminPassword ??
+  (this.environment === Environment.PRODUCTION
+    ? (() => {
+        throw new Error("Missing GRAFANA_ADMIN_PASSWORD for production.");
+      })()
+    : "admin"); // Safe default for non-prod
+```
+
+### Layer 4: The 105-Line Entry Point
+
+The entry point is radically slim. It parses only **structural routing** (project + environment),
+then delegates everything else:
+
+```typescript
+// bin/app.ts — THE ENTIRE FILE (105 lines including comments)
+const app = new cdk.App();
+
+// 1. Parse project + environment from CDK context
+const projectContext = app.node.tryGetContext("project") as string | undefined;
+const environmentContext = app.node.tryGetContext("environment") as
+  | string
+  | undefined;
+
+if (!projectContext || !isValidProject(projectContext)) {
+  throw new Error(
+    "Project context required. Use: -c project=monitoring|nextjs|shared|org",
+  );
+}
+
+// 2. Get the correct factory from the registry
+const factory = getProjectFactoryFromContext(projectContext, environment);
+
+// 3. Create ALL stacks — factory handles dependencies, config, VPC lookup, secrets
+const { stacks } = factory.createAllStacks(app, { environment });
+
+// 4. Cross-cutting aspects (applied AFTER all stacks are created)
+cdk.Aspects.of(app).add(
+  new TaggingAspect({
+    environment,
+    project: projectConfig.namespace,
+    owner: process.env.PROJECT_OWNER ?? "Nelson Lamounier",
+  }),
+);
+
+if (projectContext === "nextjs") {
+  cdk.Aspects.of(app).add(
+    new EnforceReadOnlyDynamoDbAspect({
+      failOnViolation: true,
+      roleNamePattern: "taskrole",
+    }),
+  );
+}
+
+if (enableNagChecks) {
+  applyCdkNag(app, { packs: [CompliancePack.AWS_SOLUTIONS] });
+  stacks.forEach((stack) => applyCommonSuppressions(stack));
+}
+```
+
+The power of this design is in what `app.ts` does _not_ do. It never calls `Vpc.fromLookup()` — each factory performs its own VPC discovery via a `vpcName` prop. It never parses environment variables — factories call their own typed config modules (`getNextJsConfigs()`, `getMonitoringConfigs()`). It never resolves CloudFront/Edge configuration, secrets, stack dependency ordering, or cross-region handling. All of that complexity lives inside the factories, where it belongs. The entry point is a structural router, not an orchestrator.
+
+{/* SCREENSHOT: The bin/app.ts file in VS Code showing the full 105-line content with clear section separators */}
+
+---
+
+## 5. Typed Configuration Modules
+
+### The Problem with Environment Variables
+
+The old pattern scattered `process.env` reads across stacks and `app.ts`. A typo in an
+environment variable name would silently produce `undefined`, which only manifested as a
+CloudFormation deployment failure.
+
+### The Solution: Per-Project Typed Config
+
+Each project has a dedicated config module that resolves _all_ synth-time values through a
+single typed interface:
+
+```mermaid
+flowchart LR
+    subgraph "Config Resolution Flow"
+        ENV["process.env<br/>(CI + local .env)"]
+        CDK["CDK Context<br/>(-c key=val)"]
+        CONFIG["Typed Config Module<br/>getNextJsConfigs(env)<br/>getMonitoringConfigs(env)"]
+        FACTORY["Factory Context<br/>(override fields)"]
+    end
+
+    ENV -->|"fromEnv('DOMAIN_NAME')"| CONFIG
+    CDK -->|"scope.node.tryGetContext()"| FACTORY
+    CONFIG --> FACTORY
+    FACTORY -->|"context.domainName ?? config.domainName"| STACK["Stack Props"]
+
+    style ENV fill:#0d47a1,color:#fff
+    style CDK fill:#0d47a1,color:#fff
+    style CONFIG fill:#e65100,color:#fff
+    style FACTORY fill:#4a148c,color:#fff
+    style STACK fill:#1b5e20,color:#fff
+```
+
+### Centralized SSM Paths (271 Lines)
+
+The `lib/config/ssm-paths.ts` module eliminates inline string concatenation and enforces
+4 namespace conventions:
+
+```typescript
+// lib/config/ssm-paths.ts — 4 SSM namespace conventions
+// Next.js:     /{namePrefix}/{environment}/...
+// Shared ECR:  /shared/ecr/{environment}/...
+// Shared VPC:  /shared/vpc/{environment}/...
+// Monitoring:  /monitoring-{environment}/...
+
+export function nextjsSsmPaths(
+  environment: Environment,
+  namePrefix: string = "nextjs",
+): NextjsSsmPaths {
+  const prefix = `/${namePrefix}/${environment}`;
+  return {
+    prefix,
+    dynamodbTableName: `${prefix}/dynamodb-table-name`,
+    assetsBucketName: `${prefix}/assets-bucket-name`,
+    albDnsName: `${prefix}/alb-dns-name`,
+    ecs: {
+      clusterName: `${prefix}/ecs/cluster-name`,
+      serviceName: `${prefix}/ecs/service-name`,
+    },
+    cloudmap: {
+      namespaceName: `${prefix}/cloudmap/namespace-name`,
+    },
+    cloudfront: {
+      wafArn: `${prefix}/cloudfront/waf-arn`,
+      distributionDomain: `${prefix}/cloudfront/distribution-domain`,
+    },
+    wildcard: `${prefix}/*`,
+  };
+}
+```
+
+Both the factory (which _writes_ SSM parameters) and consuming stacks (which _read_ them)
+import from the same module. A mismatched path is a **compile-time import error**, not a
+runtime discovery failure.
+
+### Environment Identity
+
+Each environment maps to a dedicated AWS account with hardcoded regions — _not_ derived from
+`CDK_DEFAULT_REGION`, which changes when the Edge deploy job configures credentials for
+`us-east-1`:
+
+```typescript
+// lib/config/environments.ts — Per-environment account + region
+const environments: Record<Environment, EnvironmentConfig> = {
+    [Environment.DEVELOPMENT]: { account: '771826808455', region: 'eu-west-1', edgeRegion: 'us-east-1' },
+    [Environment.STAGING]:     { account: '692738841103', region: 'eu-west-1', edgeRegion: 'us-east-1' },
+    [Environment.PRODUCTION]:  { account: '607700977986', region: 'eu-west-1', edgeRegion: 'us-east-1' },
+};
+
+// Utility functions for CDK env props
+export function cdkEnvironment(env: Environment): cdk.Environment { ... }
+export function cdkEdgeEnvironment(env: Environment): cdk.Environment { ... }
+export function environmentRemovalPolicy(env: Environment): cdk.RemovalPolicy { ... }
+export function resolveEnvironment(contextValue?: string): Environment { ... }
+// resolveEnvironment() handles short names: dev → development, prod → production
+```
+
+---
+
+## 6. Cross-Stack Communication: SSM vs CloudFormation Exports
+
+### The Architecture Decision
+
+The factory uses **SSM Parameter Store** for all cross-stack and cross-region communication:
+
+| Approach                       | Pros                                           | Cons                                            |
+| :----------------------------- | :--------------------------------------------- | :---------------------------------------------- |
+| CloudFormation Exports         | Strong dependency, CDK auto-generates          | Lock-in: can't delete exporting stack           |
+| SSM Parameters                 | Decoupled, cross-region, cross-account capable | Eventual consistency, no dependency enforcement |
+| Construct role ARNs from names | Avoids token resolution entirely               | Requires naming convention discipline           |
+
+### Pattern 1: Construct ARNs from Names
+
+Instead of passing `computeStack.taskRole` (which contains CDK tokens and creates implicit
+CloudFormation exports), the factory constructs ARNs from role names:
+
+```typescript
+// ❌ BAD: Creates implicit CloudFormation export
+taskRoleArn: computeStack.taskRole.roleArn,
+
+// ✅ GOOD: No token, no export, no coupling
+taskRoleArn: `arn:aws:iam::${env.account}:role/${computeStack.taskRoleName}`,
+```
+
+### Pattern 2: Cross-Region SSM Reads
+
+For values that must cross regions (like the ALB DNS name that the Edge stack needs in
+`us-east-1`), each stack writes to SSM in its own region, and the Edge stack reads using
+`AwsCustomResource` with an explicit region parameter:
+
+```typescript
+// Data stack writes to SSM (eu-west-1)
+new ssm.StringParameter(this, "AlbDnsParam", {
+  parameterName: ssmPaths.albDnsName,
+  stringValue: this.alb.dnsName,
+});
+
+// Edge stack reads from SSM (us-east-1 → eu-west-1 cross-region read)
+const albDns = new cr.AwsCustomResource(this, "AlbDnsLookup", {
+  onUpdate: {
+    service: "SSM",
+    action: "getParameter",
+    parameters: { Name: props.albDnsSsmPath },
+    region: props.albDnsSsmRegion, // Cross-region!
+  },
+});
+```
+
+### Pattern 3: VPC Discovery via `fromLookup()`
+
+Each stack performs its own `Vpc.fromLookup()` using the VPC Name tag — resolved at synth time
+via CDK context caching (`cdk.context.json`). No cross-stack exports needed:
+
+```typescript
+// Factory passes vpcName string, not VPC construct reference
+const computeStack = new MonitoringComputeStack(scope, this.stackId('Compute'), {
+    vpcName: `shared-vpc-${this.environment}`, // Resolved via Vpc.fromLookup()
+    ...
+});
+```
+
+---
+
+## 7. The "Oh No" Moment: SSM Parameter Race Condition
+
+### The Failure Mode
+
+During a deployment, I renamed a CDK construct that managed an `AwsCustomResource` for SSM
+parameter creation. CDK treats construct renaming as a **replace** — it deletes the old
+resource and creates a new one. The old resource's `onDelete` handler deleted the SSM
+parameter _before_ the new resource could create it:
+
+```mermaid
+stateDiagram-v2
+    [*] --> Stable: SSM parameter exists (old construct name)
+    Stable --> RenameDetected: Developer renames CDK construct ID
+    RenameDetected --> CDKGeneratesReplace: CDK treats ID change as resource replacement
+    CDKGeneratesReplace --> OldResourceDeleted: CloudFormation deletes old AwsCustomResource
+    OldResourceDeleted --> SSMParamGone: onDelete Lambda deletes SSM parameter ❌
+    SSMParamGone --> NewResourceCreates: New AwsCustomResource runs onUpdate
+    NewResourceCreates --> ParameterRestored: SSM parameter recreated ✅
+
+    note right of SSMParamGone
+      Window of vulnerability:
+      Edge stack reads SSM during
+      this gap = deployment failure.
+      CloudFormation exports would
+      have created a hard lock-in
+      that prevented even renaming.
+    end note
+```
+
+### Why SSM Was Still the Right Choice
+
+CloudFormation exports would have _prevented_ this entirely — but at the cost of permanent lock-in. You cannot delete a stack that has active exports, and you cannot modify the export value without first updating all consumers. SSM parameters are _intentionally_ decoupled: the parameter can be recreated manually with `aws ssm put-parameter`, it works cross-region (which CloudFormation exports cannot do), and stack refactoring requires no consumer changes.
+
+The fix was straightforward: manually recreate the parameter, then deploy. The lesson: always run `cdk diff` before deploying construct renames, and treat construct IDs as part of your infrastructure's public API.
+
+---
+
+## 8. CDK Aspects: Governance at Scale
+
+CDK Aspects are the pattern's enforcement layer. They visit every construct in the tree after
+synthesis, applying rules that individual stacks can't override.
+
+### TaggingAspect — Zero-Effort 5-Key Schema
+
+Every resource gets 5 tags without any construct or stack code:
+
+```typescript
+// bin/app.ts
+cdk.Aspects.of(app).add(
+  new TaggingAspect({
+    environment, // → Tag: "Environment"
+    project: projectConfig.namespace, // → Tag: "Project"
+    owner: process.env.PROJECT_OWNER ?? "Nelson Lamounier", // → Tag: "Owner"
+    costCenter: process.env.COST_CENTER, // → Tag: "CostCenter"
+  }),
+);
+// TaggingAspect also adds "ManagedBy: CDK" automatically
+```
+
+This is why no construct in `lib/common/` adds `ManagedBy`, `Environment`, or `Project` tags —
+the aspect handles them. Constructs only add domain-specific tags like `Component: Lambda` or
+`Purpose: AccessLogs`.
+
+### EnforceReadOnlyDynamoDbAspect — Security Boundary (202 Lines)
+
+The Next.js architecture has a clear read/write boundary:
+
+- **ECS Task Role** = read-only DynamoDB access (SSR queries)
+- **Lambda Execution Role** = read-write DynamoDB access (API mutations)
+
+The aspect inspects every `iam.CfnPolicy` construct, resolves its attached roles, and checks
+if any task role has **8 forbidden DynamoDB actions**:
+
+```typescript
+// lib/aspects/enforce-readonly-dynamodb-aspect.ts
+export const FORBIDDEN_DYNAMODB_ACTIONS: readonly string[] = [
+  // Write actions
+  "dynamodb:PutItem",
+  "dynamodb:DeleteItem",
+  "dynamodb:UpdateItem",
+  "dynamodb:BatchWriteItem",
+  // Admin actions (table management = CDK only, never runtime)
+  "dynamodb:CreateTable",
+  "dynamodb:DeleteTable",
+  "dynamodb:UpdateTable",
+  "dynamodb:CreateGlobalTable",
+] as const;
+
+export class EnforceReadOnlyDynamoDbAspect implements cdk.IAspect {
+  visit(node: IConstruct): void {
+    if (!(node instanceof iam.CfnPolicy)) return;
+
+    // Resolve roles array — handles { Ref: 'LogicalId' } tokens
+    const resolved = cdk.Stack.of(node).resolve(node.roles);
+
+    // Match role references against the pattern (default: 'taskrole')
+    const isTaskRolePolicy = resolved.some((role) => {
+      const roleId =
+        typeof role === "string"
+          ? role
+          : ((role as { Ref?: string })?.Ref ?? "");
+      return roleId.toLowerCase().includes(this.roleNamePattern);
+    });
+
+    if (isTaskRolePolicy) {
+      this.inspectPolicyDocument(node, node.policyDocument);
+    }
+  }
+}
+```
+
+This catches drift _before deployment_. If someone accidentally grants write access to the
+task role, CDK synthesis fails with a clear error message — not a production incident.
+
+### CDK-Nag — AwsSolutions Compliance
+
+CDK-Nag runs the `AwsSolutions` rule pack against all stacks at synthesis time:
+
+```typescript
+// bin/app.ts
+if (enableNagChecks) {
+  applyCdkNag(app, {
+    packs: [CompliancePack.AWS_SOLUTIONS],
+    verbose: false,
+    reports: true,
+  });
+  stacks.forEach((stack) => applyCommonSuppressions(stack));
+}
+```
+
+The `applyCommonSuppressions()` function documents every suppression with a rationale — zero
+suppressions are allowed without explanation. CDK-Nag supports 4 compliance packs: AWS
+Solutions, HIPAA, NIST 800-53, and PCI DSS.
+
+---
+
+## 9. The Security Group Hierarchy: L3 Inheritance in Action
+
+The security group design is the clearest example of how L3 constructs compose L2 primitives
+into a domain model:
+
+```mermaid
+flowchart TD
+    Base["BaseSecurityGroupConstruct<br/>No default rules<br/>Used for: ALB, standalone SGs"]
+    ECS["EcsSecurityGroupConstruct<br/>+ Port 9100 from Monitoring SG<br/>+ Node Exporter self-ref<br/>+ IPv6 egress<br/>Used for: ECS instances"]
+    Task["NextJsTaskSecurityGroupConstruct<br/>+ Port 3000 from ALB SG<br/>+ HTTPS + HTTP egress only<br/>+ IPv6 egress<br/>Used for: awsvpc task ENIs"]
+    Generic["SecurityGroupConstruct<br/>+ Configurable ports<br/>+ Optional trusted CIDRs<br/>+ Self-reference per port<br/>Used for: Monitoring EC2"]
+
+    Base --> ECS
+    Base --> Task
+    Base --> Generic
+
+    style Base fill:#0d47a1,color:#fff
+    style ECS fill:#1b5e20,color:#fff
+    style Task fill:#e65100,color:#fff
+    style Generic fill:#4a148c,color:#fff
+```
+
+| Construct | Inbound                       | Outbound                 | Use Case                             |
+| :-------- | :---------------------------- | :----------------------- | :----------------------------------- |
+| `Base`    | None                          | All (configurable)       | ALB, custom SGs                      |
+| `ECS`     | Port 9100 from Monitoring SG  | All + IPv6               | ECS EC2 instances                    |
+| `Task`    | Port 3000 from ALB SG         | HTTPS + HTTP only + IPv6 | Next.js tasks (awsvpc)               |
+| `Generic` | Configurable ports from CIDRs | All + IPv6               | Monitoring EC2 (Grafana, Prometheus) |
+
+:::tip The Key Design Decision — Restricted Egress for Tasks
+`NextJsTaskSecurityGroupConstruct` sets `allowAllOutbound: false` and explicitly adds only
+HTTPS (443) and HTTP (80) egress. This means Next.js tasks can reach DynamoDB and S3 via HTTPS,
+but cannot make arbitrary outbound connections — preventing a compromised container from
+establishing C2 connections.
+:::
+
+---
+
+## 10. FinOps & Maintenance Impact
+
+### Cost Analysis
+
+| Component                      | Monthly Cost | Notes                                   |
+| :----------------------------- | :----------- | :-------------------------------------- |
+| CDK synthesis (CI/CD)          | $0           | Runs on GitHub Actions free tier        |
+| Factory pattern overhead       | $0           | Zero runtime cost — synthesis-time only |
+| CDK-Nag compliance checks      | $0           | Synthesis-time only                     |
+| SSM Parameters (standard tier) | $0           | Free for standard parameters            |
+| CDK Aspects (governance)       | $0           | Synthesis-time only                     |
+| **Total incremental cost**     | **$0/mo**    | All costs are in developer time         |
+
+### ROI
+
+The factory pattern eliminated roughly 2,000 lines of duplicate construct code that previously existed across separate CDK apps. Typed config modules eliminated configuration drift between environments entirely — a misspelled environment variable is now a compile-time error, not a deployment failure. The time to deploy a new stack dropped from approximately 2 hours (manual wiring, dependency ordering, SSM path setup) to 30 minutes (add stack to factory, add config entry). CDK-Nag and the DynamoDB read-only aspect have caught 3 security regressions in CI that would have reached production under the old approach. Perhaps most visibly, `app.ts` shrank from ~250 lines of context parsing, VPC lookup, and secret resolution to 105 lines of pure structural routing — a 58% reduction.
+
+### Maintenance Burden
+
+This setup requires roughly 1–2 hours of maintenance per month. Construct updates are centralized in `lib/common/`, so updating one L3 construct automatically benefits every stack that uses it. CDK-Nag catches compliance issues at synthesis time, before they reach any environment. Adding a new stack is additive — you add it to the factory's `createAllStacks()` method — rather than invasive. The security group hierarchy means new workloads inherit hardened defaults without any explicit security configuration.
+
+---
+
+## 11. What Needs Work — and What's Next
+
+### What's Working
+
+| Pattern                             |   Status   | Impact                                   |
+| :---------------------------------- | :--------: | :--------------------------------------- |
+| 31-File L3 Construct Library        | ✅ Shipped | Hardened defaults, DRY across 4 projects |
+| Generic `IProjectFactory<TContext>` | ✅ Shipped | Type-safe context per project            |
+| Strategy Pattern Registry           | ✅ Shipped | 4 projects from single entry point       |
+| Typed Config Modules                | ✅ Shipped | `context > config > default` cascading   |
+| CDK Aspects (3 aspects)             | ✅ Shipped | Tagging, compliance, DynamoDB guard      |
+| SSM Parameter Paths (271 lines)     | ✅ Shipped | Cross-stack + cross-region discovery     |
+| 105-Line Entry Point                | ✅ Shipped | Factory owns everything                  |
+| Security Group Hierarchy            | ✅ Shipped | 4-level inheritance with least-privilege |
+
+### Remaining Gaps and Roadmap
+
+| Improvement                                                  | Effort  | Impact                              | Status      |
+| :----------------------------------------------------------- | :------ | :---------------------------------- | :---------- |
+| Remove `[key: string]: unknown` from `ProjectFactoryContext` | 1 hour  | Full type safety, no escape hatch   | Planned     |
+| CDK Pipelines migration for self-mutating deployments        | 1 day   | Eliminate manual deployment scripts | Evaluating  |
+| Contract tests for SSM path conventions                      | 3 hours | Catch mismatched paths at test time | Planned     |
+| Cloud Development Kit for Terraform (CDKTF) experiment       | 2 days  | Multi-cloud construct reuse         | Researching |
+
+The direction is clear: the factory pattern's _structure_ (generic interfaces, typed config modules, strategy pattern registry) is stable and extensible. The next improvements target the remaining escape hatches — removing the `[key: string]: unknown` index signature from `ProjectFactoryContext` will close the last type-safety gap, and contract tests for SSM paths will catch naming mismatches at test time instead of deployment time. The construct library continues to grow as new workloads are added, and each new L3 construct benefits every project that uses it.
+
+> **The construct library is the internal developer platform. The factory pattern is the
+> deployment API. CDK Aspects are the policy engine. Together, they let one engineer manage
+> infrastructure that usually requires a team — not by working harder, but by encoding
+> decisions into types, defaults, and compile-time validation.**
+
+---
+
+## 12. Related Files
+
+| File                                                     | Description                                                                    |
+| :------------------------------------------------------- | :----------------------------------------------------------------------------- |
+| `bin/app.ts`                                             | 105-line entry point — context parsing, factory delegation, aspect application |
+| `lib/factories/project-interfaces.ts`                    | Generic `IProjectFactory<TContext>`, `ProjectStackFamily` interfaces           |
+| `lib/factories/project-registry.ts`                      | Strategy pattern registry with `registerProjectFactory()` escape hatch         |
+| `lib/projects/nextjs/factory.ts`                         | Next.js factory — 6 stacks, 370 lines, `ConsolidatedFactoryContext`            |
+| `lib/projects/monitoring/factory.ts`                     | Monitoring factory — 3 stacks, 214 lines, Grafana password cascading           |
+| `lib/projects/shared/factory.ts`                         | Shared factory — 1 VPC stack, 73 lines                                         |
+| `lib/projects/org/factory.ts`                            | Org factory — 1 DNS role stack, 157 lines, CDK context parsing                 |
+| `lib/config/environments.ts`                             | Per-account config, `cdkEdgeEnvironment()`, `resolveEnvironment()`             |
+| `lib/config/ssm-paths.ts`                                | 271-line centralized SSM paths with 4 namespace conventions                    |
+| `lib/config/projects.ts`                                 | `Project` enum, `ProjectConfig` metadata, `requiresSharedVpc` flags            |
+| `lib/config/defaults.ts`                                 | 206 lines of centralized constants (ports, volumes, versions)                  |
+| `lib/aspects/tagging-aspect.ts`                          | 5-key tag schema applied to all resources                                      |
+| `lib/aspects/enforce-readonly-dynamodb-aspect.ts`        | 202-line IAM policy inspector (8 forbidden actions)                            |
+| `lib/aspects/cdk-nag-aspect.ts`                          | CDK-Nag with 4 compliance packs + documented suppressions                      |
+| `lib/common/compute/constructs/lambda-function.ts`       | L3 Lambda — bundling, log groups, IAM, DLQ                                     |
+| `lib/common/security/security-group.ts`                  | 4-level SG hierarchy (Base → ECS → Task → Generic)                             |
+| `lib/common/security/waf-rules.ts`                       | Reusable WAF rule builder wrapping L1 CfnWebACL                                |
+| `lib/common/networking/elb/application-load-balancer.ts` | L3 ALB — 8+ helper methods                                                     |
+| `lib/common/networking/cloudfront.ts`                    | L3 CloudFront — multi-origin, cache policies                                   |
+| `lib/common/storage/dynamodb-table.ts`                   | L3 DynamoDB — GSI conventions, encryption                                      |
+
+---
+
+## 13. Tech Stack Summary
+
+| Layer                  | Tool                            | Role                                            |
+| :--------------------- | :------------------------------ | :---------------------------------------------- |
+| Infrastructure as Code | AWS CDK v2 (TypeScript)         | Constructs, stacks, aspects, synthesis          |
+| L1 Constructs          | `wafv2.CfnWebACL`               | WAF rules (no L2 available as of 2026)          |
+| L2 Constructs          | `ec2`, `elbv2`, `lambda`, `s3`  | Core AWS resources with grant methods           |
+| L3 Constructs          | 31-file custom library          | Hardened blueprints with validated defaults     |
+| Design Pattern         | Factory + Strategy              | Project-specific stack creation from single app |
+| Config Modules         | TypeScript + `fromEnv()`        | Typed, environment-specific configuration       |
+| Cross-Stack            | SSM Parameter Store (271 lines) | Cross-stack + cross-region discovery            |
+| Governance             | CDK Aspects (3 aspects)         | Tagging, DynamoDB guard, compliance             |
+| Compliance             | CDK-Nag (AwsSolutions)          | Security rule validation at synthesis time      |
+| CI/CD                  | GitHub Actions                  | Synthesize, scan, deploy per-stack              |
+| Testing                | Jest + CDK assertions           | 26 test files, factory integration tests        |
