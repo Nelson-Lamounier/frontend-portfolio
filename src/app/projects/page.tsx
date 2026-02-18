@@ -2,11 +2,7 @@ import { type Metadata } from 'next'
 
 import { SimpleLayout } from '@/components/SimpleLayout'
 import { ProjectsList } from '@/components/ProjectsList'
-import logoAnimaginary from '@/images/logos/animaginary.svg'
-import logoCosmos from '@/images/logos/cosmos.svg'
-import logoHelioStream from '@/images/logos/helio-stream.svg'
-import logoOpenShuttle from '@/images/logos/open-shuttle.svg'
-import logoPlanetaria from '@/images/logos/planetaria.svg'
+import logoAws from '@/images/logos/aws.png'
 
 import {
   Terminal,
@@ -15,94 +11,133 @@ import {
   Database,
   Shield,
   GitBranch,
+  Award,
 } from 'lucide-react'
 
 const projects = [
   {
     id: 1,
-    title: 'Kubernetes GitOps Pipeline',
+    title: 'Enterprise CI/CD Pipeline',
     description:
-      'Automated deployment pipeline using ArgoCD and Jenkins. Implements a complete GitOps workflow for microservices, reducing deployment time by 40%.',
-    tags: ['Kubernetes', 'ArgoCD', 'Jenkins', 'Helm', 'AWS'],
+      '19 workflow files deploying 4 CDK projects across 3 AWS accounts with OIDC federation, SLSA provenance tagging, environment-scoped Checkov scanning, and auto-rollback — zero long-lived credentials.',
+    tags: ['GitHub Actions', 'CDK', 'OIDC', 'SLSA'],
     category: 'CI/CD',
-    link: { href: '#', label: 'github.com' },
-    icon: <Cloud className="h-8 w-8 text-blue-400" />,
-    logo: logoPlanetaria,
+    link: {
+      href: '/articles/enterprise-cicd-pipeline-github-actions',
+      label: 'Read article',
+    },
+    icon: <GitBranch className="h-8 w-8 text-orange-400" />,
+    logo: logoAws,
   },
   {
     id: 2,
-    title: 'AWS CloudFormation Infrastructure as Code',
+    title: 'CDK Project Factory Pattern',
     description:
-      'Modular Terraform architecture to provision a high-availability VPC on AWS, including public/private subnets, NAT gateways, and an ALB.',
-    tags: ['CloudFormation', 'AWS', 'HCL', 'Networking'],
+      'A construct-to-factory pipeline managing 4 projects and 11 stacks from a single 105-line entry point — with typed config modules, SSM-based cross-stack discovery, and a 31-file L3 construct library.',
+    tags: ['CDK', 'TypeScript', 'Factory Pattern', 'L3 Constructs'],
     category: 'Infrastructure',
-    link: { href: '#', label: 'github.com' },
+    link: {
+      href: '/articles/cdk-project-factory-pattern',
+      label: 'Read article',
+    },
     icon: <Server className="h-8 w-8 text-purple-400" />,
-    logo: logoAnimaginary,
+    logo: logoAws,
   },
   {
     id: 3,
-    title: 'Serverless Log Monitoring',
+    title: 'DevSecOps Pipeline',
     description:
-      'Centralized logging solution using ELK Stack (Elasticsearch, Logstash, Kibana) and Filebeat, deploying automatically via Ansible roles.',
-    tags: ['ELK Stack', 'Ansible', 'Linux', 'Python'],
-    category: 'Monitoring',
-    link: { href: '#', label: 'github.com' },
-    icon: <Terminal className="h-8 w-8 text-green-400" />,
-    logo: logoHelioStream,
+      '33 custom Checkov rules across 26 Python files, CDK-Nag with 4 compliance frameworks, SARIF integration with GitHub Security — catching IMDSv1 bugs before they reach CloudFormation.',
+    tags: ['Checkov', 'CDK-Nag', 'SARIF', 'Python'],
+    category: 'Security',
+    link: {
+      href: '/articles/devsecops-pipeline-checkov-cdk-nag',
+      label: 'Read article',
+    },
+    icon: <Shield className="h-8 w-8 text-red-400" />,
+    logo: logoAws,
   },
   {
     id: 4,
-    title: 'Container Security Scanner',
+    title: 'Direct DynamoDB X-Ray Tracing',
     description:
-      'Integrated Trivy and Clair into a GitHub Actions pipeline to scan Docker images for vulnerabilities before pushing to ECR.',
-    tags: ['Docker', 'Security', 'GitHub Actions', 'Bash'],
-    category: 'Security',
-    link: { href: '#', label: 'github.com' },
-    icon: <Shield className="h-8 w-8 text-red-400" />,
-    logo: logoCosmos,
+      'Eliminated a 5-hop API round-trip with sub-5ms VPC Gateway Endpoint reads, OpenTelemetry instrumentation, in-memory TTL cache, and file-based fallback — at $0/month incremental cost.',
+    tags: ['DynamoDB', 'X-Ray', 'OpenTelemetry', 'VPC'],
+    category: 'Infrastructure',
+    link: {
+      href: '/articles/direct-dynamodb-xray-instrumentation',
+      label: 'Read article',
+    },
+    icon: <Database className="h-8 w-8 text-yellow-400" />,
+    logo: logoAws,
   },
   {
     id: 5,
-    title: 'Multi-Cloud Disaster Recovery',
+    title: 'Full-Stack Observability',
     description:
-      'Automated failover scripts using Python Boto3 and AWS CLI to sync S3 buckets to Azure Blob Storage for disaster recovery.',
-    tags: ['Python', 'Azure', 'AWS', 'Scripting'],
-    category: 'Infrastructure',
-    link: { href: '#', label: 'github.com' },
-    icon: <Database className="h-8 w-8 text-yellow-400" />,
-    logo: logoOpenShuttle,
+      '7 Docker containers on a single EC2 instance — Prometheus, Grafana, Loki, Tempo — with Cloud Map DNS service discovery, 9 dashboards from S3, and zero public ingress.',
+    tags: ['Prometheus', 'Grafana', 'Loki', 'Tempo'],
+    category: 'Monitoring',
+    link: {
+      href: '/articles/full-stack-observability',
+      label: 'Read article',
+    },
+    icon: <Terminal className="h-8 w-8 text-green-400" />,
+    logo: logoAws,
   },
   {
     id: 6,
-    title: 'Microservices Service Mesh',
+    title: 'Next.js ECS CloudFront Deployment',
     description:
-      'Implementation of Istio service mesh for traffic splitting, canary deployments, and observability across 15+ microservices.',
-    tags: ['Istio', 'Golang', 'Prometheus', 'Grafana'],
-    category: 'Monitoring',
-    link: { href: '#', label: 'github.com' },
-    icon: <GitBranch className="h-8 w-8 text-orange-400" />,
-    logo: logoPlanetaria,
+      'A 6-stack CDK architecture deploying containerized Next.js across ECS on EC2, CloudFront with WAF, API Gateway with Lambda, DynamoDB, and S3 — with auto-deploy from ECR pushes and deployment circuit breakers.',
+    tags: ['ECS', 'CloudFront', 'API Gateway', 'WAF'],
+    category: 'Infrastructure',
+    link: {
+      href: '/articles/nextjs-ecs-cloudfront-aws-deployment',
+      label: 'Read article',
+    },
+    icon: <Cloud className="h-8 w-8 text-blue-400" />,
+    logo: logoAws,
+  },
+  {
+    id: 7,
+    title: 'AWS DevOps Pro Certification',
+    description:
+      'From scoring 726 (24 points short) to passing — a refined exam strategy covering multi-service architectures, deployment decision trees, and the SPIDER elimination method.',
+    tags: ['AWS', 'Certification', 'DevOps Professional'],
+    category: 'Certification',
+    link: {
+      href: '/articles/aws-devops-pro-exam-failure-to-success',
+      label: 'Read article',
+    },
+    icon: <Award className="h-8 w-8 text-teal-400" />,
+    logo: logoAws,
   },
 ]
 
-const categories = ['All', 'CI/CD', 'Infrastructure', 'Monitoring', 'Security']
+const categories = [
+  'All',
+  'Infrastructure',
+  'CI/CD',
+  'Security',
+  'Monitoring',
+  'Certification',
+]
 
 export const metadata: Metadata = {
   title:
-    'Cloud Infrastructure & DevOps Portfolio | Kubernetes, CloudFormation & CI/CD',
+    'Cloud Infrastructure & DevOps Portfolio | AWS CDK, CI/CD & Observability',
   description:
-    'Explore DevOps projects featuring Kubernetes GitOps, CloudFormation IaC, and automated security pipelines. See how I build scalable, self-healing cloud infrastructure.',
+    'Explore production DevOps projects: CDK factory patterns, CI/CD pipelines with OIDC, DevSecOps with Checkov, full-stack observability, and containerized Next.js on ECS — all built as a solo engineer.',
 }
 
 export default function Projects() {
   return (
     <SimpleLayout
       title="Engineering Scalable Cloud Infrastructure"
-      intro="Welcome to my technical showcase. Here, I break down complex infrastructure challenges into automated, resilient solutions. From architecting self-healing Kubernetes clusters to designing multi-cloud disaster recovery strategies, these projects demonstrate my approach to modern DevOps: Infrastructure as Code, security-first automation, and observability at scale."
+      intro="Welcome to my technical showcase. Here, I break down complex infrastructure challenges into automated, resilient solutions. From architecting multi-account CI/CD pipelines to designing full-stack observability platforms, these projects demonstrate my approach to modern DevOps: Infrastructure as Code, security-first automation, and observability at scale."
     >
       <ProjectsList projects={projects} categories={categories} />
     </SimpleLayout>
   )
 }
-// "text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-purple-500"

@@ -44,7 +44,7 @@ const STAGES: Stage[] = [
 
 function StageBubble({ stage }: { stage: Stage }) {
   return (
-    <div className="relative min-h-[170px] rounded-2xl border border-zinc-200/70 bg-white/95 px-5 py-4 shadow-sm shadow-zinc-800/5 backdrop-blur dark:border-zinc-700/60 dark:bg-zinc-900/70">
+    <div className="relative min-h-[140px] rounded-2xl border border-zinc-200/70 bg-white/95 px-4 py-3 shadow-sm shadow-zinc-800/5 backdrop-blur dark:border-zinc-700/60 dark:bg-zinc-900/70">
       {/* little pointer (top) */}
       <div
         aria-hidden="true"
@@ -107,7 +107,7 @@ function StageCard({
         type="button"
         onClick={onSelect}
         className={[
-          'group w-full rounded-2xl border p-4 text-left shadow-sm shadow-zinc-800/5 backdrop-blur transition',
+          'group w-full rounded-2xl border p-3 text-left shadow-sm shadow-zinc-800/5 backdrop-blur transition',
           'border-zinc-200/70 bg-white/70 hover:bg-white dark:border-zinc-700/60 dark:bg-zinc-900/40 dark:hover:bg-zinc-900/55',
           'focus:outline-none focus-visible:ring-2 focus-visible:ring-teal-500/40 dark:focus-visible:ring-teal-400/40',
         ].join(' ')}
@@ -117,7 +117,7 @@ function StageCard({
           <motion.div
             aria-hidden="true"
             layoutId="activeStageGlow"
-            className="pointer-events-none absolute inset-0 rounded-2xl ring-2 ring-teal-500/35 dark:ring-teal-400/35"
+            className="pointer-events-none absolute inset-0 rounded-2xl border-2 border-teal-500/35 dark:border-teal-400/35"
             transition={reduce ? undefined : { type: 'spring', stiffness: 400, damping: 40 }}
           />
         ) : null}
@@ -135,7 +135,7 @@ function StageCard({
           <motion.span
             aria-hidden="true"
             className={[
-              'mt-0.5 inline-flex h-2.5 w-2.5 flex-none rounded-full ring-4 transition',
+              'mt-0.5 inline-flex h-2.5 w-2.5 flex-none rounded-full ring-2 transition',
               isActive
                 ? 'bg-teal-500 ring-teal-500/15 dark:bg-teal-400 dark:ring-teal-400/15'
                 : 'bg-zinc-400/70 ring-zinc-400/10 dark:bg-zinc-500/70 dark:ring-zinc-500/10',
@@ -144,8 +144,8 @@ function StageCard({
               reduce || !isActive
                 ? undefined
                 : {
-                    opacity: [0.5, 1, 0.5],
-                    scale: [0.95, 1.15, 0.95],
+                    opacity: [0.6, 1, 0.6],
+                    scale: [0.97, 1.05, 0.97],
                   }
             }
             transition={
@@ -181,9 +181,13 @@ export function DevOpsPipelineAnimation() {
     const cardRect = card.getBoundingClientRect()
     const cardCenter = cardRect.left + cardRect.width / 2
 
-    // Bubble is absolutely positioned within the track container.
-    // We translate it so its center aligns with the active card's center.
-    setBubbleX(cardCenter - trackRect.left)
+    // Bubble is absolutely positioned within the bubble-row container.
+    // We clamp so it never extends past the container edges.
+    const rawX = cardCenter - trackRect.left
+    const bubbleHalf = 192 // half of max-w-[24rem] ≈ 384/2
+    const minX = bubbleHalf
+    const maxX = trackRect.width - bubbleHalf
+    setBubbleX(Math.max(minX, Math.min(maxX, rawX)))
   }, [activeIndex])
 
   React.useEffect(() => {
@@ -260,10 +264,10 @@ export function DevOpsPipelineAnimation() {
             </div>
           </div>
 
-          <div className="mt-6">
+          <div className="mt-6 overflow-hidden">
             {/* Desktop: horizontal pipeline */}
             <div className="hidden lg:block">
-              <div ref={desktopTrackRef} className="relative">
+              <div ref={desktopTrackRef} className="relative overflow-hidden">
                 {/* Track */}
                 <div
                   aria-hidden="true"
@@ -275,13 +279,9 @@ export function DevOpsPipelineAnimation() {
                   aria-hidden="true"
                   className="absolute top-10 h-3 w-3 -translate-y-1/2 rounded-full bg-teal-500 shadow-[0_0_0_6px_rgba(20,184,166,0.10)] dark:shadow-[0_0_0_6px_rgba(45,212,191,0.12)]"
                   initial={false}
-                  animate={
-                    reduce
-                      ? { left: `${6 + activeIndex * 24}%` }
-                      : {
-                          left: `${6 + activeIndex * 24}%`,
-                        }
-                  }
+                  animate={{
+                    left: `${((activeIndex + 0.5) / STAGES.length) * 100}%`,
+                  }}
                   transition={
                     reduce
                       ? undefined
@@ -300,7 +300,7 @@ export function DevOpsPipelineAnimation() {
                       ref={(el) => {
                         desktopCardRefs.current[i] = el
                       }}
-                      className="relative z-10 w-52"
+                      className="relative z-10 min-w-0 flex-1"
                     >
                       <StageCard
                         stage={stage}
@@ -318,15 +318,15 @@ export function DevOpsPipelineAnimation() {
 
               {/* Bubble row BELOW the pipeline (moves with the active stage) */}
               <div className="mt-4">
-                <div className="relative min-h-[130px] overflow-visible">
+                <div className="relative min-h-[170px] overflow-hidden">
                   {/* Keep the moving bubble mounted so it doesn't "restart from left" */}
                   <motion.div
                     className="absolute top-0"
                     style={{
                       left: bubbleX,
                       transform: 'translateX(-50%)',
-                      width: 'min(28rem, calc(100vw - 6rem))',
-                      maxWidth: '28rem',
+                      width: 'min(24rem, 90%)',
+                      maxWidth: '24rem',
                     }}
                     animate={
                       reduce
@@ -373,13 +373,9 @@ export function DevOpsPipelineAnimation() {
                   aria-hidden="true"
                   className="absolute left-[17px] h-3 w-3 rounded-full bg-teal-500 shadow-[0_0_0_6px_rgba(20,184,166,0.10)] dark:shadow-[0_0_0_6px_rgba(45,212,191,0.12)]"
                   initial={false}
-                  animate={
-                    reduce
-                      ? { top: `${6 + activeIndex * 24}%` }
-                      : {
-                          top: `${6 + activeIndex * 24}%`,
-                        }
-                  }
+                  animate={{
+                    top: `${((activeIndex + 0.5) / STAGES.length) * 100}%`,
+                  }}
                   transition={
                     reduce
                       ? undefined
