@@ -1,228 +1,203 @@
 /**
- * ResumeDocument — Presentational component for PDF capture.
+ * ResumeDocument — Presentational component for resume rendering.
  *
- * Uses INLINE STYLES exclusively (html2canvas does not reliably
- * capture Tailwind utility classes or external stylesheets).
+ * Single-column, ATS-friendly layout following 2026 industry standards
+ * for DevOps / Cloud Engineer career-transition resumes.
  *
- * Layout: two-column, A4 aspect ratio (210 × 297 mm).
- *   Left  — dark sidebar with contact, skills, certifications, education
- *   Right — white main area with summary, experience, projects
+ * Uses Tailwind CSS for on-screen rendering.
+ * The PDF capture in ResumeDownloadButton.tsx mirrors this layout
+ * with inline styles (html2canvas cannot capture Tailwind).
+ *
+ * Color palette: neutral slate two-tone (slate-800 headings, white bg).
  */
 
 import type { ResumeData } from '@/lib/resume-data'
-
-/* ─── colour tokens ─── */
-const SIDEBAR_BG = '#18181b' // zinc-900
-const SIDEBAR_TEXT = '#d4d4d8' // zinc-300
-const SIDEBAR_HEADING = '#ffffff'
-const ACCENT = '#14b8a6' // teal-500
-const MAIN_BG = '#ffffff'
-const MAIN_TEXT = '#3f3f46' // zinc-700
-const MAIN_HEADING = '#18181b' // zinc-900
-const MUTED = '#71717a' // zinc-500
-
-/* ─── inline style helpers ─── */
-const sidebarSection: React.CSSProperties = {
-  marginBottom: 22,
-}
-
-const sidebarHeading: React.CSSProperties = {
-  fontSize: 11,
-  fontWeight: 700,
-  textTransform: 'uppercase' as const,
-  letterSpacing: 1.5,
-  color: ACCENT,
-  marginBottom: 10,
-  borderBottom: `1px solid ${ACCENT}`,
-  paddingBottom: 4,
-}
-
-const mainSectionHeading: React.CSSProperties = {
-  fontSize: 13,
-  fontWeight: 700,
-  textTransform: 'uppercase' as const,
-  letterSpacing: 1.5,
-  color: ACCENT,
-  marginBottom: 10,
-  borderBottom: `2px solid ${ACCENT}`,
-  paddingBottom: 4,
-}
 
 interface ResumeDocumentProps {
   data: ResumeData
 }
 
 export function ResumeDocument({ data }: ResumeDocumentProps) {
-  const { profile, summary, experience, certifications, education, projects } = data
+  const {
+    profile,
+    summary,
+    skills,
+    certifications,
+    experience,
+    projects,
+    education,
+  } = data
 
   return (
-    <div
-      style={{
-        width: 794, // A4 @ 96 DPI
-        minHeight: 1123,
-        display: 'flex',
-        fontFamily: "'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif",
-        background: MAIN_BG,
-        color: MAIN_TEXT,
-        lineHeight: 1.45,
-      }}
-    >
-      {/* ──────── SIDEBAR ──────── */}
-      <div
-        style={{
-          width: 260,
-          background: SIDEBAR_BG,
-          color: SIDEBAR_TEXT,
-          padding: '30px 22px',
-          flexShrink: 0,
-        }}
-      >
-        {/* Name & Title */}
-        <div style={{ marginBottom: 24, textAlign: 'center' as const }}>
-          <div
-            style={{
-              width: 80,
-              height: 80,
-              borderRadius: '50%',
-              background: ACCENT,
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              margin: '0 auto 12px',
-              fontSize: 28,
-              fontWeight: 700,
-              color: '#fff',
-            }}
-          >
-            {profile.name
-              .split(' ')
-              .map((n) => n[0])
-              .join('')}
-          </div>
-          <h1 style={{ fontSize: 18, fontWeight: 700, color: SIDEBAR_HEADING, margin: 0 }}>
-            {profile.name}
-          </h1>
-          <p style={{ fontSize: 10, color: ACCENT, marginTop: 4, fontWeight: 600 }}>
-            {profile.title}
+    <div className="mx-auto w-[794px] min-h-[1123px] bg-white text-slate-700 font-['Inter',_'Segoe_UI',_Roboto,_sans-serif] leading-snug">
+      {/* ──── HEADER ──── */}
+      <header className="px-10 pt-8 pb-5 border-b-2 border-slate-800">
+        <h1 className="text-[22px] font-bold tracking-tight text-slate-800">
+          {profile.name}
+        </h1>
+        <p className="mt-0.5 text-[12px] font-semibold text-slate-500 tracking-wide uppercase">
+          {profile.title}
+        </p>
+        <div className="mt-2.5 flex flex-wrap items-center gap-x-1 text-[9px] text-slate-500">
+          <span>{profile.location}</span>
+          <span className="text-slate-300">|</span>
+          <span>{profile.email}</span>
+          <span className="text-slate-300">|</span>
+          <span>{profile.linkedin}</span>
+          <span className="text-slate-300">|</span>
+          <span>{profile.github}</span>
+          <span className="text-slate-300">|</span>
+          <span>{profile.website}</span>
+        </div>
+      </header>
+
+      <div className="px-10 py-5 space-y-5">
+        {/* ──── PROFESSIONAL SUMMARY ──── */}
+        <section>
+          <SectionHeading>Professional Summary</SectionHeading>
+          <p className="text-[9.5px] leading-relaxed text-slate-700">
+            {summary}
           </p>
-        </div>
+        </section>
 
-        {/* Contact */}
-        <div style={sidebarSection}>
-          <h2 style={sidebarHeading}>Contact</h2>
-          {[
-            { icon: '📍', text: profile.location },
-            { icon: '✉️', text: profile.email },
-            { icon: '🔗', text: profile.linkedin },
-            { icon: '💻', text: profile.github },
-            { icon: '🌐', text: profile.website },
-          ].map((item, i) => (
-            <div key={i} style={{ fontSize: 9, marginBottom: 5, display: 'flex', gap: 6 }}>
-              <span>{item.icon}</span>
-              <span>{item.text}</span>
-            </div>
-          ))}
-        </div>
-
-
-
-        {/* Certifications */}
-        <div style={sidebarSection}>
-          <h2 style={sidebarHeading}>Certifications</h2>
-          {certifications.map((cert) => (
-            <div key={cert.name} style={{ marginBottom: 8 }}>
-              <div style={{ fontSize: 9, fontWeight: 600, color: SIDEBAR_HEADING }}>
-                {cert.name}
-              </div>
-              <div style={{ fontSize: 8, color: MUTED }}>
-                {cert.issuer} · {cert.year}
-              </div>
-            </div>
-          ))}
-        </div>
-
-        {/* Education */}
-        <div style={sidebarSection}>
-          <h2 style={sidebarHeading}>Education</h2>
-          {education.map((edu) => (
-            <div key={edu.degree} style={{ marginBottom: 8 }}>
-              <div style={{ fontSize: 9, fontWeight: 600, color: SIDEBAR_HEADING }}>
-                {edu.degree}
-              </div>
-              <div style={{ fontSize: 8, color: MUTED }}>{edu.institution}</div>
-              <div style={{ fontSize: 8, color: MUTED }}>{edu.period}</div>
-              {edu.details && (
-                <div style={{ fontSize: 8, color: SIDEBAR_TEXT, marginTop: 2 }}>{edu.details}</div>
-              )}
-            </div>
-          ))}
-        </div>
-      </div>
-
-      {/* ──────── MAIN CONTENT ──────── */}
-      <div style={{ flex: 1, padding: '30px 28px' }}>
-        {/* Summary */}
-        <div style={{ marginBottom: 20 }}>
-          <h2 style={mainSectionHeading}>Professional Summary</h2>
-          <p style={{ fontSize: 10, lineHeight: 1.6, color: MAIN_TEXT, margin: 0 }}>{summary}</p>
-        </div>
-
-        {/* Experience */}
-        <div style={{ marginBottom: 20 }}>
-          <h2 style={mainSectionHeading}>Professional Experience</h2>
-          {experience.map((exp) => (
-            <div key={`${exp.company}-${exp.period}`} style={{ marginBottom: 14 }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
-                <div>
-                  <span style={{ fontSize: 11, fontWeight: 700, color: MAIN_HEADING }}>
-                    {exp.title}
-                  </span>
-                  <span style={{ fontSize: 10, color: MUTED }}> — {exp.company}</span>
+        {/* ──── TECHNICAL SKILLS ──── */}
+        {skills && skills.length > 0 && (
+          <section>
+            <SectionHeading>Technical Skills</SectionHeading>
+            <div className="grid grid-cols-2 gap-x-6 gap-y-3">
+              {skills.map((group) => (
+                <div key={group.category}>
+                  <h3 className="text-[9px] font-bold text-slate-800 mb-0.5">
+                    {group.category}
+                  </h3>
+                  <p className="text-[8.5px] leading-relaxed text-slate-600">
+                    {group.skills.join(' · ')}
+                  </p>
                 </div>
-                <span style={{ fontSize: 9, color: MUTED, flexShrink: 0 }}>{exp.period}</span>
-              </div>
-              <ul
-                style={{
-                  margin: '4px 0 0 0',
-                  paddingLeft: 14,
-                  listStyleType: 'disc',
-                }}
-              >
-                {exp.highlights.map((h, i) => (
-                  <li key={i} style={{ fontSize: 9, marginBottom: 2, color: MAIN_TEXT }}>
-                    {h}
-                  </li>
-                ))}
-              </ul>
+              ))}
             </div>
-          ))}
-        </div>
+          </section>
+        )}
 
-        {/* Key Projects */}
-        <div>
-          <h2 style={mainSectionHeading}>Key Projects</h2>
-          {projects.map((proj) => (
-            <div
-              key={proj.name}
-              style={{
-                marginBottom: 14,
-                borderLeft: `3px solid ${ACCENT}`,
-                paddingLeft: 10,
-              }}
-            >
-              <div style={{ fontSize: 10, fontWeight: 700, color: MAIN_HEADING, marginBottom: 3 }}>
-                {proj.name}
-              </div>
-              <div style={{ fontSize: 8.5, color: MAIN_TEXT, lineHeight: 1.6, marginBottom: 4 }}>
-                {proj.description}
-              </div>
-              <div style={{ fontSize: 8, color: ACCENT }}>
-                🔗 {proj.github}
-              </div>
+        {/* ──── CERTIFICATION ──── */}
+        {certifications && certifications.length > 0 && (
+          <section>
+            <SectionHeading>Certification</SectionHeading>
+            <div className="space-y-1">
+              {certifications.map((cert) => (
+                <div
+                  key={cert.name}
+                  className="flex items-baseline justify-between"
+                >
+                  <span className="text-[9.5px] font-semibold text-slate-800">
+                    {cert.name}
+                  </span>
+                  <span className="text-[8.5px] text-slate-500">
+                    {cert.issuer} · {cert.year}
+                  </span>
+                </div>
+              ))}
             </div>
-          ))}
-        </div>
+          </section>
+        )}
+
+        {/* ──── KEY PROJECTS ──── */}
+        {projects && projects.length > 0 && (
+          <section>
+            <SectionHeading>Key Projects</SectionHeading>
+            <div className="space-y-3">
+              {projects.map((proj) => (
+                <div key={proj.name}>
+                  <div className="flex items-baseline justify-between">
+                    <h3 className="text-[10px] font-bold text-slate-800">
+                      {proj.name}
+                    </h3>
+                    <span className="text-[8px] text-slate-500 shrink-0 ml-4">
+                      {proj.github}
+                    </span>
+                  </div>
+                  <p className="mt-0.5 text-[8.5px] leading-relaxed text-slate-600">
+                    {proj.description}
+                  </p>
+                </div>
+              ))}
+            </div>
+          </section>
+        )}
+
+        {/* ──── PROFESSIONAL EXPERIENCE ──── */}
+        <section>
+          <SectionHeading>Professional Experience</SectionHeading>
+          <div className="space-y-3">
+            {experience.map((exp) => (
+              <div key={`${exp.company}-${exp.period}`}>
+                <div className="flex items-baseline justify-between">
+                  <div>
+                    <span className="text-[10px] font-bold text-slate-800">
+                      {exp.title}
+                    </span>
+                    <span className="text-[9.5px] text-slate-500">
+                      {' '}
+                      — {exp.company}
+                    </span>
+                  </div>
+                  <span className="text-[8.5px] text-slate-500 shrink-0 ml-4">
+                    {exp.period}
+                  </span>
+                </div>
+                <ul className="mt-1 space-y-0.5 list-disc pl-3.5">
+                  {exp.highlights.map((h, i) => (
+                    <li
+                      key={i}
+                      className="text-[8.5px] leading-relaxed text-slate-600"
+                    >
+                      {h}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            ))}
+          </div>
+        </section>
+
+        {/* ──── EDUCATION ──── */}
+        {education && education.length > 0 && (
+          <section>
+            <SectionHeading>Education</SectionHeading>
+            <div className="space-y-2">
+              {education.map((edu) => (
+                <div key={edu.degree}>
+                  <div className="flex items-baseline justify-between">
+                    <span className="text-[9.5px] font-semibold text-slate-800">
+                      {edu.degree}
+                    </span>
+                    <span className="text-[8.5px] text-slate-500 shrink-0 ml-4">
+                      {edu.period}
+                    </span>
+                  </div>
+                  <p className="text-[8.5px] text-slate-500">
+                    {edu.institution}
+                  </p>
+                  {edu.details && (
+                    <p className="text-[8.5px] text-slate-600 mt-0.5">
+                      {edu.details}
+                    </p>
+                  )}
+                </div>
+              ))}
+            </div>
+          </section>
+        )}
       </div>
     </div>
+  )
+}
+
+/* ─── Shared section heading ─── */
+function SectionHeading({ children }: { children: React.ReactNode }) {
+  return (
+    <h2 className="text-[11px] font-bold uppercase tracking-[1.5px] text-slate-800 mb-2 pb-1 border-b border-slate-300">
+      {children}
+    </h2>
   )
 }

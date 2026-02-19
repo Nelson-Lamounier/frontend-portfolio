@@ -6,6 +6,7 @@ import { Container } from '@/components/Container'
 import { DevOpsPipelineAnimation } from '@/components/DevOpsPipelineAnimation'
 import { TrackedSocialLinks } from '@/components/TrackedSocialLinks'
 import { ResumeDownloadButton } from '@/components/ResumeDownloadButton'
+import { ResumePreview } from '@/components/ResumePreview'
 import { NewsletterForm } from '@/components/NewsletterForm'
 import {
   GitHubIcon,
@@ -179,6 +180,7 @@ function Resume() {
         ))}
       </ol>
       <ResumeDownloadButton />
+      <ResumePreview />
     </div>
   )
 }
