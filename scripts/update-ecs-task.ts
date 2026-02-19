@@ -75,22 +75,33 @@ async function main(): Promise<void> {
   console.log(`   Looking up: ${clusterParam}`)
   const clusterName = await getSSMParameter(clusterParam, config)
   if (!clusterName) {
-    log.fatal(
-      `Failed to get ECS cluster name from SSM parameter: ${clusterParam}\n` +
-      '   Ensure the SSM parameter exists in the target environment.\n' +
-      '   This parameter is created when the ECS service is deployed via CDK.',
+    log.warn(
+      `ECS cluster SSM parameter not found: ${clusterParam}\n` +
+      '   The ECS cluster may not have been created yet.\n' +
+      '   Skipping ECS deployment — this is expected for first-time infrastructure setup.',
     )
+    log.summary('ECS Update Skipped', {
+      'Reason': 'Cluster SSM parameter not found',
+      'SSM Parameter': clusterParam,
+    })
+    process.exit(0)
   }
   log.success(`Cluster: ${clusterName}`)
 
   console.log(`   Looking up: ${serviceParam}`)
   const serviceName = await getSSMParameter(serviceParam, config)
   if (!serviceName) {
-    log.fatal(
-      `Failed to get ECS service name from SSM parameter: ${serviceParam}\n` +
-      '   Ensure the SSM parameter exists in the target environment.\n' +
-      '   This parameter is created when the ECS service is deployed via CDK.',
+    log.warn(
+      `ECS service SSM parameter not found: ${serviceParam}\n` +
+      '   The ECS service may not have been created yet.\n' +
+      '   Skipping ECS deployment — this is expected for first-time infrastructure setup.',
     )
+    log.summary('ECS Update Skipped', {
+      'Reason': 'Service SSM parameter not found',
+      'SSM Parameter': serviceParam,
+      'ECS Cluster': clusterName,
+    })
+    process.exit(0)
   }
   log.success(`Service: ${serviceName}`)
 
