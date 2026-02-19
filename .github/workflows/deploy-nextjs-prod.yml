@@ -1,24 +1,16 @@
-# Deploy Next.js Application to Development
-# Triggers on push to develop branch
-# Builds Docker image, pushes to ECR as :latest, then forces ECS redeployment
-# Uses mutable :latest tag strategy - no new task definition revisions
-# Test last infra deployment
+# Deploy Next.js Application to Production
+# Manual trigger only with confirmation gate
+# Full pipeline: prepare → build → sync-assets → migrate-articles → deploy → summary
 
-name: Deploy NextJS to Dev
+name: Deploy NextJS to Production
 
 on:
-  push:
-    branches:
-      - develop
-    paths:
-      - 'src/**'
-      - 'public/**'
-      - 'Dockerfile'
-      - 'package.json'
-      - 'yarn.lock'
-      - 'next.config.*'
-      - '.github/workflows/**'
   workflow_dispatch:
+    inputs:
+      confirm-deployment:
+        description: 'Type "DEPLOY" to confirm production deployment'
+        required: true
+        type: string
 
 permissions:
   id-token: write
@@ -29,17 +21,28 @@ env:
 
 jobs:
   # ===========================================================================
-  # Prepare: Fetch configuration from SSM
+  # Pre-flight Checks
   # ===========================================================================
-  prepare:
-    name: Prepare Config
+  preflight:
+    name: Pre-flight Checks
     runs-on: ubuntu-latest
     timeout-minutes: 5
-    environment: development
+    environment: production
     outputs:
+      proceed: ${{ steps.check.outputs.proceed }}
       api-url: ${{ steps.ssm.outputs.api-url }}
 
     steps:
+      - name: Validate Confirmation
+        id: check
+        run: |
+          if [ "${{ inputs.confirm-deployment }}" != "DEPLOY" ]; then
+            echo "ERROR: Deployment not confirmed. Type 'DEPLOY' to proceed."
+            exit 1
+          fi
+          echo "proceed=true" >> $GITHUB_OUTPUT
+          echo "✓ Deployment confirmed"
+
       - name: Configure AWS Credentials
         uses: aws-actions/configure-aws-credentials@v4
         with:
@@ -51,7 +54,7 @@ jobs:
         id: ssm
         run: |
           API_URL=$(aws ssm get-parameter \
-            --name "/nextjs/development/api-gateway-url" \
+            --name "/nextjs/production/api-gateway-url" \
             --query 'Parameter.Value' \
             --output text 2>/dev/null || echo "")
 
@@ -64,21 +67,19 @@ jobs:
           fi
 
   # ===========================================================================
-  # Build and Push Docker Image as :latest
+  # Build and Push Docker Image
   # ===========================================================================
   build:
     name: Build Image
-    needs: [prepare]
+    needs: [preflight]
+    if: needs.preflight.outputs.proceed == 'true'
     uses: ./.github/workflows/_build-push-image.yml
     with:
-      environment: development
-      ssm-ecr-param: '/shared/ecr/development/repository-uri'
-      push-to-dockerhub: true
-      api-url: ${{ needs.prepare.outputs.api-url }}
+      environment: production
+      ssm-ecr-param: '/frontend/prod/ecr-repository-url'
+      api-url: ${{ needs.preflight.outputs.api-url }}
     secrets:
       AWS_OIDC_ROLE: ${{ secrets.AWS_OIDC_ROLE }}
-      DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
-      DOCKERHUB_TOKEN: ${{ secrets.DOCKERHUB_TOKEN }}
 
   # ===========================================================================
   # Sync Static Assets to S3 & Invalidate CloudFront
@@ -88,7 +89,7 @@ jobs:
     needs: [build]
     uses: ./.github/workflows/_sync-assets.yml
     with:
-      environment: development
+      environment: production
     secrets:
       AWS_OIDC_ROLE: ${{ secrets.AWS_OIDC_ROLE }}
 
@@ -100,41 +101,48 @@ jobs:
     needs: [build]
     uses: ./.github/workflows/_migrate-articles.yml
     with:
-      environment: development
+      environment: production
     secrets:
       AWS_OIDC_ROLE: ${{ secrets.AWS_OIDC_ROLE }}
 
   # ===========================================================================
-  # Deploy to ECS (force redeployment to pull updated :latest)
+  # Deploy to ECS
   # ===========================================================================
   deploy:
-    name: Deploy to ECS
+    name: Deploy to Production
     needs: [build, sync-assets, migrate-articles]
     uses: ./.github/workflows/_deploy-ecs-service.yml
     with:
-      environment: development
+      environment: production
       wait-for-stability: true
-      stability-timeout: 10
+      stability-timeout: 15
     secrets:
       AWS_OIDC_ROLE: ${{ secrets.AWS_OIDC_ROLE }}
 
   # ===========================================================================
-  # Deployment Summary
+  # Post-Deployment Summary
   # ===========================================================================
   summary:
     name: Summary
-    needs: [prepare, build, sync-assets, migrate-articles, deploy]
+    needs: [preflight, build, sync-assets, migrate-articles, deploy]
     runs-on: ubuntu-latest
     if: always()
 
     steps:
       - name: Deployment Result
         run: |
-          echo "## Development Deployment" >> $GITHUB_STEP_SUMMARY
+          TIMESTAMP=$(date -u '+%Y-%m-%d %H:%M:%S UTC')
+
+          echo "## 🚀 Production Deployment" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Timestamp**: $TIMESTAMP" >> $GITHUB_STEP_SUMMARY
+          echo "**Commit**: ${{ github.sha }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Triggered by**: ${{ github.actor }}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+
           echo "| Step | Result |" >> $GITHUB_STEP_SUMMARY
           echo "|------|--------|" >> $GITHUB_STEP_SUMMARY
-          echo "| Prepare Config | ${{ needs.prepare.result }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Pre-flight | ${{ needs.preflight.result }} |" >> $GITHUB_STEP_SUMMARY
           echo "| Build & Push | ${{ needs.build.result }} |" >> $GITHUB_STEP_SUMMARY
           echo "| Sync Assets | ${{ needs.sync-assets.result }} |" >> $GITHUB_STEP_SUMMARY
           echo "| Migrate Articles | ${{ needs.migrate-articles.result }} |" >> $GITHUB_STEP_SUMMARY
@@ -142,11 +150,17 @@ jobs:
           echo "" >> $GITHUB_STEP_SUMMARY
 
           if [ "${{ needs.deploy.result }}" == "success" ]; then
-            echo "✅ Deployment completed successfully" >> $GITHUB_STEP_SUMMARY
+            echo "## ✅ Production Deployment Successful" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
             if [ -n "${{ needs.deploy.outputs.service-url }}" ]; then
-              echo "" >> $GITHUB_STEP_SUMMARY
-              echo "**URL**: ${{ needs.deploy.outputs.service-url }}" >> $GITHUB_STEP_SUMMARY
+              echo "**Production URL**: ${{ needs.deploy.outputs.service-url }}" >> $GITHUB_STEP_SUMMARY
             fi
+          elif [ "${{ needs.deploy.outputs.deployment-status }}" == "rolled-back" ]; then
+            echo "## ⚠️ Production Deployment Rolled Back" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "The deployment was automatically rolled back due to health check failure." >> $GITHUB_STEP_SUMMARY
           else
-            echo "❌ Deployment failed" >> $GITHUB_STEP_SUMMARY
+            echo "## ❌ Production Deployment Failed" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "Review the deployment logs for details." >> $GITHUB_STEP_SUMMARY
           fi
