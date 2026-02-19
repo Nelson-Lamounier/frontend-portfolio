@@ -76,7 +76,7 @@ jobs:
     uses: ./.github/workflows/_build-push-image.yml
     with:
       environment: production
-      ssm-ecr-param: '/frontend/prod/ecr-repository-url'
+      ssm-ecr-param: '/shared/ecr/production/repository-uri'
       api-url: ${{ needs.preflight.outputs.api-url }}
     secrets:
       AWS_OIDC_ROLE: ${{ secrets.AWS_OIDC_ROLE }}
