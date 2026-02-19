@@ -47,9 +47,14 @@ export interface ResumeProject {
   github: string
 }
 
+export interface ResumeAchievement {
+  achievement: string
+}
+
 export interface ResumeData {
   profile: ResumeProfile
   summary: string
+  keyAchievements: ResumeAchievement[]
   experience: ResumeExperience[]
   certifications: ResumeCertification[]
   skills: ResumeSkillGroup[]
@@ -70,6 +75,33 @@ export const resumeData: ResumeData = {
 
   summary:
     'Certified AWS DevOps Engineer — Professional with practical experience in Infrastructure as Code, troubleshooting, policy-as-code analysis, and cross-functional collaboration with Site Reliability Engineers and platform teams. Skilled in analysing CloudTrail API activity logs, debugging IAM permission boundaries, and resolving deployment failures across containerised application workloads. Strong foundation in automation, security operations, and FinOps methodologies, with hands-on experience using AWS CLI and SDKs for infrastructure investigation. Seeking to transition from customer-facing cloud operations to hands-on DevOps Engineering, leveraging AWS expertise, security incident response experience, and proven troubleshooting capabilities to build, deploy, and maintain scalable cloud infrastructure. Passionate about infrastructure automation, continuous improvement, and applying DevOps best practices to solve complex technical challenges.',
+
+  keyAchievements: [
+    {
+      achievement:
+        'Architected a 6-stack IaC platform (AWS CDK, TypeScript), consolidating 14+ legacy CloudFormation stacks into domain-aligned infrastructure with SSM-based cross-stack service discovery',
+    },
+    {
+      achievement:
+        'Built zero-credential CI/CD pipelines with GitHub Actions OIDC, policy-as-code scanning (Checkov), infrastructure drift detection, automated smoke tests, and rollback-on-failure strategies',
+    },
+    {
+      achievement:
+        'Deployed a self-hosted observability platform (Prometheus, Grafana, Loki, Tempo) as a 7-container Docker Compose stack with DNS-based service discovery and automated health verification',
+    },
+    {
+      achievement:
+        'Hardened ECS container workloads with non-root execution, dropped Linux capabilities, init process (tini), awsvpc network isolation, and sidecar containers for log forwarding and distributed tracing',
+    },
+    {
+      achievement:
+        'Triaged security incidents at AWS involving compromised IAM access keys — analysing CloudTrail API activity, coordinating credential rotation, and debugging permission boundaries and cross-account role assumptions',
+    },
+    {
+      achievement:
+        'Developed serverless REST APIs with Lambda, API Gateway, and DynamoDB single-table design, implementing JSON schema validation, per-function dead letter queues, and HMAC token verification',
+    },
+  ],
 
   experience: [
     {
