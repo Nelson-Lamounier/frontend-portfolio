@@ -1,9 +1,11 @@
 /**
- * Article Types for DynamoDB Integration
+ * Article Types for DynamoDB + S3 Integration
  *
- * These types define the structure for articles stored in DynamoDB
- * and served via the API layer. They maintain compatibility with
- * the existing ArticleLayout and rendering components.
+ * DynamoDB stores only the lightweight "Brain" metadata entity.
+ * Article content (MDX body, componentData, images) lives in S3.
+ *
+ * These types maintain compatibility with the existing ArticleLayout
+ * and rendering components.
  */
 
 // ========================================
@@ -28,20 +30,23 @@ export interface ArticleWithSlug extends Article {
   tags?: string[]
   category?: string
   readingTimeMinutes?: number
-  featuredImage?: string
+  heroImageUrl?: string
   status?: ArticleStatus
+  contentRef?: string
+  aiSummary?: string
 }
 
 export type ArticleStatus = 'draft' | 'published' | 'archived'
 
 // ========================================
-// Article Content Types
+// Article Content Types (from S3)
 // ========================================
 
 export type ContentType = 'mdx' | 'markdown' | 'html'
 
 /**
- * Article content structure from DynamoDB
+ * Article content structure — fetched from S3, NOT DynamoDB.
+ * The MDX body, componentData, and images all live in the S3 blob.
  */
 export interface ArticleContent {
   contentType: ContentType
@@ -51,7 +56,7 @@ export interface ArticleContent {
   version: number
   /**
    * Indicates content should be rendered from file-based MDX
-   * Used during migration when article is not yet in DynamoDB
+   * Used during migration when article is not yet in S3/DynamoDB
    */
   isFileBased?: boolean
 }
@@ -117,13 +122,18 @@ export interface PaginationInfo {
 // ========================================
 
 /**
- * DynamoDB metadata entity structure
+ * DynamoDB "Brain" metadata entity — thin, queryable index.
+ *
+ * Heavy data (content body, componentData, images) lives in S3.
+ * This entity stores only fields needed for listing, searching,
+ * and the S3 content pointer.
  */
 export interface ArticleMetadataEntity {
   pk: string // "ARTICLE#<slug>"
   sk: string // "METADATA"
   entityType: 'ARTICLE_METADATA'
 
+  // Core queryable fields
   slug: string
   title: string
   description: string
@@ -134,47 +144,24 @@ export interface ArticleMetadataEntity {
   tags: string[]
   category: string
   readingTimeMinutes: number
-  featuredImage?: string
+  heroImageUrl?: string
 
+  // S3 Content Pointer
+  contentRef: string       // "s3://<bucket>/published/<slug>.mdx"
+  contentType: ContentType
+
+  // AI-Generated Summary (populated by Bedrock pipeline)
+  aiSummary?: string
+
+  // Timestamps
   createdAt: string
   updatedAt: string
   publishedAt?: string
   version: number
 
+  // GSI Keys
   gsi1pk: string // "STATUS#<status>"
   gsi1sk: string // "<date>#<slug>"
-}
-
-/**
- * DynamoDB content entity structure
- */
-export interface ArticleContentEntity {
-  pk: string // "ARTICLE#<slug>"
-  sk: string // "CONTENT#v<version>"
-  entityType: 'ARTICLE_CONTENT'
-
-  contentType: ContentType
-  content: string
-  contentS3Key?: string
-
-  componentData?: ComponentData[]
-  images: ArticleImageEntity[]
-
-  version: number
-  createdAt: string
-  changelog?: string
-}
-
-/**
- * Image reference as stored in DynamoDB
- */
-export interface ArticleImageEntity {
-  id: string
-  s3Key: string
-  alt: string
-  caption?: string
-  width?: number
-  height?: number
 }
 
 // ========================================
@@ -213,7 +200,6 @@ export function createArticleKey(slug: string) {
   return {
     pk: `ARTICLE#${slug}`,
     metadataSk: 'METADATA',
-    contentSk: (version: number) => `CONTENT#v${version}`,
   }
 }
 
@@ -232,24 +218,9 @@ export function entityToArticle(
     tags: entity.tags,
     category: entity.category,
     readingTimeMinutes: entity.readingTimeMinutes,
-    featuredImage: entity.featuredImage,
+    heroImageUrl: entity.heroImageUrl,
     status: entity.status,
-  }
-}
-
-/**
- * Helper to transform image entity to API response format
- */
-export function entityImageToApiImage(
-  entity: ArticleImageEntity,
-  cloudfrontDomain: string,
-): ArticleImage {
-  return {
-    id: entity.id,
-    url: `https://${cloudfrontDomain}/${entity.s3Key}`,
-    alt: entity.alt,
-    caption: entity.caption,
-    width: entity.width,
-    height: entity.height,
+    contentRef: entity.contentRef,
+    aiSummary: entity.aiSummary,
   }
 }

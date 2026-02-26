@@ -1,8 +1,8 @@
 /**
  * Unit tests for article-service.ts
  *
- * Tests the hybrid DynamoDB SDK / file-based fallback logic.
- * DynamoDB SDK calls are mocked — no real AWS credentials needed.
+ * Tests the hybrid DynamoDB metadata + S3 content / file-based fallback logic.
+ * DynamoDB and S3 calls are mocked — no real AWS credentials needed.
  */
 
 import type { ArticleWithSlug } from '@/lib/types/article.types'
@@ -13,7 +13,6 @@ import type { ArticleWithSlug } from '@/lib/types/article.types'
 
 const mockQueryPublishedArticles = jest.fn()
 const mockGetArticleMetadataBySlug = jest.fn()
-const mockGetArticleContentBySlug = jest.fn()
 const mockGetArticleDetailBySlug = jest.fn()
 const mockQueryArticlesByTag = jest.fn()
 const mockIsDynamoDBConfigured = jest.fn()
@@ -22,9 +21,20 @@ jest.mock('@/lib/dynamodb-articles', () => ({
   isDynamoDBConfigured: (...args: unknown[]) => mockIsDynamoDBConfigured(...args),
   queryPublishedArticles: (...args: unknown[]) => mockQueryPublishedArticles(...args),
   getArticleMetadataBySlug: (...args: unknown[]) => mockGetArticleMetadataBySlug(...args),
-  getArticleContentBySlug: (...args: unknown[]) => mockGetArticleContentBySlug(...args),
   getArticleDetailBySlug: (...args: unknown[]) => mockGetArticleDetailBySlug(...args),
   queryArticlesByTag: (...args: unknown[]) => mockQueryArticlesByTag(...args),
+}))
+
+// ========================================
+// Mock S3 content layer
+// ========================================
+
+const mockFetchArticleContent = jest.fn()
+const mockBuildContentRef = jest.fn((slug: string) => `published/${slug}.mdx`)
+
+jest.mock('@/lib/s3-content', () => ({
+  fetchArticleContent: (...args: unknown[]) => mockFetchArticleContent(...args),
+  buildContentRef: (...args: unknown[]) => mockBuildContentRef(...args),
 }))
 
 // ========================================

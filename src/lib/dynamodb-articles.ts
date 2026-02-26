@@ -5,6 +5,9 @@
  * Replaces the API Gateway fetch round-trip:
  *   ECS → VPC Gateway Endpoint → DynamoDB (free, private, fast)
  *
+ * DynamoDB stores only the thin "Brain" metadata entity.
+ * Article content (MDX body) is fetched from S3 via the contentRef pointer.
+ *
  * This module should NEVER be imported from client components.
  *
  * Environment Variables:
@@ -23,13 +26,12 @@ import {
 
 import type {
   ArticleWithSlug,
-  ArticleContent,
   ArticleDetailResponse,
   ArticleMetadataEntity,
-  ArticleContentEntity,
 } from './types/article.types'
 import { entityToArticle } from './types/article.types'
 import { trackDynamoDBCache, trackDynamoDB } from './metrics'
+import { fetchArticleContent } from './s3-content'
 
 // ========================================
 // Configuration
@@ -200,56 +202,23 @@ export async function getArticleMetadataBySlug(
 }
 
 /**
- * Fetch a single article's content by slug.
- * Direct GetItem: pk=ARTICLE#<slug>, sk=CONTENT#v1
- */
-export async function getArticleContentBySlug(
-  slug: string,
-  version: number = 1,
-): Promise<ArticleContent | null> {
-  const docClient = getDocClient()
-
-  const result = await docClient.send(
-    new GetCommand({
-      TableName: TABLE_NAME,
-      Key: {
-        pk: `ARTICLE#${slug}`,
-        sk: `CONTENT#v${version}`,
-      },
-    }),
-  )
-
-  if (!result.Item) {
-    return null
-  }
-
-  const entity = result.Item as ArticleContentEntity
-  return {
-    contentType: entity.contentType,
-    content: entity.content,
-    componentData: entity.componentData,
-    images: entity.images?.map((img) => ({
-      id: img.id,
-      url: img.s3Key, // caller maps to CloudFront URL if needed
-      alt: img.alt,
-      caption: img.caption,
-      width: img.width,
-      height: img.height,
-    })) || [],
-    version: entity.version,
-  }
-}
-
-/**
- * Fetch full article detail (metadata + content) by slug.
+ * Fetch full article detail (metadata from DynamoDB + content from S3).
+ *
+ * Uses Promise.all for parallel fetch — metadata from DynamoDB,
+ * content from S3 via the contentRef pointer on the metadata entity.
  */
 export async function getArticleDetailBySlug(
   slug: string,
 ): Promise<ArticleDetailResponse | null> {
+  // First fetch metadata to get the contentRef pointer
   const metadata = await getArticleMetadataBySlug(slug)
   if (!metadata) return null
 
-  const content = await getArticleContentBySlug(slug)
+  // Fetch content from S3 using the contentRef
+  const contentRef = metadata.contentRef
+  const content = contentRef
+    ? await fetchArticleContent(contentRef)
+    : null
 
   return {
     metadata,
