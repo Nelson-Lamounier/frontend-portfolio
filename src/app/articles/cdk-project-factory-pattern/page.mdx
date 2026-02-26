@@ -6,10 +6,9 @@ import { ScreenshotPlaceholder } from '@/components/ScreenshotPlaceholder'
 export const article = {
   author: 'Nelson Lamounier',
   date: '2026-02-17',
-  title:
-    'Enterprise CDK Architecture: The Project Factory Pattern — Managing 4 Projects and 11 Stacks from a Single Entry Point',
+  title: 'CDK Project Factory: 4 Projects, 11 Stacks, One Entry Point',
   description:
-    'How a solo DevOps engineer built a construct-to-factory pipeline with typed config modules, SSM-based cross-stack discovery, generic factory interfaces, CDK Aspects for governance, and a shared L3 construct library — all orchestrated by a slim entry point that delegates everything to project-specific factories.',
+    "I manage 4 CDK projects and 11 stacks from a single app.ts using project-specific factories, typed config modules, SSM-based discovery, and CDK Aspects. Here's how the pattern works and where it broke.",
 }
 
 export const metadata = {
@@ -20,9 +19,9 @@ export const metadata = {
 export default (props) => <ArticleLayout article={article} {...props} />
 
 > **TL;DR** — CDK gives you constructs but no opinion on how to organise them. This article
-> shows how a slim entry point delegates 4 projects, 11 stacks, and ~300 resources to
-> project-specific factories — where typed config modules, SSM-based discovery, and CDK
-> Aspects replace the usual tangle of `app.ts` orchestration.
+> shows how I use project-specific factories to manage 4 projects, 11 stacks, and ~300 resources
+> from a single `app.ts` that does almost nothing. Typed config modules, SSM-based discovery,
+> and CDK Aspects handle the rest.
 
 ---
 
@@ -45,8 +44,8 @@ clusters, ALBs, CloudFront distributions, API Gateway, Lambda functions, and Dyn
 Monitoring needs EC2 instances, EBS volumes, security groups, and SSM documents. Both need
 hardened security, thoughtful IAM policies, and CDK-Nag compliance.
 
-I needed an architecture where adding a new project is a _configuration change_, not a
-rearchitecture.
+I needed to be able to add a new project by writing a config file and a factory class, not
+by rewriting the deployment pipeline.
 
 ### Why a Factory — and What I Rejected
 
@@ -164,7 +163,7 @@ Finally, an **Nx or Turborepo workspace** would manage the multi-app approach cl
 
 ## 3. CDK Construct Levels: The Foundation
 
-Before explaining the factory pattern, you need to understand CDK's construct taxonomy — because the factory's power comes from _which level_ each resource lives at.
+Before explaining the factory pattern, it helps to understand how CDK organises constructs into three levels — because the factory's value comes from _which level_ each resource lives at.
 
 ### L1: CloudFormation Resource Wrappers (`Cfn*`)
 
@@ -232,11 +231,11 @@ export class BaseSecurityGroupConstruct extends Construct {
 }
 ```
 
-The critical pattern: a stack should never create an `ec2.SecurityGroup` directly — it should use the project's L3 construct which wraps the L2 with hardened defaults.
+The pattern I follow: stacks don't create `ec2.SecurityGroup` directly. They use the project's L3 construct, which wraps the L2 with hardened defaults baked in.
 
-### L3: Domain-Specific Patterns (Your Golden Paths)
+### L3: Domain-Specific Constructs (Your Reusable Patterns)
 
-L3 constructs are your organisation's opinionated blueprints — they compose multiple L2 constructs into a single unit with validated defaults, helper methods, and CDK-Nag compliance baked in. The `lib/common/` directory contains L3 constructs organised by domain:
+L3 constructs compose multiple L2 resources into a single unit with defaults, helper methods, and compliance checks built in. They're the reusable building blocks that keep individual stacks simple. The `lib/common/` directory contains L3 constructs organised by domain:
 
 | Domain         | L3 Constructs                                                                                                                                                                               | Files | Key Pattern                                          |
 | :------------- | :------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | :---: | :--------------------------------------------------- |
@@ -289,15 +288,11 @@ export class LambdaFunctionConstruct extends Construct {
 }
 ```
 
-<Callout
-  variant="insight"
-  title="Why L3 Constructs Are Your Internal Developer Platform"
->
+<Callout variant="insight" title="What L3 Constructs Buy You">
   Every `LambdaFunctionConstruct` in this project gets: source maps, lock file
   detection, log group race condition prevention, CDK-Nag compliance, and
-  environment variable merging — _without the stack author knowing_. That's the
-  golden path concept from Platform Engineering: the right thing is the easy
-  thing.
+  environment variable merging — without the stack author doing anything. The
+  right defaults are already wired in.
 </Callout>
 
 ---
@@ -939,7 +934,7 @@ into a domain model:
 
 ## 10. FinOps & Maintenance
 
-The factory pattern costs nothing at runtime — it's synthesis-time TypeScript, not deployed infrastructure. What it saved was roughly 2,000 lines of duplicate constructs, a significant reduction in `app.ts` complexity, and 3 security regressions caught by CDK-Nag and the DynamoDB aspect before they reached production. Maintenance runs about 1–2 hours per month, mostly construct library updates in `lib/common/` that automatically benefit every project. Adding a new stack is additive — you add it to the factory's `createAllStacks()` method — rather than invasive.
+The factory pattern costs nothing at runtime — it's synthesis-time TypeScript, not deployed infrastructure. It eliminated roughly 2,000 lines of duplicate constructs, brought `app.ts` down from ~200 lines to ~40, and caught 3 security regressions via CDK-Nag and the DynamoDB aspect before they reached production. Maintenance runs about 1–2 hours per month, mostly construct library updates in `lib/common/` that automatically apply to every project. Adding a new stack means adding it to the factory's `createAllStacks()` method — no other files change.
 
 ---
 
@@ -969,9 +964,7 @@ The factory pattern costs nothing at runtime — it's synthesis-time TypeScript,
 
 I still have an `[key: string]: unknown` escape hatch in `ProjectFactoryContext` — that needs to go. And SSM path mismatches should fail in tests, not in production.
 
-> **The construct library is the internal developer platform. The factory pattern is the
-> deployment API. CDK Aspects are the policy engine. Together, they let one engineer manage
-> infrastructure that usually requires a team.**
+The bottom line: this pattern lets me treat new projects as configuration, not engineering. The constructs handle the hard defaults, the factories handle the wiring, and the aspects handle the rules. It's not perfect — the gaps above are real — but it scales well enough that one person can run it without things falling apart.
 
 ---
 

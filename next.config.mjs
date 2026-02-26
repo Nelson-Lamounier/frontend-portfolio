@@ -14,6 +14,7 @@ const nextConfig = {
 
   // Prevent Next.js from bundling gRPC native modules (used by OTLP exporter)
   serverExternalPackages: [
+    '@opentelemetry/instrumentation',
     '@opentelemetry/auto-instrumentations-node',
     '@opentelemetry/exporter-trace-otlp-grpc',
     '@grpc/grpc-js',

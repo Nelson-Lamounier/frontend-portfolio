@@ -6,9 +6,7 @@ import { Container } from '@/components/Container'
 import { TrackedSocialLinks } from '@/components/TrackedSocialLinks'
 import {
   GitHubIcon,
-  InstagramIcon,
   LinkedInIcon,
-  XIcon,
 } from '@/components/SocialIcons'
 import portraitImage from '@/images/portrait.jpg'
 
@@ -50,9 +48,9 @@ function MailIcon(props: React.ComponentPropsWithoutRef<'svg'>) {
 }
 
 export const metadata: Metadata = {
-  title: 'About Nelson | Cloud Architect & DevOps Engineer',
+  title: 'About Nelson | Cloud & DevOps Engineer',
   description:
-    'I’m Nelson, a Dublin-based Cloud Architect. Master AWS, DevOps, and cost-optimization with my practical guides on the entire application lifecycle.',
+    'I\'m Nelson, a Dublin-based DevOps Engineer working at AWS. I build production infrastructure with CDK, run my own observability stack, and write about the real problems I solve along the way.',
 }
 
 export default function About() {
@@ -71,67 +69,69 @@ export default function About() {
         </div>
         <div className="lg:order-first lg:row-span-2">
           <h1 className="text-4xl font-bold tracking-tight text-zinc-800 sm:text-5xl dark:text-zinc-100">
-            I&apos;m Nelson. Based in Dublin, I build cloud infrastructures that
-            span the entire application lifecycle.
+            I&apos;m Nelson. I work at AWS by day, and build production
+            infrastructure by night.
           </h1>
           <div className="mt-6 space-y-7 text-base text-zinc-600 dark:text-zinc-400">
             <p>
-              My path to DevOps was unconventional. After graduating with a
+              My path to DevOps wasn&apos;t planned. I graduated in Dublin with a
               Computer Science degree focused on web development and cloud
-              computing, I joined AWS as a Technical Customer Service Associate.
-              This role placed me on the front lines of customer infrastructure
-              problems. Every support case was a masterclass in architectural
-              decisions, scaling challenges, and the critical differences
-              between reliable systems and fragile ones.
+              computing, then joined AWS as a Technical Customer Service
+              Associate. That role put me on the front lines of customer
+              infrastructure problems. I spent my days digging through
+              CloudTrail logs, debugging IAM permission boundaries, and helping
+              people figure out why their ECS tasks weren&apos;t starting or why
+              their costs suddenly doubled. You learn fast when every ticket is
+              someone else&apos;s production issue.
             </p>
             <p>
-              However, I quickly learned that understanding AWS services and
-              implementing DevOps practices are two very different skills. Early
-              in my career, I focused primarily on frontend development,
-              building interfaces without fully grasping the operational side of
-              applications. As a solo developer, I found myself overwhelmed by
-              the sheer volume of tools and methodologies available. Which CI/CD
-              tool was best? How should I structure my environments? What was
-              the right balance between feature velocity and cost?
+              But there&apos;s a gap between understanding AWS services and
+              actually building with them. Early on I was mostly a frontend
+              developer. I could build interfaces, but I had no idea how to
+              deploy them properly. Which CI/CD tool should I use? How do I
+              structure environments? What&apos;s the right trade-off between
+              shipping fast and not going broke on AWS bills? I didn&apos;t have
+              a team to ask, so I figured it out myself.
             </p>
             <p>
-              The turning point came when I decided to build my own portfolio
-              website. I didn&apos;t just want to build the frontend; I wanted
-              to master the complete application lifecycle, from development to
-              deployment. I implemented automated CI/CD pipelines with GitHub
-              Actions, utilised Infrastructure-as-Code (IaC) with AWS CDK
-              TypeScript, and handled containerisation using Docker and ECS. I
-              also integrated CloudWatch for monitoring and focused heavily on
-              resource management to optimise costs. Suddenly, DevOps was no
-              longer a collection of abstract concepts—it was the practical
-              solution to my own development problems.
+              The turning point was deciding to build my own portfolio as real
+              infrastructure, not just a frontend project. I wrote the CI/CD
+              pipelines in GitHub Actions with OIDC auth (no static
+              credentials), defined everything as code in AWS CDK TypeScript,
+              containerised the app with Docker and deployed it on ECS. That
+              grew into a 6-stack architecture separated by operational domain,
+              with SSM-based service discovery, container hardening (non-root,
+              dropped capabilities, tini), and a multi-tier WAF. I passed the
+              AWS DevOps Engineer Professional exam along the way, which
+              validated a lot of what I&apos;d been learning the hard way.
             </p>
             <p>
-              Today, I architect secure, cost-optimised cloud infrastructures
-              and help other developers navigate the same challenges I faced. My
-              articles aren&apos;t theoretical; they are born from my actual
-              struggles as a solo developer making hard infrastructure
-              decisions. I write about the tools, patterns, and AWS services
-              that actually work, cutting through the noise so others can build
-              with confidence. I&apos;ve learned that great DevOps isn&apos;t
-              just about automation—it&apos;s about making informed decisions
-              across the entire application lifecycle.
+              More recently, I built a self-hosted observability platform from
+              scratch: Prometheus, Grafana, Loki, and Tempo running as a
+              7-container Docker Compose stack on EC2. It has DNS-based service
+              discovery, OpenTelemetry trace ingestion, and a full CI/CD
+              pipeline with policy-as-code scanning, drift detection, smoke
+              tests, and automated rollback if anything fails. At work, I also
+              handle security incidents involving compromised IAM keys, which
+              means I spend a fair amount of time in CloudTrail, coordinating
+              credential rotations and debugging trust relationships.
+            </p>
+            <p>
+              The articles I write here come from problems I&apos;ve actually
+              hit. Not theory, not course material. If I write about CDK stack
+              separation or container security or CloudFront cache policies,
+              it&apos;s because I dealt with the broken version first and had
+              to fix it. I hope they save someone else a few hours of
+              debugging.
             </p>
           </div>
         </div>
         <div className="lg:pl-20">
           <TrackedSocialLinks>
           <ul role="list">
-            <SocialLink href="#" icon={XIcon}>
-              Follow on X
-            </SocialLink>
-            <SocialLink href="#" icon={InstagramIcon} className="mt-4">
-              Follow on Instagram
-            </SocialLink>
             <SocialLink
               href="https://github.com/Nelson-Lamounier"
               icon={GitHubIcon}
-              className="mt-4"
             >
               Follow on GitHub
             </SocialLink>
@@ -143,7 +143,7 @@ export default function About() {
               Follow on LinkedIn
             </SocialLink>
             <SocialLink
-              href="mailto:spencer@planetaria.tech"
+              href="mailto:lamounierleao@outlook.com"
               icon={MailIcon}
               className="mt-8 border-t border-zinc-100 pt-8 dark:border-zinc-700/40"
             >

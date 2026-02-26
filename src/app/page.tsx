@@ -1,6 +1,6 @@
+import { type Metadata } from 'next'
 import Image from 'next/image'
 
-import { Button } from '@/components/Button'
 import { Card } from '@/components/Card'
 import { Container } from '@/components/Container'
 import { DevOpsPipelineAnimation } from '@/components/DevOpsPipelineAnimation'
@@ -10,15 +10,13 @@ import { ResumePreview } from '@/components/ResumePreview'
 import { NewsletterForm } from '@/components/NewsletterForm'
 import {
   GitHubIcon,
-  InstagramIcon,
   LinkedInIcon,
-  XIcon,
 } from '@/components/SocialIcons'
 import logoFacebook from '@/images/logos/facebook.svg'
 import logoPlanetaria from '@/images/logos/planetaria.svg'
 import logoaws from '@/images/logos/aws.png'
+import awsDevOpsBadge from '@/images/logos/aws-certified-devops-engineer-professional.png'
 import logsedwick from '@/images/logos/sedwick.png'
-// Use hybrid article service with fallback to file-based articles
 import { getAllArticles } from '@/lib/article-service'
 import type { ArticleWithSlug } from '@/lib/types/article.types'
 import { formatDate } from '@/lib/formatDate'
@@ -83,7 +81,11 @@ function SocialLink({
   )
 }
 
-
+export const metadata: Metadata = {
+  title: 'Nelson Lamounier | DevOps Engineer & Cloud Infrastructure',
+  description:
+    'AWS Certified DevOps Engineer based in Dublin. I build production infrastructure with CDK, run a self-hosted observability stack, and write about real-world cloud problems.',
+}
 
 interface Role {
   company: string
@@ -143,8 +145,8 @@ function Resume() {
       },
     },
     {
-      company: 'Freelancer',
-      title: 'Frontend Web Developer',
+      company: 'Freelance',
+      title: 'DevOps & Infrastructure Engineer',
       logo: logoPlanetaria,
       start: '2022',
       end: {
@@ -153,8 +155,8 @@ function Resume() {
       },
     },
     {
-      company: 'Facebook',
-      title: 'Global Quality Assurance Analyst',
+      company: 'Meta (via Accenture)',
+      title: 'Quality Assurance Analyst',
       logo: logoFacebook,
       start: '2021',
       end: '2022',
@@ -191,37 +193,47 @@ export default async function Home() {
   return (
     <>
       <Container className="mt-9">
-        <div className="max-w-2xl">
-          <h1 className="text-4xl font-bold tracking-tight text-zinc-800 sm:text-5xl dark:text-zinc-100">
-            AWS Certified Cloud Architect & DevOps Mentor
-          </h1>
-          <p className="mt-6 text-base text-zinc-600 dark:text-zinc-400">
-            Hi, I&apos;m Nelson. As an AWS Certified DevOps Engineer
-            Professional in Dublin, I specialise in building secure,
-            cost-optimised cloud systems using AWS CDK and containerisation. I
-            also bridge the gap between code and classroom, turning complex
-            DevOps problems into clear tutorials and catchy study songs.
-          </p>
-          <div className="mt-6 flex gap-6">
-            <TrackedSocialLinks>
-            <SocialLink href="#" aria-label="Follow on X" icon={XIcon} />
-            <SocialLink
-              href="#"
-              aria-label="Follow on Instagram"
-              icon={InstagramIcon}
-            />
-            <SocialLink
-              href="https://github.com/Nelson-Lamounier"
-              aria-label="Follow on GitHub"
-              icon={GitHubIcon}
-            />
-            <SocialLink
-              href="https://www.linkedin.com/in/nelson-lamounier-leao/"
-              aria-label="Follow on LinkedIn"
-              icon={LinkedInIcon}
-            />
-            </TrackedSocialLinks>
+        <div className="flex items-start justify-between gap-8">
+          <div className="max-w-2xl">
+            <h1 className="text-4xl font-bold tracking-tight text-zinc-800 sm:text-5xl dark:text-zinc-100">
+              AWS Certified DevOps Engineer &mdash; Professional
+            </h1>
+            <p className="mt-6 text-base text-zinc-600 dark:text-zinc-400">
+              Hi, I&apos;m Nelson. I work at AWS in Dublin and build production
+              infrastructure on the side. My day job is debugging customer
+              workloads across EC2, ECS, IAM, and VPC. Outside of work, I&apos;ve
+              built a 6-stack CDK architecture, a self-hosted observability
+              platform (Prometheus, Grafana, Loki, Tempo), and the CI/CD
+              pipelines that keep them running. I write about the real problems
+              I solve along the way.
+            </p>
+            <div className="mt-6 flex items-center gap-6">
+              <TrackedSocialLinks>
+              <SocialLink
+                href="https://github.com/Nelson-Lamounier"
+                aria-label="Follow on GitHub"
+                icon={GitHubIcon}
+              />
+              <SocialLink
+                href="https://www.linkedin.com/in/nelson-lamounier-leao/"
+                aria-label="Follow on LinkedIn"
+                icon={LinkedInIcon}
+              />
+              </TrackedSocialLinks>
+            </div>
           </div>
+          <a
+            href="https://www.credly.com/badges/9db44668-e0b6-409c-977a-99a1636d04f9/public_url"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="hidden flex-none sm:block"
+          >
+            <Image
+              src={awsDevOpsBadge}
+              alt="AWS Certified DevOps Engineer Professional badge"
+              className="h-28 w-28 drop-shadow-md transition hover:scale-105 lg:h-36 lg:w-36"
+            />
+          </a>
         </div>
       </Container>
       <DevOpsPipelineAnimation />
@@ -241,5 +253,3 @@ export default async function Home() {
     </>
   )
 }
-
-// Test Ci

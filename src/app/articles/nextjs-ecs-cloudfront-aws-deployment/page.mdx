@@ -8,7 +8,7 @@ export const article = {
   title:
     'Next.js on AWS: A 6-Stack ECS Architecture with CloudFront, API Gateway, and Zero-Downtime Deploys',
   description:
-    'How a solo DevOps engineer containerized a Next.js portfolio application across ECS on EC2, CloudFront with WAF, API Gateway with Lambda, DynamoDB, and S3 — using a consolidated CDK stack architecture with observability sidecars and auto-deploy from ECR pushes.',
+    'I run my Next.js portfolio on ECS with CloudFront, API Gateway, Lambda, DynamoDB, and S3 — split across 6 CDK stacks so that a task definition change never triggers an 8-minute CloudFront propagation. Auto-deploy from ECR pushes, circuit breaker rollbacks, and read-only containers.',
 }
 
 export const metadata = {
@@ -18,15 +18,12 @@ export const metadata = {
 
 export default (props) => <ArticleLayout article={article} {...props} />
 
-# Next.js on AWS: A 6-Stack ECS Architecture with CloudFront, API Gateway, and Zero-Downtime Deploys
-
 > **TL;DR** — Running Next.js on AWS requires more than `npx deploy`. This article walks
 > through a **6-stack CDK architecture** that deploys a containerized Next.js application
 > across ECS on EC2, CloudFront (with WAF and cross-account ACM), API Gateway with Lambda
-> backends, DynamoDB for portfolio data, and S3 for static assets. The key pattern: a
-> **domain-driven stack split** where Data (rarely changes) deploys independently from
-> Application (changes every push), with an **auto-deploy pipeline** that triggers ECS
-> service updates from ECR push events.
+> backends, DynamoDB for portfolio data, and S3 for static assets. Stacks are split by change
+> frequency — Data (monthly) deploys separately from Application (daily) — with an auto-deploy
+> pipeline triggered by ECR pushes.
 
 ---
 
@@ -34,22 +31,19 @@ export default (props) => <ArticleLayout article={article} {...props} />
 
 ### The Constraint
 
-I need a portfolio website that demonstrates production-grade AWS architecture — not because
+I need a portfolio website that demonstrates real AWS architecture — not because
 a portfolio needs it, but because the infrastructure _is_ the portfolio. The application
 serves as a living showcase of ECS, CloudFront, API Gateway, DynamoDB, and CDK patterns that
 I would build in a team context, compressed into a solo-managed monorepo.
 
 ### What I Needed
 
-The application required server-side rendering and incremental static regeneration through the
-Next.js App Router, with a global CDN (CloudFront) providing custom domain routing, WAF
-protection, and S3 static asset offloading. The serverless API layer — Lambda functions behind
-API Gateway — needed to handle a contact form, an articles API, and portfolio data queries
-against DynamoDB. Container orchestration via ECS on EC2 with `awsvpc` networking gave me full
-control over task-level security groups and observability sidecars. Zero-downtime deploys — from
-ECR image pushes triggering automatic ECS service updates with deployment circuit breakers —
-ensured that every push reaches production without manual intervention. All of this needed to
-run at single-digit monthly cost for the entire stack.
+- Server-side rendering and ISR via the Next.js App Router
+- CloudFront for custom domain routing, WAF protection, and S3 static asset offloading
+- A serverless API layer (Lambda + API Gateway) for a contact form, articles API, and portfolio data queries against DynamoDB
+- ECS on EC2 with `awsvpc` networking for task-level security groups and observability sidecars
+- Auto-deploy from ECR image pushes with deployment circuit breakers — zero manual intervention
+- Single-digit monthly cost for the entire stack
 
 <ScreenshotPlaceholder
   title="Live Portfolio Homepage"
@@ -177,13 +171,12 @@ const albOrigin = new origins.HttpOrigin(albDnsName, {
 });
 ```
 
-<Callout variant="security" title="Defense-in-Depth: Dual WAF Protection">
+<Callout variant="security" title="Dual WAF: CloudFront + API Gateway">
   API Gateway endpoints are directly reachable at their `execute-api` domain,
   bypassing CloudFront entirely. The API stack attaches a **regional WAF**
   (`scope: 'REGIONAL'`) to the API Gateway REST API in addition to the
-  CloudFront WAF. This ensures both edge and direct-access traffic are protected
-  by rate limiting and AWS managed rule groups — a true defense-in-depth
-  pattern.
+  CloudFront WAF. Both edge and direct-access traffic get rate limiting and AWS
+  managed rule groups.
 </Callout>
 
 ### Cross-Account ACM via Lambda Custom Resource
@@ -230,7 +223,7 @@ never requires consumer changes. The SSM paths are centralized in `lib/config/ss
 
 ---
 
-## 4. The "Golden Path" Implementation
+## 4. Implementation
 
 ### 4.1: Containerized Next.js with Security Hardening
 
@@ -540,9 +533,9 @@ const contactLambda = new LambdaFunctionConstruct(this, "ContactLambda", {
 
 Each Lambda function is configured with a per-function Dead Letter Queue (SQS), reserved
 concurrency to prevent noisy-neighbor issues across Lambda functions, and CloudWatch error
-alarms with SNS notifications. The API Gateway itself is protected by a regional WAF
-(`scope: 'REGIONAL'`) in addition to the CloudFront WAF — the defense-in-depth pattern
-described in the Decision Log.
+alarms with SNS notifications. The API Gateway is protected by its own regional WAF
+(`scope: 'REGIONAL'`) alongside the CloudFront WAF, so traffic that hits the API directly
+still gets rate-limited.
 
 ### 4.7: SSM Parameter Discovery — Zero Cross-Stack Exports
 
@@ -690,22 +683,18 @@ automatically on the next deployment.
 | Blue/green deployment via CodeDeploy          | 1 day  | Eliminate mixed-version rolling updates | Researching |
 | Lambda@Edge for A/B testing                   | 2 days | Feature flagging at the edge            | Researching |
 
-The architecture's _structure_ — domain-driven stack split, SSM discovery, auto-deploy
-pipeline — is stable and has proven resilient through dozens of deployments. The next
-improvements target operational simplification: a Fargate migration would eliminate the
-EC2 Auto Scaling Group management entirely (at the cost of losing host-level Prometheus
-metrics until Fargate supports sidecar containers with host access). Multi-AZ is the most
-impactful short-term improvement, adding genuine high availability for roughly 3 hours of
-work. The longer-term investments — blue/green deployments and Lambda@Edge — would bring
-the deployment model closer to the zero-downtime guarantees expected in enterprise
-environments.
+The 6-stack split has held up well over dozens of deployments. A task definition update
+(Application stack) takes ~5 minutes and never touches the ALB or CloudFront. The auto-deploy
+pipeline means I haven't run a manual deployment in months. The SSM discovery pattern
+eliminated 3 "stack locked" situations I was hitting when using CloudFormation exports.
 
-> **The 6-stack split turns a single application into a deployment pipeline where each layer
-> changes at its own cadence. Data is monthly, compute is weekly, application is daily. The
-> auto-deploy pipeline, circuit breaker, and SSM discovery pattern together create a
-> deployment surface that requires zero manual intervention — from `docker push` to production
-> traffic — while the dual WAF, read-only filesystem, and origin verification ensure the
-> security posture never degrades.**
+The gaps are about compute simplification: Fargate would remove the ASG entirely, but I'd
+lose the Node Exporter host metrics that feed the monitoring stack. Multi-AZ is the
+highest-value, lowest-effort improvement — genuine HA for ~3 hours of work.
+
+Longer-term, blue/green via CodeDeploy would eliminate the brief mixed-version window during
+rolling updates. For now, the circuit breaker catches bad deploys fast enough that it hasn't
+been a real problem.
 
 ---
 
