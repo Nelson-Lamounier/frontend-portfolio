@@ -38,10 +38,12 @@ import {
   isDynamoDBConfigured,
   queryPublishedArticles,
   getArticleMetadataBySlug,
-  getArticleContentBySlug,
   getArticleDetailBySlug,
   queryArticlesByTag,
 } from './dynamodb-articles'
+
+// Import S3 content layer
+import { fetchArticleContent, buildContentRef } from './s3-content'
 
 // Import Prometheus metrics helpers
 import { trackArticleRequest } from './metrics'
@@ -329,14 +331,16 @@ export async function getArticleMetadata(
 export async function getArticleContent(
   slug: string
 ): Promise<ArticleContent | null> {
-  // Priority 1: DynamoDB SDK
+  // Priority 1: S3 content via contentRef
   if (isDynamoDBConfigured()) {
     try {
-      const content = await getArticleContentBySlug(slug)
+      // Build the standard contentRef key for this slug
+      const contentRef = buildContentRef(slug)
+      const content = await fetchArticleContent(contentRef)
       if (content) return content
     } catch (error) {
       const errMsg = error instanceof Error ? error.message : String(error)
-      slog({ service: 'article-service', operation: 'getArticleContent', source: 'dynamodb-sdk', slug, error: errMsg, level: 'error' })
+      slog({ service: 'article-service', operation: 'getArticleContent', source: 's3-content', slug, error: errMsg, level: 'error' })
     }
   }
 
