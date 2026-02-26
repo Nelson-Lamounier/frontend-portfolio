@@ -87,7 +87,7 @@ function SpinnerIcon(props: React.ComponentPropsWithoutRef<'svg'>) {
 // Component
 // ========================================
 
-export function NewsletterForm() {
+export function MusicNotifyForm() {
   const [email, setEmail] = useState('')
   const [status, setStatus] = useState<FormStatus>('idle')
   const [errorMessage, setErrorMessage] = useState('')
@@ -110,19 +110,19 @@ export function NewsletterForm() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           email,
-          source: 'newsletter-form',
+          source: 'music-notify',
         }),
       })
 
       if (response.ok) {
         setStatus('success')
-        trackFormSubmission('newsletter', 'success')
+        trackFormSubmission('music-notify', 'success')
         return
       }
 
       if (response.status === 409) {
         setStatus('already-subscribed')
-        trackFormSubmission('newsletter', 'success') // Not an error from UX perspective
+        trackFormSubmission('music-notify', 'success')
         return
       }
 
@@ -130,19 +130,19 @@ export function NewsletterForm() {
       const data: ApiErrorResponse = await response.json().catch(() => ({}))
       setErrorMessage(data.message || data.error || 'Please check your email and try again.')
       setStatus('error')
-      trackFormSubmission('newsletter', 'error')
+      trackFormSubmission('music-notify', 'error')
     } catch {
       setErrorMessage('Something went wrong. Please try again later.')
       setStatus('error')
-      trackFormSubmission('newsletter', 'error')
+      trackFormSubmission('music-notify', 'error')
     }
   }
 
   // Success state
   if (status === 'success') {
     return (
-      <div className="rounded-2xl border border-zinc-100 p-6 dark:border-zinc-700/40">
-        <h2 className="flex text-sm font-semibold text-zinc-900 dark:text-zinc-100">
+      <div className="rounded-2xl border border-zinc-100 p-8 dark:border-zinc-700/40">
+        <h2 className="flex items-center text-xl font-semibold text-zinc-900 dark:text-zinc-100">
           <CheckIcon className="h-6 w-6 flex-none" />
           <span className="ml-3">Check your inbox</span>
         </h2>
@@ -157,14 +157,14 @@ export function NewsletterForm() {
   // Already subscribed state
   if (status === 'already-subscribed') {
     return (
-      <div className="rounded-2xl border border-zinc-100 p-6 dark:border-zinc-700/40">
-        <h2 className="flex text-sm font-semibold text-zinc-900 dark:text-zinc-100">
+      <div className="rounded-2xl border border-zinc-100 p-8 dark:border-zinc-700/40">
+        <h2 className="flex items-center text-xl font-semibold text-zinc-900 dark:text-zinc-100">
           <CheckIcon className="h-6 w-6 flex-none" />
           <span className="ml-3">You&apos;re already subscribed</span>
         </h2>
         <p className="mt-2 text-sm text-zinc-600 dark:text-zinc-400">
           <strong className="text-zinc-900 dark:text-zinc-100">{email}</strong> is already on the list.
-          You&apos;ll hear from me when I publish something new.
+          You&apos;ll hear from me when the first track drops.
         </p>
       </div>
     )
@@ -174,31 +174,30 @@ export function NewsletterForm() {
   return (
     <form
       onSubmit={handleSubmit}
-      className="rounded-2xl border border-zinc-100 p-6 dark:border-zinc-700/40"
+      className="rounded-2xl border border-zinc-100 p-8 dark:border-zinc-700/40"
     >
-      <h2 className="flex text-sm font-semibold text-zinc-900 dark:text-zinc-100">
+      <h2 className="flex items-center text-xl font-semibold text-zinc-900 dark:text-zinc-100">
         <MailIcon className="h-6 w-6 flex-none" />
-        <span className="ml-3">Stay up to date</span>
+        <span className="ml-3">Get Notified</span>
       </h2>
       <p className="mt-2 text-sm text-zinc-600 dark:text-zinc-400">
-        Get notified when I publish something new, and unsubscribe at any time.
+        Be the first to know when the first track drops. I&apos;ll send you
+        a single email with the playlist link—no spam, just music.
       </p>
-      <div className="mt-6 flex items-center">
-        <span className="flex min-w-0 flex-auto p-px">
-          <input
-            type="email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            placeholder="Email address"
-            aria-label="Email address"
-            required
-            disabled={status === 'submitting'}
-            className="w-full appearance-none rounded-[calc(var(--radius-md)-1px)] bg-white px-3 py-[calc(--spacing(2)-1px)] shadow-md shadow-zinc-800/5 outline outline-zinc-900/10 placeholder:text-zinc-400 focus:ring-4 focus:ring-teal-500/10 focus:outline-teal-500 disabled:opacity-60 sm:text-sm dark:bg-zinc-700/15 dark:text-zinc-200 dark:outline-zinc-700 dark:placeholder:text-zinc-500 dark:focus:ring-teal-400/10 dark:focus:outline-teal-400"
-          />
-        </span>
+      <div className="mt-6 flex flex-col gap-4 sm:flex-row">
+        <input
+          type="email"
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+          placeholder="your.email@example.com"
+          aria-label="Email address"
+          required
+          disabled={status === 'submitting'}
+          className="min-w-0 flex-auto appearance-none rounded-md border border-zinc-900/10 bg-white px-3 py-[calc(theme(spacing.2)-1px)] shadow-md shadow-zinc-800/5 placeholder:text-zinc-400 focus:border-teal-500 focus:ring-4 focus:ring-teal-500/10 focus:outline-none disabled:opacity-60 sm:text-sm dark:border-zinc-700 dark:bg-zinc-700/[0.15] dark:text-zinc-200 dark:placeholder:text-zinc-500 dark:focus:border-teal-400 dark:focus:ring-teal-400/10"
+        />
         <Button
           type="submit"
-          className="ml-4 flex-none"
+          className="flex-none"
           disabled={status === 'submitting'}
         >
           {status === 'submitting' ? (
@@ -207,7 +206,7 @@ export function NewsletterForm() {
               Joining…
             </>
           ) : (
-            'Join'
+            'Notify Me'
           )}
         </Button>
       </div>

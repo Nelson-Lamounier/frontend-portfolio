@@ -126,16 +126,16 @@ const categories = [
 
 export const metadata: Metadata = {
   title:
-    'Cloud Infrastructure & DevOps Portfolio | AWS CDK, CI/CD & Observability',
+    'Projects | AWS CDK, CI/CD & Observability',
   description:
-    'Explore production DevOps projects: CDK factory patterns, CI/CD pipelines with OIDC, DevSecOps with Checkov, full-stack observability, and containerized Next.js on ECS — all built as a solo engineer.',
+    'CDK factory patterns, CI/CD pipelines with OIDC, DevSecOps with Checkov, full-stack observability, and containerized Next.js on ECS — each with a detailed technical write-up.',
 }
 
 export default function Projects() {
   return (
     <SimpleLayout
-      title="Engineering Scalable Cloud Infrastructure"
-      intro="Welcome to my technical showcase. Here, I break down complex infrastructure challenges into automated, resilient solutions. From architecting multi-account CI/CD pipelines to designing full-stack observability platforms, these projects demonstrate my approach to modern DevOps: Infrastructure as Code, security-first automation, and observability at scale."
+      title="What I've Built"
+      intro="Everything here runs in production on AWS — deployed from a single CDK monorepo, secured with custom Checkov rules, and monitored with a self-hosted Prometheus/Grafana stack. Each project links to a detailed article explaining the architecture, trade-offs, and what I'd do differently."
     >
       <ProjectsList projects={projects} categories={categories} />
     </SimpleLayout>

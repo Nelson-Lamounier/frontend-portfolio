@@ -4,9 +4,9 @@ export const article = {
   author: 'Nelson Lamounier',
   date: '2026-02-17',
   title:
-    'Enterprise CI/CD Pipeline: Multi-Project CDK Deployments with GitHub Actions and OIDC Federation',
+    'Enterprise CI/CD Pipeline: Multi-Project CDK Deployments with GitHub Actions and OIDC',
   description:
-    'How a solo DevOps engineer deploys 4 CDK projects across 3 AWS accounts using 19 workflow files, a 465-line composite action, SLSA provenance tagging, environment-scoped Checkov scanning, SSM-based smoke tests, auto-rollback on verification failure, and a 952-line TypeScript CLI — all authenticated via OIDC federation with zero long-lived credentials.',
+    'I deploy 4 CDK projects across 3 AWS accounts from a single GitHub repo using OIDC federation, a 465-line composite action, and environment-scoped Checkov scanning. 19 workflow files, zero long-lived credentials, and auto-rollback when smoke tests fail.',
 }
 
 export const metadata = {
@@ -17,15 +17,10 @@ export const metadata = {
 export default (props) => <ArticleLayout article={article} {...props} />
 
 > This article documents a production CI/CD system that deploys **4 CDK projects,
-> 11 CloudFormation stacks, across 3 AWS accounts** — from a single GitHub repository using
-> **zero long-lived AWS credentials**. The pipeline is split into three tiers: a **9-job CI
-> pipeline** with change detection that skips unnecessary work, **reusable deployment workflows**
-> that orchestrate per-stack deployment with inline security scanning, and a **465-line composite
-> action** that handles bootstrap verification, SLSA provenance tagging, and stack output capture.
-> The key insight: production deployments aren't just about `cdk deploy` — they're about
-> **what happens before** (synthesis, security scanning, drift detection), **what happens after**
-> (verification, smoke tests), and **what happens when things fail** (auto-rollback to last
-> known-good template).
+> 11 CloudFormation stacks, across 3 AWS accounts** from a single GitHub repository using
+> **zero long-lived AWS credentials**. The pipeline splits into thin environment triggers,
+> thick reusable workflows, and a shared composite action that handles bootstrap verification,
+> SLSA provenance tagging, and stack output capture.
 
 ---
 
@@ -564,10 +559,9 @@ jobs:
 
 ## 7. The Monitoring Deployment: Deploy → Verify → Smoke Test → Rollback
 
-The Monitoring pipeline is the most complete implementation of the full deployment lifecycle. It
-demonstrates every safety mechanism in the system: security scanning, drift detection,
-sequential deployment with dependency ordering, post-deploy verification, smoke tests via SSM,
-and automatic rollback on failure.
+The Monitoring pipeline is the most complete deployment in the system. It runs the full
+lifecycle end to end: security scan, drift check, sequential deploy, verification, smoke
+tests, and auto-rollback if something breaks.
 
 <Mermaid chart={`flowchart TD
     Setup["Setup & Synthesize<br/>synthesize-ci.ts"]
@@ -681,9 +675,9 @@ in production (incident response).
 <Callout variant="info" title="Progressive Security Severity">
   Security scan severity escalates with environment criticality. Development
   findings never block — they're informational. Staging blocks on HIGH and
-  CRITICAL. Production blocks on **everything**, including LOW severity. This
-  mirrors real-world risk tolerance: experimentation in dev, caution in staging,
-  zero-tolerance in production.
+  CRITICAL. Production blocks on **everything**, including LOW severity. Dev is
+  for experimenting, staging is for catching mistakes, and production gets zero
+  tolerance.
 </Callout>
 
 | Environment | `enforce-blocking` | `soft-fail-on` | Effect                                   |
@@ -1025,11 +1019,17 @@ GitHub Actions UI.
 | Staging smoke tests comparison gate → prod unlock | 4 hours | Automated staging → prod promotion    | Planned     |
 | Deployment frequency / DORA metrics               | 1 day   | Track MTTR, change failure rate       | Researching |
 
-The direction is clear: the pipeline's _structure_ (three-tier composition, environment-scoped
-secrets, progressive security scanning) is stable and extensible. The next improvements are
-about visibility (SARIF integration, DORA metrics) and automation (staging-to-prod gating,
-canary deployments). The composability of the system means these features can be added as new
-reusable workflows without modifying the existing deployment logic.
+The three-tier structure (thin triggers → thick reusables → composite action) has held up
+well. Adding the Org project took one trigger file and 3 lines in `stacks.ts`. The SLSA
+tags paid for themselves twice during incident response — I found the offending commit
+in seconds instead of digging through CloudTrail. The auto-rollback caught a real staging
+failure before I even opened the GitHub Actions UI.
+
+The gaps are mostly around visibility: SARIF integration for Checkov findings in the Security
+tab, DORA metrics for tracking deployment frequency and change failure rate, and a staging-to-prod
+promotion gate that would let smoke test results automatically unlock production. The pipeline's
+composition model means each of these can be added as a new reusable workflow without touching
+the existing deployment logic.
 
 ---
 

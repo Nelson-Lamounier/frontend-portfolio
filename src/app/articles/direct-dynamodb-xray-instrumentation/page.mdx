@@ -6,7 +6,7 @@ export const article = {
   title:
     'Killing API Gateway: Direct DynamoDB SSR with X-Ray Tracing for Solo-Dev Infrastructure',
   description:
-    'How I eliminated a 5-hop API round-trip and replaced it with a sub-5ms VPC Gateway Endpoint read — traced end-to-end — for $0/month incremental cost. A real-world walkthrough of FinOps-driven architecture decisions, OpenTelemetry instrumentation, and building a self-healing data layer for a portfolio powered by Next.js on ECS Fargate.',
+    'How I eliminated a 5-hop API round-trip and replaced it with a sub-5ms VPC Gateway Endpoint read — traced end-to-end — for $0/month incremental cost. OpenTelemetry instrumentation, file-based fallback, and a 94% cost reduction on a Next.js portfolio running on ECS.',
 }
 
 export const metadata = {
@@ -37,7 +37,7 @@ One person. One AWS account. Four articles that change once a week. And yet ever
 
 ## The Architecture Shift
 
-The "API Gateway for everything" pattern served the industry well for years. But in 2026, for read-heavy, low-write solo workloads, it is recognised as over-engineering. Direct SDK access via VPC Gateway Endpoints is the FinOps-optimal path for server-side data layers.
+The "API Gateway for everything" pattern served the industry well for years. But in 2026, for read-heavy, low-write solo workloads, it's over-engineering. Direct SDK access via VPC Gateway Endpoints is the cheaper and simpler path for server-side data layers.
 
 Here is the transformation — five hops to one, 120ms to 5ms, $8.45 to $0.51:
 
@@ -146,7 +146,7 @@ The production data flow is now a single VPC-internal hop. The observability pat
 | Get article content     | GetItem        | Primary            | `pk=ARTICLE#<slug>`, `sk=CONTENT#v1`  |
 | Articles by tag         | GSI2 Query     | `gsi2-tag-date`    | `pk=TAG#<tag>`, `sk=date#slug`        |
 
-## The "Golden Path" Implementation
+## Implementation
 
 ### Cache-Aside with TTL: Why Not DAX?
 
@@ -232,7 +232,7 @@ export async function queryPublishedArticles(): Promise<ArticleWithSlug[]> {
 
 ### Embedding OpenTelemetry in the Service Layer
 
-The service layer implements a priority chain with three observability layers baked in. This is where the tracing magic happens — every article fetch creates a business-level span in X-Ray:
+The service layer implements a priority chain with three observability layers baked in. Every article fetch creates a business-level span in X-Ray:
 
 ```typescript
 import { trace, SpanStatusCode } from '@opentelemetry/api'
@@ -340,7 +340,7 @@ export async function register() {
 
 ## The "Oh No" Moment: What If DynamoDB Goes Down?
 
-This is the question that separates a demo from production. **What happens when DynamoDB is unreachable from ECS?**
+This is where a portfolio demo becomes something closer to production. **What happens when DynamoDB is unreachable from ECS?**
 
 There are several ways this can happen — and I have experienced two of them:
 
@@ -393,7 +393,7 @@ On the next request after the cache TTL expires, the service retries DynamoDB. I
 
 ## The Payoff: FinOps Impact
 
-This is the part I enjoy most. Every architectural decision above was driven by one goal: **eliminate unnecessary cost without sacrificing reliability or observability.**
+This is the part I enjoy most. I wanted to cut cost without losing visibility into what the data layer is doing.
 
 <Mermaid chart={`flowchart LR
     subgraph OldCost["❌ Old — $8.45/month"]
@@ -475,11 +475,11 @@ No architecture post is complete without acknowledging the gaps. Here is what I 
 
 5. **File Fallback Dependency:** The fallback only works because article MDX files are baked into the Docker image at build time. If articles were dynamic-only, this safety net would not exist.
 
-<Callout variant="insight" title="Production Readiness Gaps">
-  These gaps are **intentional trade-offs**, not oversights. Each one has a
-  clear fix (circuit breaker, metric filters, shorter timeout) that adds
-  complexity without proportional value at solo-dev scale. The maturity path is
-  documented; the priority is low until traffic grows.
+<Callout variant="insight" title="Known Limitations">
+  Each of these has a clear fix (circuit breaker, metric filters, shorter
+  timeout), but each also adds complexity that doesn't pay for itself at
+  portfolio scale. I've documented the upgrade path so I can revisit when
+  traffic justifies the effort.
 </Callout>
 
 ## What I Learned
@@ -492,6 +492,6 @@ Sometimes the best architecture is the one you remove.
 
 ---
 
-_Building cloud infrastructure in Dublin, applying FinOps principles to every line of Terraform and every CDK construct. If you are questioning whether your architecture is over-engineered for your scale, reach out._
+_Based in Dublin. I build and operate AWS infrastructure for my portfolio projects — and occasionally help others do the same._
 
 ---

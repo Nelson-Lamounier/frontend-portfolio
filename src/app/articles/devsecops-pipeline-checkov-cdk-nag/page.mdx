@@ -6,9 +6,9 @@ export const article = {
   author: 'Nelson Lamounier',
   date: '2026-02-17',
   title:
-    'DevSecOps Pipeline: 30 Custom Checkov Rules, CDK-Nag Compliance, and SARIF Integration',
+    'DevSecOps Pipeline: 30 Custom Checkov Rules, CDK-Nag, and SARIF Integration',
   description:
-    'How a solo DevOps engineer implemented policy-as-code with 30 custom Python security checks across 11 domain-grouped files, environment-specific severity gating, 4 compliance frameworks, and GitHub Security tab integration — catching IMDSv1 bugs before they reach CloudFormation.',
+    "I wrote 30 custom Checkov rules in Python, wired them into a three-layer security pipeline with CDK-Nag and SARIF, and set up severity gating that warns in dev but blocks production. Here's the architecture and a real IMDSv2 bug it caught.",
 }
 
 export const metadata = {
@@ -17,8 +17,6 @@ export const metadata = {
 }
 
 export default (props) => <ArticleLayout article={article} {...props} />
-
-# DevSecOps Pipeline: 30 Custom Checkov Rules, CDK-Nag Compliance, and SARIF Integration
 
 > **TL;DR** — Default IaC scanning catches the obvious. This pipeline enforces **30 custom
 > Checkov rules** across 11 domain-grouped Python files plus **CDK-Nag** against 4 compliance
@@ -39,15 +37,11 @@ are making "quick fixes" at 11 PM.
 
 ### What I Needed
 
-The project required automated security scanning on every CI run, with custom rules for
-project-specific policies that go beyond generic CIS benchmarks. Development environments
-needed non-blocking warnings to keep iteration fast, while production deployments had to fail
-on any CRITICAL or HIGH finding — an environment-specific severity gating approach. Compliance
-framework validation during CDK synthesis provided a second layer of defense, and SARIF
-integration with the GitHub Security tab enabled historical tracking without any third-party
-SaaS dependency. Every suppression — whether at the global Checkov level or the per-resource
-CDK-Nag level — had to include a documented reason, making the suppression itself an auditable
-artifact in Git history.
+- Automated security scanning on every CI run, with custom rules that go beyond generic CIS benchmarks
+- Non-blocking warnings in dev to keep iteration fast, but pipeline failures for any CRITICAL or HIGH finding in production
+- CDK-Nag compliance validation during synthesis as a separate check from Checkov
+- SARIF integration with the GitHub Security tab for historical tracking (no third-party SaaS)
+- Every suppression — whether global Checkov or per-resource CDK-Nag — must include a documented reason, making the skip itself an auditable artifact in Git
 
 <div className="not-prose my-8 overflow-hidden rounded-2xl border border-dashed border-zinc-700 bg-zinc-900/50 p-6">
   <div className="flex items-center gap-3 text-sm font-medium text-zinc-300">
@@ -141,12 +135,12 @@ artifact in Git history.
 | **Pre-Deploy** | CI pipeline  | Template-level policy enforcement | Checkov     |
 | **Deploy**     | `cdk deploy` | Runtime provenance + tagging      | CDK Aspects |
 
-Each layer catches different categories of issues. CDK-Nag validates **construct intent**
+Each layer catches different things. CDK-Nag validates **construct intent**
 (e.g., "this S3 bucket should have encryption"). Checkov validates **template output** (e.g.,
 "this CloudFormation resource has encryption property set"). Provenance tags validate
-**deployment lineage** (e.g., "which commit deployed this stack"). The layers are intentionally
-independent — a CDK-Nag suppression does not suppress the same issue in Checkov, which means
-you must address the finding at both levels or provide documented reasons at each.
+**deployment lineage** (e.g., "which commit deployed this stack"). The layers don't talk to
+each other — a CDK-Nag suppression does not suppress the same issue in Checkov. You have to
+address the finding at both levels or document why you're skipping it at each.
 
 ---
 
@@ -182,7 +176,7 @@ Global skip lists suppress checks across **all resources** — dangerous for app
 
 ---
 
-## 4. The "Golden Path" Implementation
+## 4. Implementation
 
 ### 4.1: 30 Custom Checkov Rules Across 11 Domain-Grouped Files
 
@@ -736,7 +730,9 @@ outputs:
 
 ## 7. FinOps & Maintenance Impact
 
-The entire security pipeline runs on open-source tooling at zero incremental cost — Checkov, CDK-Nag, GitHub Actions (within free-tier limits), and SARIF uploads are all free for public repositories. The only ongoing investment is authoring time: adding a new Checkov check means adding a class to the appropriate domain-grouped file in `.checkov/custom_checks/` (auto-discovered, no config changes), adding a CDK-Nag suppression requires inline metadata or an entry in `COMMON_SUPPRESSIONS` with a mandatory `reason` string, and enabling additional compliance packs is a one-line change to the `applyCdkNag()` call.
+The entire security pipeline runs on open-source tooling at zero incremental cost. Checkov, CDK-Nag, GitHub Actions (within free-tier limits), and SARIF uploads are all free for public repositories.
+
+Adding a new Checkov check means adding a class to the appropriate domain-grouped file in `.checkov/custom_checks/` — Checkov auto-discovers it, so there are no config changes. Adding a CDK-Nag suppression requires inline metadata or an entry in `COMMON_SUPPRESSIONS` with a mandatory `reason` string. Enabling an additional compliance pack is a one-line change to the `applyCdkNag()` call.
 
 ---
 
@@ -777,12 +773,7 @@ Longer-term, continuous scanning via AWS Config would close the gap between synt
 validation and runtime reality — catching manual console changes that bypass the CDK pipeline
 entirely.
 
-> **The three-layer security model — CDK-Nag at synthesis, Checkov at pre-deploy, provenance
-> tags at deploy — creates a defence-in-depth posture where security findings must be
-> addressed or explicitly suppressed at every stage. The 30 custom checks encode the project's
-> security opinions into automated policy, the severity gating keeps development fast without
-> compromising production, and the SARIF integration provides the audit trail that makes
-> compliance reviewable — not just enforceable.**
+In practice, the three-layer setup means I don't worry about security regressions between deploys. CDK-Nag catches bad constructs at synthesis, Checkov catches bad templates before they deploy, and provenance tags tell me exactly which commit changed what. The 30 custom checks are where the real value is — they encode this project's specific opinions (no SSH, IMDSv2 in UserData, read-only DynamoDB for task roles) into code that runs on every push. The severity gating keeps dev fast while production stays locked down. And every skip has a reason attached, which means the audit trail lives in Git, not in someone's head.
 
 ---
 

@@ -8,7 +8,7 @@ export const article = {
   title:
     'Full-Stack Observability: Prometheus, Grafana, Loki & Tempo on a Single EC2 Instance',
   description:
-    'How a solo DevOps engineer built a production-grade monitoring platform — with 7 Docker containers, 9 Grafana dashboards, EC2 + Cloud Map service discovery, and zero public ingress — all deployed via SSM Run Command from CDK.',
+    'I run 7 Docker containers on one EC2 instance to get full metrics, logs, and traces for my ECS portfolio. Cloud Map DNS handles service discovery, SSM handles access, and the whole thing costs $15/month.',
 }
 
 export const metadata = {
@@ -26,7 +26,14 @@ Running a full observability stack (metrics, logs, traces) for a solo-dev portfo
 
 I run a Next.js application on ECS Fargate and need full observability — metrics, logs, and traces — without paying more for monitoring than for the application itself. The challenge is not whether to monitor, but _how_: the ECS tasks use `awsvpc` networking, which means each task gets its own private ENI IP that standard EC2 service discovery cannot resolve. Managed services like CloudWatch Container Insights offer a quick start, but I needed Prometheus-native exporters, custom Grafana dashboards, Loki log pipelines, and Tempo traces — the kind of customization that managed services either don't support or charge a premium for.
 
-The monitoring platform had to meet six non-negotiable requirements: scrape metrics from ECS tasks with dynamic IPs, aggregate logs from multiple ECS services and the EC2 host, receive distributed traces from the Next.js application, survive EC2 instance replacements without losing historical data, expose zero public network endpoints (SSM-only access), and deploy entirely from CDK with no manual SSH configuration.
+The monitoring platform had to meet six requirements:
+
+- Scrape metrics from ECS tasks with dynamic IPs (Cloud Map DNS, not a custom Lambda)
+- Aggregate logs from multiple ECS services and the EC2 host
+- Receive distributed traces from the Next.js application
+- Survive EC2 instance replacements without losing historical data
+- Expose zero public network endpoints (SSM-only access)
+- Deploy entirely from CDK with no manual SSH configuration
 
 ---
 
@@ -770,7 +777,7 @@ The dashboard update workflow is also clunkier than it should be. Today, changin
 | Prometheus remote write to Thanos/Mimir            | 2 days  | Long-term metric storage beyond 15 days             | Future                |
 | ECS Fargate migration for monitoring               | 1 week  | Eliminate EC2 management, but needs EBS alternative | Evaluating trade-offs |
 
-The direction is clear: the monitoring _data plane_ (Prometheus, Loki, Tempo) may eventually move to managed backends (AMP, Grafana Cloud) as the portfolio grows. The monitoring _control plane_ (dashboards, alert rules, datasource config) will stay in Git and CDK. The value of this project is not the containers themselves — it's the patterns for service discovery, bootstrap, persistence, and zero-trust access that transfer to any monitoring architecture.
+The monitoring stack will probably evolve. Prometheus and Loki might eventually move to managed backends (AMP, Grafana Cloud) if the portfolio grows enough to justify it. The dashboards, alert rules, and datasource configs will stay in Git and CDK regardless — those are the parts I actually want version-controlled. What I got out of building this wasn't just a working monitoring platform. It was a repeatable set of patterns — Cloud Map discovery, 3-tier bootstrap, EBS persistence across ASG replacements, SSM-only access — that I can reuse the next time I need observability on any stack.
 
 ---
 
@@ -813,6 +820,6 @@ The direction is clear: the monitoring _data plane_ (Prometheus, Loki, Tempo) ma
 
 ---
 
-_Building cloud infrastructure in Dublin, applying FinOps principles to every line of CDK. If you're questioning whether your architecture is over-engineered for your scale, reach out._
+_Based in Dublin. I build and operate AWS infrastructure for my portfolio projects — and occasionally help others do the same._
 
 ---
