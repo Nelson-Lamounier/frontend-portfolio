@@ -1,18 +1,27 @@
 # Dockerfile for Next.js Standalone Application
-# Optimized multi-stage build for production deployment
+# Multi-stage build using Amazon Linux 2023 for K8s parity
+#
+# The runner stage uses amazonlinux:2023 to match the
+# Kubernetes worker node OS, ensuring identical runtime
+# behavior between local Docker and production pods.
 
-FROM node:22-alpine AS base
-RUN apk update && apk add --no-cache libc6-compat
-RUN corepack enable
+# ── Stage 1: Dependencies (Node.js on Amazon Linux 2023) ──────────
+FROM amazonlinux:2023 AS base
 
-# Dependencies stage - install only production dependencies
+# Install Node.js 22 LTS and shadow-utils (groupadd/useradd) via dnf
+RUN dnf install -y nodejs22 nodejs22-npm shadow-utils && \
+  dnf clean all && \
+  npm install -g corepack && \
+  corepack enable
+
+# ── Stage 2: Install dependencies ─────────────────────────────────
 FROM base AS deps
 WORKDIR /app
 
 COPY package.json yarn.lock .yarnrc.yml ./
 RUN yarn install --frozen-lockfile
 
-# Builder stage - build the Next.js application
+# ── Stage 3: Build the Next.js application ────────────────────────
 FROM base AS builder
 WORKDIR /app
 
@@ -41,16 +50,20 @@ ENV USE_FILE_FALLBACK=true
 # Build Next.js application (skip lint/typecheck - validated in CI)
 RUN yarn build --no-lint
 
-# Runner stage - production image
-FROM base AS runner
+# ── Stage 4: Production runner (Amazon Linux 2023) ────────────────
+FROM amazonlinux:2023 AS runner
 WORKDIR /app
+
+# Install Node.js runtime and shadow-utils (groupadd/useradd)
+RUN dnf install -y nodejs22 shadow-utils && \
+  dnf clean all
 
 ENV NODE_ENV=production
 ENV NEXT_TELEMETRY_DISABLED=1
 
 # Create non-root user for security
-RUN addgroup --system --gid 1001 nodejs && \
-  adduser --system --uid 1001 nextjs
+RUN groupadd --system --gid 1001 nodejs && \
+  useradd --system --uid 1001 --gid nodejs nextjs
 
 # Copy the standalone build output
 COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
@@ -64,7 +77,7 @@ EXPOSE 3000
 ENV PORT=3000
 ENV HOSTNAME="0.0.0.0"
 
-# OpenTelemetry configuration (disabled by default, enabled in ECS via task definition)
+# OpenTelemetry configuration (disabled by default, enabled in K8s via pod spec)
 ENV OTEL_SDK_DISABLED=true
 ENV OTEL_SERVICE_NAME=nextjs-portfolio
 ENV OTEL_EXPORTER_OTLP_ENDPOINT=http://localhost:4317
