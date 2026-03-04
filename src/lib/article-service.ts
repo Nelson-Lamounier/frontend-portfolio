@@ -43,7 +43,13 @@ import {
 } from './dynamodb-articles'
 
 // Import S3 content layer
-import { fetchArticleContent, buildContentRef } from './s3-content'
+import { fetchArticleContent, buildContentRef, isS3Article } from './s3-content'
+
+// Import Zod validation for runtime SEO safety
+import { safeValidateMetadata, type ValidatedArticleMetadata } from './types/content-schemas'
+
+// Re-export for consumers
+export { isS3Article } from './s3-content'
 
 // Import Prometheus metrics helpers
 import { trackArticleRequest } from './metrics'
@@ -346,6 +352,48 @@ export async function getArticleContent(
 
   // File-based content is rendered by Next.js MDX directly, not through this function
   return null
+}
+
+/**
+ * Fetch and Zod-validate article metadata for SEO generation.
+ * Returns null (with warning) if metadata fails validation.
+ *
+ * @param slug - URL-friendly article identifier
+ * @returns Validated metadata safe for generateMetadata() and JSON-LD
+ */
+export async function getValidatedMetadata(
+  slug: string,
+): Promise<ValidatedArticleMetadata | null> {
+  if (!isDynamoDBConfigured()) return null
+
+  try {
+    const raw = await getArticleMetadataBySlug(slug)
+    if (!raw) return null
+
+    const result = safeValidateMetadata(raw)
+    if (!result.success) {
+      slog({
+        service: 'article-service',
+        operation: 'getValidatedMetadata',
+        slug,
+        error: JSON.stringify(result.error.issues),
+        level: 'warn',
+      })
+      return null
+    }
+
+    return result.data
+  } catch (error) {
+    const errMsg = error instanceof Error ? error.message : String(error)
+    slog({
+      service: 'article-service',
+      operation: 'getValidatedMetadata',
+      slug,
+      error: errMsg,
+      level: 'error',
+    })
+    return null
+  }
 }
 
 /**
