@@ -1,0 +1,37 @@
+# docker-compose.yml — Local development matching K8s production
+#
+# Usage:
+#   docker compose up --build        # Build and start
+#   docker compose up                # Start (cached image)
+#   docker compose down              # Stop and remove
+#   docker compose logs -f           # Follow logs
+#
+# The container runs the same Amazon Linux 2023 + Node.js 22
+# environment as the Kubernetes pods on the self-hosted cluster.
+
+services:
+  nextjs:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-}
+    container_name: nextjs-local
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=production
+      - PORT=3000
+      - HOSTNAME=0.0.0.0
+      - USE_FILE_FALLBACK=true
+      - OTEL_SDK_DISABLED=true
+      - OTEL_SERVICE_NAME=nextjs-portfolio
+      - METRICS_ENABLED=true
+      - NEXT_TELEMETRY_DISABLED=1
+    healthcheck:
+      test: ["CMD", "node", "-e", "require('http').get('http://localhost:3000/api/health', (r) => process.exit(r.statusCode === 200 ? 0 : 1))"]
+      interval: 30s
+      timeout: 3s
+      start_period: 10s
+      retries: 3
+    restart: unless-stopped

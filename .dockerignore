@@ -1,0 +1,17 @@
+# .dockerignore — Keep Docker build context lean
+node_modules
+.next
+.git
+.gitignore
+.env*
+*.md
+docs/
+__tests__/
+coverage/
+.yarn/cache
+.yarn/install-state.gz
+generated-diagrams/
+docker-compose.yml
+.eslintrc*
+.prettierrc*
+tsconfig.tsbuildinfo
