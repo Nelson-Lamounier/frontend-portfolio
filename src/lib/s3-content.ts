@@ -13,7 +13,12 @@
 
 import { S3Client, GetObjectCommand } from '@aws-sdk/client-s3'
 
-import type { ArticleContent} from './types/article.types'
+import type { ArticleContent } from './types/article.types'
+import type { ImageSidecar } from './types/content-blocks'
+import { safeValidateSidecar } from './types/content-schemas'
+
+// Re-export for convenience
+export type { ImageSidecar } from './types/content-blocks'
 
 // ========================================
 // Configuration
@@ -27,6 +32,13 @@ const REGION = process.env.AWS_REGION || 'eu-west-1'
  */
 export function isS3Configured(): boolean {
   return !!ASSETS_BUCKET_NAME
+}
+
+/**
+ * Check if an article is S3-hosted (has a contentRef pointer)
+ */
+export function isS3Article(contentRef?: string): boolean {
+  return !!contentRef && contentRef.length > 0
 }
 
 // ========================================
@@ -119,12 +131,80 @@ export async function fetchArticleContent(
 
 /**
  * Build a contentRef key for a given slug.
- * Follows the convention: published/<slug>.mdx
+ *
+ * Supports two patterns:
+ *   - Legacy: "published/<slug>.mdx"
+ *   - New:    "articles/<slug>/content.mdx"
  */
-export function buildContentRef(slug: string, bucket?: string): string {
-  const key = `published/${slug}.mdx`
-  if (bucket) {
-    return `s3://${bucket}/${key}`
+export function buildContentRef(
+  slug: string,
+  options?: { bucket?: string; format?: 'legacy' | 'new' },
+): string {
+  const format = options?.format ?? 'new'
+  const key =
+    format === 'new'
+      ? `articles/${slug}/content.mdx`
+      : `published/${slug}.mdx`
+
+  if (options?.bucket) {
+    return `s3://${options.bucket}/${key}`
   }
   return key
+}
+
+// ========================================
+// Image Sidecar Fetch
+// ========================================
+
+/**
+ * Fetch and validate an image sidecar from S3.
+ *
+ * Derives the sidecar key from the image key:
+ *   "articles/<slug>/images/hero.webp" → "articles/<slug>/images/hero.json"
+ *
+ * @returns Validated ImageSidecar or null if not found / invalid
+ */
+export async function fetchImageSidecar(
+  imageKey: string,
+): Promise<ImageSidecar | null> {
+  const sidecarKey = imageKey.replace(
+    /\.(webp|png|jpg|jpeg|gif|avif)$/i,
+    '.json',
+  )
+
+  const s3Client = getS3Client()
+
+  try {
+    const result = await s3Client.send(
+      new GetObjectCommand({
+        Bucket: ASSETS_BUCKET_NAME,
+        Key: sidecarKey,
+      }),
+    )
+
+    const body = await result.Body?.transformToString()
+    if (!body) return null
+
+    const parsed: unknown = JSON.parse(body)
+    const validation = safeValidateSidecar(parsed)
+
+    if (!validation.success) {
+      // eslint-disable-next-line no-console
+      console.warn(
+        `[s3-content] Invalid sidecar at ${sidecarKey}:`,
+        validation.error.issues,
+      )
+      return null
+    }
+
+    return validation.data
+  } catch (err: unknown) {
+    const error = err as { name?: string }
+    if (error.name === 'NoSuchKey') {
+      return null
+    }
+    // eslint-disable-next-line no-console
+    console.warn(`[s3-content] Failed to fetch sidecar: ${sidecarKey}`)
+    return null
+  }
 }
