@@ -12,13 +12,15 @@
 
 import { MDXRemote } from 'next-mdx-remote/rsc'
 
-import { Callout } from '@/components/Callout'
-import { Mermaid } from '@/components/Mermaid'
-import { ProcessTimeline } from '@/components/ProcessTimeline'
-import { SmartImage } from '@/components/SmartImage'
-import { ScenarioKeywords } from '@/components/ScenarioKeywords'
-import { EliminationList } from '@/components/EliminationList'
-import { ScreenshotPlaceholder } from '@/components/ScreenshotPlaceholder'
+import { Callout } from './Callout'
+import { CodeBlock } from './CodeBlock'
+import { ImageRequest } from './ImageRequest'
+import { Mermaid } from './Mermaid'
+import { ProcessTimeline } from './ProcessTimeline'
+import { SmartImage } from './SmartImage'
+import { ScenarioKeywords } from './ScenarioKeywords'
+import { EliminationList } from './EliminationList'
+import { ScreenshotPlaceholder } from './ScreenshotPlaceholder'
 
 // ========================================
 // MDX Component Map
@@ -32,17 +34,24 @@ import { ScreenshotPlaceholder } from '@/components/ScreenshotPlaceholder'
 const mdxComponents = {
   // Interactive / data visualization
   Mermaid,
+  MermaidChart: Mermaid, // Bedrock uses <MermaidChart>, alias to same component
   ProcessTimeline,
   SmartImage,
 
   // Content callouts
   Callout,
 
+  // Code blocks — syntax highlighting + Mermaid delegation
+  pre: CodeBlock,
+
+  // Bedrock screenshot placeholders (prod image / dev placeholder)
+  ImageRequest,
+
   // Quiz / interactive components
   ScenarioKeywords,
   EliminationList,
 
-  // Placeholder for future screenshots
+  // Legacy screenshot placeholder
   ScreenshotPlaceholder,
 }
 
@@ -75,6 +84,9 @@ export function MDXRenderer({ source }: MDXRendererProps) {
     <MDXRemote
       source={source}
       components={mdxComponents}
+      options={{
+        parseFrontmatter: true,
+      }}
     />
   )
 }

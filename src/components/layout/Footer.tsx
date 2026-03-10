@@ -2,8 +2,8 @@
 
 import Link from 'next/link'
 
-import { ContainerInner, ContainerOuter } from '@/components/Container'
-import { ManageCookiesButton } from '@/components/CookieConsent'
+import { ContainerInner, ContainerOuter } from './Container'
+import { ManageCookiesButton } from '@/components/analytics'
 
 function NavLink({
   href,

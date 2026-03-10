@@ -1,5 +1,5 @@
 import { render, screen } from '@testing-library/react'
-import { ArticleLayout } from '@/components/ArticleLayout'
+import { ArticleLayout } from '@/components/articles'
 import { type ArticleWithSlug } from '@/lib/articles'
 
 // Mock next/navigation

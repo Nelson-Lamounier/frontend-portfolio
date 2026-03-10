@@ -4,8 +4,8 @@ import { useContext, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 
 import { AppContext } from '@/app/providers'
-import { Container } from '@/components/Container'
-import { Prose } from '@/components/Prose'
+import { Container } from '@/components/layout'
+import { Prose } from '@/components/ui'
 import { formatDate } from '@/lib/formatDate'
 import { trackArticleView } from '@/lib/analytics'
 
@@ -43,7 +43,7 @@ export function ArticleLayout({
   return (
     <Container className="mt-16 lg:mt-32">
       <div className="xl:relative">
-        <div className="mx-auto max-w-2xl">
+        <div className="mx-auto max-w-3xl">
           {previousPathname && (
             <button
               type="button"

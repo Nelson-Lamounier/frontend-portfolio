@@ -15,8 +15,8 @@
 import { notFound } from 'next/navigation'
 import type { Metadata } from 'next'
 
-import { ArticleLayout } from '@/components/ArticleLayout'
-import { MDXRenderer } from '@/components/MDXRenderer'
+import { ArticleLayout } from '@/components/articles'
+import { MDXRenderer } from '@/components/articles'
 import {
   generateArticleJsonLd,
   generateArticleMetadata,

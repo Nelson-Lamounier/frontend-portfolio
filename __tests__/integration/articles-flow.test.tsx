@@ -1,6 +1,6 @@
 import { render, screen } from '@testing-library/react'
 import ArticlesIndex from '@/app/articles/page'
-import { ArticleLayout } from '@/components/ArticleLayout'
+import { ArticleLayout } from '@/components/articles'
 
 // Mock dependencies
 jest.mock('next/navigation', () => ({

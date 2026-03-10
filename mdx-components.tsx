@@ -1,9 +1,6 @@
 import Image, { type ImageProps } from 'next/image'
 import { type MDXComponents } from 'mdx/types'
-import { Callout } from '@/components/Callout'
-import { Mermaid } from '@/components/Mermaid'
-import { ProcessTimeline } from '@/components/ProcessTimeline'
-import { ScreenshotPlaceholder } from '@/components/ScreenshotPlaceholder'
+import { Callout, Mermaid, ProcessTimeline, ScreenshotPlaceholder } from '@/components/articles'
 
 export function useMDXComponents(components: MDXComponents) {
   return {
