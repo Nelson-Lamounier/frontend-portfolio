@@ -1,8 +1,8 @@
 import { type Metadata } from 'next'
 
 import { Providers } from '@/app/providers'
-import { Layout } from '@/components/Layout'
-import { CookieConsent } from '@/components/CookieConsent'
+import { Layout } from '@/components/layout'
+import { CookieConsent } from '@/components/analytics'
 
 import '@/styles/tailwind.css'
 

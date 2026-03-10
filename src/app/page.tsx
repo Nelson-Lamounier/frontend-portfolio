@@ -1,17 +1,17 @@
 import { type Metadata } from 'next'
 import Image from 'next/image'
 
-import { Card } from '@/components/Card'
-import { Container } from '@/components/Container'
-import { DevOpsPipelineAnimation } from '@/components/DevOpsPipelineAnimation'
-import { TrackedSocialLinks } from '@/components/TrackedSocialLinks'
-import { ResumeDownloadButton } from '@/components/ResumeDownloadButton'
-import { ResumePreview } from '@/components/ResumePreview'
-import { NewsletterForm } from '@/components/NewsletterForm'
+import { Card } from '@/components/ui'
+import { Container } from '@/components/layout'
+import { DevOpsPipelineAnimation } from '@/components/animations'
+import { TrackedSocialLinks } from '@/components/analytics'
+import { ResumeDownloadButton } from '@/components/resume'
+import { ResumePreview } from '@/components/resume'
+import { NewsletterForm } from '@/components/newsletter'
 import {
   GitHubIcon,
   LinkedInIcon,
-} from '@/components/SocialIcons'
+} from '@/components/social'
 import logoFacebook from '@/images/logos/facebook.svg'
 import logoPlanetaria from '@/images/logos/planetaria.svg'
 import logoaws from '@/images/logos/aws.png'

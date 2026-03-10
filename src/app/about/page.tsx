@@ -2,12 +2,12 @@ import { type Metadata } from 'next'
 import Image from 'next/image'
 import clsx from 'clsx'
 
-import { Container } from '@/components/Container'
-import { TrackedSocialLinks } from '@/components/TrackedSocialLinks'
+import { Container } from '@/components/layout'
+import { TrackedSocialLinks } from '@/components/analytics'
 import {
   GitHubIcon,
   LinkedInIcon,
-} from '@/components/SocialIcons'
+} from '@/components/social'
 import portraitImage from '@/images/portrait.jpg'
 
 function SocialLink({

@@ -2,8 +2,8 @@
 
 import { useState } from 'react'
 import Image, { StaticImageData } from 'next/image'
-import { Card } from '@/components/Card'
-import { FilterTabs } from '@/components/FilterTabs'
+import { Card } from '@/components/ui'
+import { FilterTabs } from './FilterTabs'
 import { trackProjectView } from '@/lib/analytics'
 
 interface Project {

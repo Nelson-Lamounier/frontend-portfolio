@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
-import { GoogleAnalytics } from '@/components/GoogleAnalytics'
+import { GoogleAnalytics } from './GoogleAnalytics'
 
 // ========================================
 // Constants

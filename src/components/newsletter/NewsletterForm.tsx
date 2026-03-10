@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, type FormEvent } from 'react'
-import { Button } from '@/components/Button'
+import { Button } from '@/components/ui'
 import { trackFormSubmission } from '@/lib/analytics'
 
 // ========================================

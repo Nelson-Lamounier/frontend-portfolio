@@ -1,7 +1,7 @@
 import { type Metadata } from 'next'
 
-import { Card } from '@/components/Card'
-import { SimpleLayout } from '@/components/SimpleLayout'
+import { Card } from '@/components/ui'
+import { SimpleLayout } from '@/components/layout'
 import { formatDate } from '@/lib/formatDate'
 
 // Use hybrid article service with fallback to file-based articles

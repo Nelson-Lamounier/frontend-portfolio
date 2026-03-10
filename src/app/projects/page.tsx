@@ -1,7 +1,7 @@
 import { type Metadata } from 'next'
 
-import { SimpleLayout } from '@/components/SimpleLayout'
-import { ProjectsList } from '@/components/ProjectsList'
+import { SimpleLayout } from '@/components/layout'
+import { ProjectsList } from '@/components/projects'
 import logoAws from '@/images/logos/aws.png'
 
 import {

@@ -14,9 +14,9 @@ import { useMemo } from 'react'
 import { MDXRemote, type MDXRemoteSerializeResult } from 'next-mdx-remote'
 import Image from 'next/image'
 
-import { Prose } from '@/components/Prose'
-import { ScenarioKeywords } from '@/components/ScenarioKeywords'
-import { EliminationList } from '@/components/EliminationList'
+import { Prose } from '@/components/ui'
+import { ScenarioKeywords } from './ScenarioKeywords'
+import { EliminationList } from './EliminationList'
 import type { ArticleContent, ArticleImage } from '@/lib/types/article.types'
 
 // ========================================

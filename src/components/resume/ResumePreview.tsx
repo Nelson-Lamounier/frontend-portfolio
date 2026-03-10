@@ -9,7 +9,7 @@
  */
 
 import { useState, useCallback, useEffect } from 'react'
-import { ResumeDocument } from '@/components/ResumeDocument'
+import { ResumeDocument } from './ResumeDocument'
 import { resumeDataEsc as resumeData } from '@/lib/resume-data-esc'
 import { trackResumeDownload } from '@/lib/analytics'
 
