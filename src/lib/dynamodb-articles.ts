@@ -22,6 +22,7 @@ import {
   DynamoDBDocumentClient,
   GetCommand,
   QueryCommand,
+  ScanCommand,
 } from '@aws-sdk/lib-dynamodb'
 
 import type {
@@ -121,7 +122,12 @@ function getDocClient(): DynamoDBDocumentClient {
 
 /**
  * Fetch all published articles, sorted by date descending.
- * Uses GSI1: pk=STATUS#published, sk=date#slug (ScanIndexForward=false)
+ *
+ * Strategy: tries GSI1 first (efficient Query), falls back to
+ * a full-table Scan filtered by sk=METADATA + status=published.
+ * The Scan fallback is acceptable for portfolios with <100 articles
+ * and avoids requiring the GSI to exist before testing.
+ *
  * Results are cached in-memory for CACHE_TTL_MS.
  */
 export async function queryPublishedArticles(): Promise<ArticleWithSlug[]> {
@@ -136,27 +142,62 @@ export async function queryPublishedArticles(): Promise<ArticleWithSlug[]> {
   const docClient = getDocClient()
   const start = Date.now()
 
-  const result = await docClient.send(
-    new QueryCommand({
+  // Try GSI1 first (most efficient)
+  try {
+    const result = await docClient.send(
+      new QueryCommand({
+        TableName: TABLE_NAME,
+        IndexName: GSI1_NAME,
+        KeyConditionExpression: 'gsi1pk = :pk',
+        ExpressionAttributeValues: {
+          ':pk': 'STATUS#published',
+        },
+        ScanIndexForward: false, // newest first
+      }),
+    )
+
+    trackDynamoDB('Query', 'gsi1', (Date.now() - start) / 1000)
+
+    if (result.Items && result.Items.length > 0) {
+      const articles = result.Items.map((item) =>
+        entityToArticle(item as ArticleMetadataEntity),
+      )
+      cache.set(cacheKey, articles)
+      return articles
+    }
+  } catch {
+    // GSI doesn't exist — fall through to Scan
+    // eslint-disable-next-line no-console
+    console.warn('[dynamodb] GSI1 unavailable, falling back to Scan')
+  }
+
+  // Fallback: Scan with filter (works without any GSI)
+  const scanStart = Date.now()
+  const scanResult = await docClient.send(
+    new ScanCommand({
       TableName: TABLE_NAME,
-      IndexName: GSI1_NAME,
-      KeyConditionExpression: 'gsi1pk = :pk',
-      ExpressionAttributeValues: {
-        ':pk': 'STATUS#published',
+      FilterExpression: 'sk = :sk AND (#status = :status OR attribute_not_exists(#status))',
+      ExpressionAttributeNames: {
+        '#status': 'status',
       },
-      ScanIndexForward: false, // newest first
+      ExpressionAttributeValues: {
+        ':sk': 'METADATA',
+        ':status': 'published',
+      },
     }),
   )
 
-  trackDynamoDB('Query', 'gsi1', (Date.now() - start) / 1000)
+  trackDynamoDB('Scan', 'primary', (Date.now() - scanStart) / 1000)
 
-  if (!result.Items || result.Items.length === 0) {
+  if (!scanResult.Items || scanResult.Items.length === 0) {
     return []
   }
 
-  const articles = result.Items.map((item) =>
-    entityToArticle(item as ArticleMetadataEntity),
-  )
+  // Sort client-side by date descending (Scan has no sort order)
+  const articles = scanResult.Items
+    .map((item) => entityToArticle(item as ArticleMetadataEntity))
+    .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
+
   cache.set(cacheKey, articles)
   return articles
 }

@@ -21,10 +21,10 @@ import { z } from 'zod'
  */
 export const ArticleMetadataSchema = z.object({
   slug: z.string().min(1),
-  title: z.string().min(1).max(120),       // SEO title limit
-  description: z.string().min(1).max(320), // Meta description limit
-  author: z.string().min(1),
-  date: z.string().min(1),                 // ISO 8601 date string
+  title: z.string().min(1).max(200),       // Allow longer AI-generated titles
+  description: z.string().default(''),     // Bedrock may omit — fall back to aiSummary in UI
+  author: z.string().default('Nelson Lamounier'),
+  date: z.string().default(() => new Date().toISOString().slice(0, 10)),
   tags: z.array(z.string()).default([]),
   category: z.string().optional(),
   heroImageUrl: z.string().url().optional(),
