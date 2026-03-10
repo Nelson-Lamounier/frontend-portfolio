@@ -204,23 +204,63 @@ export function createArticleKey(slug: string) {
 }
 
 /**
- * Helper to transform DynamoDB entity to API response
+ * Helper to transform DynamoDB entity to API response.
+ *
+ * Resilient to minimal records from the Bedrock Lambda which writes:
+ *   { pk, sk, title, tags, aiSummary, readingTime, contentRef, shotListCount, heroImageUrl }
+ * but the frontend expects:
+ *   { slug, title, description, author, date, tags, category, readingTimeMinutes, ... }
+ *
+ * This mapper bridges the gap by extracting slug from pk, mapping
+ * readingTime → readingTimeMinutes, and providing sensible defaults.
  */
 export function entityToArticle(
-  entity: ArticleMetadataEntity,
+  entity: ArticleMetadataEntity | Record<string, unknown>,
 ): ArticleWithSlug {
+  const e = entity as Record<string, unknown>
+
+  // Slug: prefer explicit field, fall back to extracting from pk  (ARTICLE#<slug>)
+  const slug =
+    (e.slug as string) ||
+    (typeof e.pk === 'string' ? e.pk.replace(/^ARTICLE#/, '') : '')
+
+  // Description: prefer explicit, fall back to aiSummary
+  const description =
+    (e.description as string) ||
+    (e.aiSummary as string) ||
+    ''
+
+  // Date: prefer date, fall back to publishedAt, createdAt, or gsi1sk prefix
+  const date =
+    (e.date as string) ||
+    (e.publishedAt as string)?.slice(0, 10) ||
+    (e.createdAt as string)?.slice(0, 10) ||
+    (typeof e.gsi1sk === 'string' ? e.gsi1sk.split('#')[0] : '') ||
+    new Date().toISOString().slice(0, 10)
+
+  // readingTimeMinutes: prefer explicit, fall back to readingTime (Lambda field name)
+  const readingTimeMinutes =
+    (e.readingTimeMinutes as number) ??
+    (typeof e.readingTime === 'number' ? e.readingTime : undefined)
+
+  // heroImageUrl: only pass through if it's a valid non-empty URL
+  const heroImageUrl =
+    typeof e.heroImageUrl === 'string' && e.heroImageUrl.length > 0
+      ? e.heroImageUrl
+      : undefined
+
   return {
-    slug: entity.slug,
-    title: entity.title,
-    description: entity.description,
-    author: entity.author,
-    date: entity.date,
-    tags: entity.tags,
-    category: entity.category,
-    readingTimeMinutes: entity.readingTimeMinutes,
-    heroImageUrl: entity.heroImageUrl,
-    status: entity.status,
-    contentRef: entity.contentRef,
-    aiSummary: entity.aiSummary,
+    slug,
+    title: (e.title as string) || slug,
+    description,
+    author: (e.author as string) || 'Nelson Lamounier',
+    date,
+    tags: Array.isArray(e.tags) ? (e.tags as string[]) : [],
+    category: (e.category as string) || undefined,
+    readingTimeMinutes,
+    heroImageUrl,
+    status: (e.status as ArticleStatus) || 'published',
+    contentRef: (e.contentRef as string) || '',
+    aiSummary: (e.aiSummary as string) || undefined,
   }
 }
