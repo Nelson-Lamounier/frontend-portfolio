@@ -10,7 +10,7 @@
 
 import { useState, useCallback, useEffect } from 'react'
 import { ResumeDocument } from './ResumeDocument'
-import { resumeDataEsc as resumeData } from '@/lib/resume-data-esc'
+import { resumeDataFullstack as resumeData } from '@/lib/resume-data-fullstack'
 import { trackResumeDownload } from '@/lib/analytics'
 
 export function ResumePreview() {
@@ -92,8 +92,7 @@ export function ResumePreview() {
       const pdfWidth = pdf.internal.pageSize.getWidth()
       const pdfHeight = pdf.internal.pageSize.getHeight()
       const scaleFactor = pdfWidth / A4_WIDTH
-      const totalPdfContentHeight = actualHeight * scaleFactor
-      const pageCount = Math.ceil(totalPdfContentHeight / pdfHeight)
+      const pageCount = Math.round(actualHeight / A4_HEIGHT)
 
       for (let page = 0; page < pageCount; page++) {
         if (page > 0) pdf.addPage()
@@ -249,8 +248,8 @@ export function ResumePreview() {
               </div>
             </div>
 
-            {/* Resume Document (A4 paper) */}
-            <div className="rounded-lg shadow-2xl ring-1 ring-black/5">
+            {/* Resume Document (A4 paper — two pages with gap) */}
+            <div className="flex flex-col gap-6 [&>div>div]:rounded-lg [&>div>div]:shadow-2xl [&>div>div]:ring-1 [&>div>div]:ring-black/5">
               <ResumeDocument data={resumeData} />
             </div>
           </div>

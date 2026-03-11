@@ -40,14 +40,6 @@ export const resumeDataEsc: ResumeData = {
       achievement:
         'Built CI/CD pipelines with automated rollback strategies, policy-as-code scanning (Checkov), infrastructure drift detection, and smoke tests validating container health, HTTP endpoints, and datasource connectivity',
     },
-    {
-      achievement:
-        'Hardened Linux-based container workloads with non-root execution, dropped capabilities, init process (tini), awsvpc network isolation, and security group rules restricting ingress to approved sources only',
-    },
-    {
-      achievement:
-        'Created standardised operational procedures and reusable configuration templates that cut resolution times for recurring platform issues at Meta',
-    },
   ],
 
   experience: [
