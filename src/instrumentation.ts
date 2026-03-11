@@ -1,10 +1,10 @@
 /**
- * Next.js Instrumentation Hook — OpenTelemetry + AWS X-Ray
+ * Next.js Instrumentation Hook — OpenTelemetry + W3C TraceContext
  *
  * This file runs once when the Next.js server starts.
  * It initializes OpenTelemetry with:
- * - AWS X-Ray ID generator & propagator
- * - OTLP/gRPC exporter (sends to ADOT Collector sidecar on localhost:4317)
+ * - W3C TraceContext propagation (traceparent/tracestate headers)
+ * - OTLP/gRPC exporter (sends to Alloy sidecar → Tempo)
  * - Auto-instrumentation for @aws-sdk/* (DynamoDB, etc.)
  * - AWS resource detector (ECS task metadata)
  *
@@ -13,7 +13,7 @@
  *
  * Environment Variables:
  * - OTEL_EXPORTER_OTLP_ENDPOINT: Collector endpoint (default: http://localhost:4317)
- * - OTEL_SERVICE_NAME: Service name in X-Ray (default: nextjs-portfolio)
+ * - OTEL_SERVICE_NAME: Service name in traces (default: nextjs-portfolio)
  * - OTEL_SDK_DISABLED: Set to 'true' to disable tracing (default: false)
  *
  * @see https://nextjs.org/docs/app/building-your-application/optimizing/instrumentation
@@ -36,11 +36,8 @@ export async function register() {
       const { OTLPTraceExporter } = await import(
         '@opentelemetry/exporter-trace-otlp-grpc'
       )
-      const { AWSXRayIdGenerator } = await import(
-        '@opentelemetry/id-generator-aws-xray'
-      )
-      const { AWSXRayPropagator } = await import(
-        '@opentelemetry/propagator-aws-xray'
+      const { W3CTraceContextPropagator } = await import(
+        '@opentelemetry/core'
       )
       const { awsEcsDetector } = await import(
         '@opentelemetry/resource-detector-aws'
@@ -52,18 +49,15 @@ export async function register() {
         // Service identity
         serviceName,
 
-        // Send traces to ADOT Collector sidecar via OTLP/gRPC
+        // Send traces to Alloy sidecar via OTLP/gRPC (→ Tempo)
         traceExporter: new OTLPTraceExporter({
           url:
             process.env.OTEL_EXPORTER_OTLP_ENDPOINT ||
             'http://localhost:4317',
         }),
 
-        // AWS X-Ray–compatible trace/span IDs
-        idGenerator: new AWSXRayIdGenerator(),
-
-        // Propagate X-Ray trace context across service boundaries
-        textMapPropagator: new AWSXRayPropagator(),
+        // W3C TraceContext propagation (required by Tempo span-metrics)
+        textMapPropagator: new W3CTraceContextPropagator(),
 
         // Auto-detect ECS task metadata (cluster, task ID, container)
         resourceDetectors: [awsEcsDetector],
