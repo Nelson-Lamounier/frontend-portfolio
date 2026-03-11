@@ -12,7 +12,7 @@
  */
 
 import { useCallback, useState } from 'react'
-import { resumeDataEsc as resumeData } from '@/lib/resume-data-esc'
+import { resumeDataFullstack as resumeData } from '@/lib/resume-data-fullstack'
 import { trackResumeDownload } from '@/lib/analytics'
 
 export function ResumeDownloadButton() {
@@ -73,8 +73,7 @@ export function ResumeDownloadButton() {
       const pdfHeight = pdf.internal.pageSize.getHeight()
 
       const scaleFactor = pdfWidth / A4_WIDTH
-      const totalPdfContentHeight = actualHeight * scaleFactor
-      const pageCount = Math.ceil(totalPdfContentHeight / pdfHeight)
+      const pageCount = Math.round(actualHeight / A4_HEIGHT)
 
       for (let page = 0; page < pageCount; page++) {
         if (page > 0) pdf.addPage()

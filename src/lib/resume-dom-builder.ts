@@ -6,6 +6,10 @@
  *
  * Used by both ResumeDownloadButton and ResumePreview for PDF generation.
  * html2canvas cannot capture Tailwind classes, so inline styles are required.
+ *
+ * Layout: Two explicit A4 pages with proper margins.
+ *   Page 1 — Header, Summary, Technical Skills, Certification, Key Projects
+ *   Page 2 — Professional Experience, Education
  */
 
 import type { ResumeData } from '@/lib/resume-data'
@@ -23,6 +27,11 @@ export const A4_WIDTH = 794
 export const A4_HEIGHT = 1123
 export const PDF_BG = BG
 
+/* ─── Page margins (px) ─── */
+export const PAGE_PADDING_TOP = 32
+export const PAGE_PADDING_BOTTOM = 32
+export const PAGE_PADDING_X = 40
+
 /* ─── inline style helpers ─── */
 const sectionHeadingCSS = `
   font-size: 11px;
@@ -36,24 +45,42 @@ const sectionHeadingCSS = `
 `
 
 /**
- * Build the full resume as a plain DOM element with inline styles.
- * Mirrors the layout of ResumeDocument.tsx exactly.
+ * Create a single A4 page container with proper margins.
  */
-export function buildResumeDomForPdf(data: ResumeData): HTMLDivElement {
-  const root = document.createElement('div')
-  root.style.cssText = `
+function createPageContainer(): HTMLDivElement {
+  const page = document.createElement('div')
+  page.style.cssText = `
     width: ${A4_WIDTH}px;
-    min-height: ${A4_HEIGHT}px;
+    height: ${A4_HEIGHT}px;
     background: ${BG};
     color: ${BODY};
     font-family: 'Inter', 'Segoe UI', Roboto, sans-serif;
     line-height: 1.4;
     box-sizing: border-box;
+    overflow: hidden;
+  `
+  return page
+}
+
+/**
+ * Build the full resume as a plain DOM element with inline styles.
+ * Produces two explicit A4 page containers for clean page breaks.
+ */
+export function buildResumeDomForPdf(data: ResumeData): HTMLDivElement {
+  const root = document.createElement('div')
+  root.style.cssText = `
+    width: ${A4_WIDTH}px;
+    background: ${BG};
   `
 
+  // ═══════════════════════════════════════
+  //  PAGE 1
+  // ═══════════════════════════════════════
+  const page1 = createPageContainer()
+
   // ──── HEADER ────
-  root.innerHTML = `
-    <header style="padding: 32px 40px 20px 40px; border-bottom: 2px solid ${HEADING};">
+  page1.innerHTML = `
+    <header style="padding: ${PAGE_PADDING_TOP}px ${PAGE_PADDING_X}px 20px ${PAGE_PADDING_X}px; border-bottom: 2px solid ${HEADING};">
       <h1 style="font-size: 22px; font-weight: 700; letter-spacing: -0.3px; color: ${HEADING}; margin: 0;">
         ${data.profile.name}
       </h1>
@@ -74,19 +101,39 @@ export function buildResumeDomForPdf(data: ResumeData): HTMLDivElement {
     </header>
   `
 
-  // ──── BODY CONTAINER ────
-  const body = document.createElement('div')
-  body.style.cssText = `padding: 20px 40px; box-sizing: border-box;`
+  // ──── PAGE 1 BODY ────
+  const body1 = document.createElement('div')
+  body1.style.cssText = `padding: 20px ${PAGE_PADDING_X}px ${PAGE_PADDING_BOTTOM}px ${PAGE_PADDING_X}px; box-sizing: border-box;`
 
   // ──── PROFESSIONAL SUMMARY ────
-  body.innerHTML += `
+  body1.innerHTML += `
     <section style="margin-bottom: 20px;">
       <h2 style="${sectionHeadingCSS}">Professional Summary</h2>
-      <p style="font-size: 9.5px; line-height: 1.65; color: ${BODY}; margin: 0;">
+      <p style="font-size: 10px; line-height: 1.65; color: ${BODY}; margin: 0;">
         ${data.summary}
       </p>
     </section>
   `
+
+  // ──── KEY ACHIEVEMENTS ────
+  if (data.keyAchievements && data.keyAchievements.length > 0) {
+    const achievementsHtml = data.keyAchievements
+      .map(
+        (item) => `
+      <li style="font-size: 9px; line-height: 1.6; color: ${BODY_LIGHT}; margin-bottom: 4px;">${item.achievement}</li>
+    `
+      )
+      .join('')
+
+    body1.innerHTML += `
+      <section style="margin-bottom: 20px;">
+        <h2 style="${sectionHeadingCSS}">Key Achievements</h2>
+        <ul style="margin: 0; padding-left: 14px; list-style-type: disc;">
+          ${achievementsHtml}
+        </ul>
+      </section>
+    `
+  }
 
   // ──── TECHNICAL SKILLS (2-column grid) ────
   if (data.skills && data.skills.length > 0) {
@@ -94,10 +141,10 @@ export function buildResumeDomForPdf(data: ResumeData): HTMLDivElement {
       .map(
         (group) => `
       <div style="break-inside: avoid;">
-        <h3 style="font-size: 9px; font-weight: 700; color: ${HEADING}; margin: 0 0 2px 0;">
+        <h3 style="font-size: 9.5px; font-weight: 700; color: ${HEADING}; margin: 0 0 2px 0;">
           ${group.category}
         </h3>
-        <p style="font-size: 8.5px; line-height: 1.6; color: ${BODY_LIGHT}; margin: 0;">
+        <p style="font-size: 9px; line-height: 1.6; color: ${BODY_LIGHT}; margin: 0;">
           ${group.skills.join(' · ')}
         </p>
       </div>
@@ -105,7 +152,7 @@ export function buildResumeDomForPdf(data: ResumeData): HTMLDivElement {
       )
       .join('')
 
-    body.innerHTML += `
+    body1.innerHTML += `
       <section style="margin-bottom: 20px;">
         <h2 style="${sectionHeadingCSS}">Technical Skills</h2>
         <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px 24px;">
@@ -128,10 +175,35 @@ export function buildResumeDomForPdf(data: ResumeData): HTMLDivElement {
       )
       .join('')
 
-    body.innerHTML += `
+    body1.innerHTML += `
       <section style="margin-bottom: 20px;">
         <h2 style="${sectionHeadingCSS}">Certification</h2>
         ${certsHtml}
+      </section>
+    `
+  }
+
+  // ──── EDUCATION ────
+  if (data.education && data.education.length > 0) {
+    const eduHtml = data.education
+      .map(
+        (edu) => `
+      <div style="margin-bottom: 8px;">
+        <div style="display: flex; align-items: baseline; justify-content: space-between;">
+          <span style="font-size: 9.5px; font-weight: 600; color: ${HEADING};">${edu.degree}</span>
+          <span style="font-size: 8.5px; color: ${MUTED}; flex-shrink: 0; margin-left: 16px;">${edu.period}</span>
+        </div>
+        <p style="font-size: 8.5px; color: ${MUTED}; margin: 0;">${edu.institution}</p>
+        ${edu.details ? `<p style="font-size: 8.5px; color: ${BODY_LIGHT}; margin: 2px 0 0 0;">${edu.details}</p>` : ''}
+      </div>
+    `
+      )
+      .join('')
+
+    body1.innerHTML += `
+      <section style="margin-bottom: 20px;">
+        <h2 style="${sectionHeadingCSS}">Education</h2>
+        ${eduHtml}
       </section>
     `
   }
@@ -152,13 +224,24 @@ export function buildResumeDomForPdf(data: ResumeData): HTMLDivElement {
       )
       .join('')
 
-    body.innerHTML += `
+    body1.innerHTML += `
       <section style="margin-bottom: 20px;">
         <h2 style="${sectionHeadingCSS}">Key Projects</h2>
         ${projectsHtml}
       </section>
     `
   }
+
+  page1.appendChild(body1)
+  root.appendChild(page1)
+
+  // ═══════════════════════════════════════
+  //  PAGE 2
+  // ═══════════════════════════════════════
+  const page2 = createPageContainer()
+
+  const body2 = document.createElement('div')
+  body2.style.cssText = `padding: ${PAGE_PADDING_TOP}px ${PAGE_PADDING_X}px ${PAGE_PADDING_BOTTOM}px ${PAGE_PADDING_X}px; box-sizing: border-box;`
 
   // ──── PROFESSIONAL EXPERIENCE ────
   const experienceHtml = data.experience
@@ -180,38 +263,17 @@ export function buildResumeDomForPdf(data: ResumeData): HTMLDivElement {
     )
     .join('')
 
-  body.innerHTML += `
+  body2.innerHTML += `
     <section style="margin-bottom: 20px;">
       <h2 style="${sectionHeadingCSS}">Professional Experience</h2>
       ${experienceHtml}
     </section>
   `
 
-  // ──── EDUCATION ────
-  if (data.education && data.education.length > 0) {
-    const eduHtml = data.education
-      .map(
-        (edu) => `
-      <div style="margin-bottom: 8px;">
-        <div style="display: flex; align-items: baseline; justify-content: space-between;">
-          <span style="font-size: 9.5px; font-weight: 600; color: ${HEADING};">${edu.degree}</span>
-          <span style="font-size: 8.5px; color: ${MUTED}; flex-shrink: 0; margin-left: 16px;">${edu.period}</span>
-        </div>
-        <p style="font-size: 8.5px; color: ${MUTED}; margin: 0;">${edu.institution}</p>
-        ${edu.details ? `<p style="font-size: 8.5px; color: ${BODY_LIGHT}; margin: 2px 0 0 0;">${edu.details}</p>` : ''}
-      </div>
-    `
-      )
-      .join('')
 
-    body.innerHTML += `
-      <section style="margin-bottom: 20px;">
-        <h2 style="${sectionHeadingCSS}">Education</h2>
-        ${eduHtml}
-      </section>
-    `
-  }
 
-  root.appendChild(body)
+  page2.appendChild(body2)
+  root.appendChild(page2)
+
   return root
 }
