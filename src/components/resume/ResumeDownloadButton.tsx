@@ -120,6 +120,7 @@ export function ResumeDownloadButton() {
       // 5. GA tracking
       trackResumeDownload()
     } catch (error) {
+      // eslint-disable-next-line no-console
       console.error('Resume PDF generation failed:', error)
       alert('Failed to generate resume PDF. Please try again.')
     } finally {

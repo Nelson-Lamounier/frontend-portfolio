@@ -191,7 +191,7 @@ export function validateContentBlocks(
     if (result.success) {
       validated.push(result.data)
     } else {
-      // eslint-disable-next-line no-console
+       
       console.warn(
         '[content-schemas] Invalid content block skipped:',
         JSON.stringify(result.error.issues),
