@@ -203,11 +203,6 @@ jobs:
         with:
           node-version: ${{ needs.setup.outputs.node-version }}
 
-      - name: Generate Next.js Types
-        run: |
-          mkdir -p .next/types
-          echo '// Auto-generated for CI type checking' > .next/types/routes.d.ts
-
       - name: Run TypeScript Compiler
         run: yarn tsc --noEmit
 
