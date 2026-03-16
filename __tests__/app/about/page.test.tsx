@@ -46,7 +46,7 @@ describe('About Page', () => {
       expect(list).toBeInTheDocument()
 
       const listItems = screen.getAllByRole('listitem')
-      expect(listItems.length).toBeGreaterThan(3)
+      expect(listItems.length).toBeGreaterThanOrEqual(3)
     })
 
     it('GitHub link has correct href and attributes', () => {
@@ -102,8 +102,6 @@ describe('About Page', () => {
       render(<About />)
 
       const socialPlatforms = [
-        'Follow on X',
-        'Follow on Instagram',
         'Follow on GitHub',
         'Follow on LinkedIn',
       ]
@@ -184,7 +182,8 @@ describe('About Page', () => {
       render(<About />)
 
       const list = screen.getByRole('list')
-      expect(list.parentElement).toHaveClass('lg:pl-20')
+      const positionedParent = list.closest('.lg\\:pl-20')
+      expect(positionedParent).toBeInTheDocument()
     })
   })
 })

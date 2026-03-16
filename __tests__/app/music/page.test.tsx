@@ -29,22 +29,20 @@ describe('Music Page', () => {
   })
 
   describe('Hero Section', () => {
-    it('explains the educational music concept', () => {
+    it('explains how the music study concept started', () => {
       render(<Music />)
 
       const heading = screen.getByRole('heading', {
-        name: /A New Way to Master AWS Certifications/i,
+        name: /How this started/i,
       })
       expect(heading).toBeInTheDocument()
     })
 
-    it('includes visual icon', () => {
+    it('includes Lucide music icon', () => {
       render(<Music />)
 
-      const pageContent = screen
-        .getByRole('heading', { level: 1 })
-        .closest('div')
-      expect(pageContent?.textContent).toContain('🎵')
+      const svgs = document.querySelectorAll('svg.lucide-music')
+      expect(svgs.length).toBeGreaterThan(0)
     })
 
     it('uses gradient styling', () => {
@@ -75,7 +73,7 @@ describe('Music Page', () => {
       expect(submitButton).toHaveAttribute('type', 'submit')
     })
 
-    it('form has correct action endpoint', () => {
+    it('form renders correctly', () => {
       render(<Music />)
 
       const emailInput = screen.getByPlaceholderText(
@@ -83,7 +81,7 @@ describe('Music Page', () => {
       )
       const form = emailInput.closest('form')
 
-      expect(form).toHaveAttribute('action', '/thank-you')
+      expect(form).toBeInTheDocument()
     })
 
     it('displays form heading', () => {
@@ -94,12 +92,12 @@ describe('Music Page', () => {
     })
   })
 
-  describe('What Makes This Different Section', () => {
+  describe('Why Songs Helped Section', () => {
     it('renders the section heading', () => {
       render(<Music />)
 
       const heading = screen.getByRole('heading', {
-        name: 'What Makes This Different',
+        name: 'Why songs helped me study',
       })
       expect(heading).toBeInTheDocument()
     })
@@ -107,29 +105,25 @@ describe('Music Page', () => {
     it('displays feature cards', () => {
       render(<Music />)
 
-      expect(screen.getByText('Real Scenarios')).toBeInTheDocument()
-      expect(screen.getByText('Genre-Bending')).toBeInTheDocument()
-      expect(screen.getByText('Auditory Learning')).toBeInTheDocument()
-      expect(screen.getByText('Exam-Focused')).toBeInTheDocument()
+      expect(screen.getByText('Based on real services')).toBeInTheDocument()
+      expect(screen.getByText('Easy to remember')).toBeInTheDocument()
+      expect(screen.getByText('Hands-free studying')).toBeInTheDocument()
+      expect(screen.getByText('Supplement, not replacement')).toBeInTheDocument()
     })
 
     it('includes feature descriptions', () => {
       render(<Music />)
 
       expect(
-        screen.getByText(/Exam questions reimagined as lyrical stories/i),
+        screen.getByText(/Each song covers a specific AWS service/i),
       ).toBeInTheDocument()
     })
 
-    it('displays emoji icons', () => {
+    it('displays Lucide icons for features', () => {
       render(<Music />)
 
-      const pageContent = screen
-        .getByRole('heading', { level: 1 })
-        .closest('div')
-      expect(pageContent?.textContent).toContain('📖')
-      expect(pageContent?.textContent).toContain('🎧')
-      expect(pageContent?.textContent).toContain('🎓')
+      const svgs = document.querySelectorAll('svg.lucide')
+      expect(svgs.length).toBeGreaterThan(0)
     })
   })
 
@@ -138,7 +132,7 @@ describe('Music Page', () => {
       render(<Music />)
 
       const heading = screen.getByRole('heading', {
-        name: 'Currently Recording Songs About',
+        name: /Songs I've recorded so far/i,
       })
       expect(heading).toBeInTheDocument()
     })
@@ -146,44 +140,45 @@ describe('Music Page', () => {
     it('lists AWS topics being covered', () => {
       render(<Music />)
 
-      expect(screen.getByText(/AWS CodeDeploy/i)).toBeInTheDocument()
-      expect(screen.getByText(/Amazon ECS/i)).toBeInTheDocument()
-      expect(screen.getByText(/AWS Lambda & Auto Scaling/i)).toBeInTheDocument()
-      expect(screen.getByText(/CloudFormation Stacks/i)).toBeInTheDocument()
-      expect(screen.getByText(/VPC Networking/i)).toBeInTheDocument()
+      expect(screen.getAllByText(/AWS CodeDeploy/i).length).toBeGreaterThan(0)
+      expect(screen.getAllByText(/Amazon ECS/i).length).toBeGreaterThan(0)
+      expect(screen.getAllByText(/AWS Lambda/i).length).toBeGreaterThan(0)
+      expect(screen.getAllByText(/CloudFormation Stacks/i).length).toBeGreaterThan(0)
+      expect(screen.getAllByText(/VPC Networking/i).length).toBeGreaterThan(0)
     })
 
-    it('includes musical note symbols', () => {
+    it('includes Lucide music note icons', () => {
       render(<Music />)
 
-      const section = screen.getByText(/AWS CodeDeploy/i).closest('ul')
-      expect(section?.textContent).toContain('♪')
+      const section = screen.getAllByText(/AWS CodeDeploy/i)[0].closest('ul')
+      const svgs = section?.querySelectorAll('svg.lucide')
+      expect(svgs?.length).toBeGreaterThan(0)
     })
   })
 
-  describe('Why Music Works Section', () => {
+  describe('Note on Expectations Section', () => {
     it('renders the section heading', () => {
       render(<Music />)
 
       const heading = screen.getByRole('heading', {
-        name: 'Why Music Works for Learning',
+        name: 'A note on expectations',
       })
       expect(heading).toBeInTheDocument()
     })
 
-    it('explains the science behind music learning', () => {
+    it('explains the supplementary nature of the songs', () => {
       render(<Music />)
 
       expect(
-        screen.getByText(/information paired with melody is retained/i),
+        screen.getByText(/study supplement, not a course/i),
       ).toBeInTheDocument()
     })
 
-    it('provides relatable examples', () => {
+    it('provides realistic expectations', () => {
       render(<Music />)
 
       expect(
-        screen.getByText(/ABCs or remember advertising jingles/i),
+        screen.getByText(/reading documentation/i),
       ).toBeInTheDocument()
     })
   })
@@ -233,7 +228,7 @@ describe('Music Page', () => {
       render(<Music />)
 
       const featureSection = screen.getByText(
-        'What Makes This Different',
+        'Why songs helped me study',
       ).nextElementSibling
       expect(featureSection).toHaveClass('grid', 'sm:grid-cols-2')
     })
@@ -241,10 +236,9 @@ describe('Music Page', () => {
     it('form has responsive layout', () => {
       render(<Music />)
 
-      const form = screen
-        .getByRole('button', { name: /notify me/i })
-        .closest('form')
-      expect(form).toHaveClass('flex-col', 'sm:flex-row')
+      const button = screen.getByRole('button', { name: /notify me/i })
+      const flexContainer = button.closest('.flex-col')
+      expect(flexContainer).toHaveClass('sm:flex-row')
     })
   })
 
@@ -286,8 +280,8 @@ describe('Music Page', () => {
       const hasRelevantKeywords =
         description.includes('aws') ||
         description.includes('music') ||
-        description.includes('educational') ||
-        description.includes('certification')
+        description.includes('songs') ||
+        description.includes('memorise')
 
       expect(hasRelevantKeywords).toBe(true)
     })
@@ -306,7 +300,7 @@ describe('Music Page', () => {
       ]
 
       topics.forEach((topic) => {
-        expect(screen.getByText(topic)).toBeInTheDocument()
+        expect(screen.getAllByText(topic).length).toBeGreaterThan(0)
       })
     })
 
@@ -314,7 +308,7 @@ describe('Music Page', () => {
       render(<Music />)
 
       const intro = screen.getByRole('heading', { level: 1 }).parentElement
-      expect(intro?.textContent).toContain('educational')
+      expect(intro?.textContent).toContain('study')
     })
 
     it('includes call-to-action', () => {

@@ -33,8 +33,8 @@ const mockFetchArticleContent = jest.fn()
 const mockBuildContentRef = jest.fn((slug: string) => `published/${slug}.mdx`)
 
 jest.mock('@/lib/s3-content', () => ({
-  fetchArticleContent: (...args: unknown[]) => mockFetchArticleContent(...args),
-  buildContentRef: (...args: unknown[]) => mockBuildContentRef(...args),
+  fetchArticleContent: (contentRef: string) => mockFetchArticleContent(contentRef),
+  buildContentRef: (slug: string) => mockBuildContentRef(slug),
 }))
 
 // ========================================

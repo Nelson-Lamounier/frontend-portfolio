@@ -2,6 +2,14 @@ import { render, screen } from '@testing-library/react'
 import ArticlesIndex from '@/app/articles/page'
 import { ArticleLayout } from '@/components/articles'
 
+// Mock next-mdx-remote to avoid ESM parse errors in Jest
+jest.mock('next-mdx-remote', () => ({
+  MDXRemote: () => null,
+}))
+jest.mock('next-mdx-remote/rsc', () => ({
+  MDXRemote: () => null,
+}))
+
 // Mock dependencies
 jest.mock('next/navigation', () => ({
   useRouter: jest.fn(() => ({
