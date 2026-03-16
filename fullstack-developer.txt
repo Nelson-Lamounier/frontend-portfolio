@@ -1,0 +1,100 @@
+MATER PRIVATE NETWORK
+JOB DESCRIPTION
+Full Stack Developer
+
+Job Title: Full Stack Developer
+Department: IT
+Reporting Line: Head of Digital Engineering &amp; Interoperability
+Purpose of the Role:
+The Full Stack Developer will contribute to the design, development, and support of secure, scalable
+digital applications across clinical and patient-facing healthcare systems.
+This role is ideal for a developer with strong core engineering foundations who is eager to grow their full
+stack skills in a complex, regulated environment. Working closely with senior engineers, product teams,
+and UX designers, the successful candidate will help deliver high-quality, user-centred digital solutions,
+while developing their technical and professional capabilities.
+
+Duties &amp; Responsibilities:
+Software Development
+• Contribute to the design, development, testing, and maintenance of full stack applications, including
+frontend and backend components.
+• Build and enhance RESTful APIs and backend services under guidance from senior engineers.
+• Develop responsive, accessible, and performant user interfaces for web and mobile-first applications.
+• Implement features based on well-defined requirements, designs, and user stories.
+• Write clean, maintainable, and well-tested code following engineering best practices.
+Backend &amp; Platform Development
+• Develop backend services using modern frameworks and architectures, supported by senior team
+members.
+• Work with databases to implement data models, queries, and persistence layers.
+• Assist with integration development, including API consumption and event-based messaging.
+• Support production systems through bug fixing, monitoring, and incident resolution.
+Frontend Engineering
+•Build and maintain modern React, Angular, or Vue-based user interfaces.
+• Deliver responsive and accessible UI components, aligned with UX design standards.
+• Collaborate closely with UX designers and product teams to deliver intuitive user experiences.
+
+PAGE 2 OF 3
+
+JD-IT- 014 Ed- 001 Date of Issue:04/02/2026
+Review Date:04/02/2029
+DevOps &amp; Engineering Practices
+• Contribute to CI/CD pipelines and automated testing workflows.
+• Develop using containerised and cloud-native environments, with mentoring and support.
+• Learn and apply DevOps and cloud engineering best practices.
+• Participate in team-based incident response and system support activities.
+Quality, Security &amp; Compliance
+• Follow secure coding and data protection best practices.
+• Contribute to automated testing and quality assurance efforts.
+• Ensure adherence to GDPR and healthcare data protection standards.
+Skills &amp; Qualifications:
+Essential
+• Degree in Computer Science, Software Engineering, or related discipline, or equivalent experience.
+• 2–4 years professional software development experience.
+• Practical experience in:
+◦ Frontend: React, Angular, or Vue; modern JavaScript/TypeScript
+◦ Backend: Node.js, Java (Spring Boot), .NET, or Python
+◦ API Development: RESTful services
+◦ Databases: PostgreSQL, MySQL, SQL Server, or MongoDB
+◦ Version Control: Git
+•Experience contributing to production-grade applications in a team environment.
+Desirable Experience
+• Exposure to cloud platforms (Azure, AWS, or GCP).
+• Familiarity with container technologies (Docker).
+• Experience in regulated or enterprise environments.
+• Awareness of healthcare systems, interoperability, or clinical workflows.
+Key Competencies
+• Strong problem-solving mindset
+• Willingness to learn and develop
+• Attention to detail and quality
+• Collaborative team player
+• Clear technical communication
+
+Other Employee Benefits include:
+1. Pension scheme.
+1. Critical illness cover.
+2. Discounted inpatient &amp; outpatient treatment rates.
+3. Sick leave scheme.
+4. Flexible working hours.
+5. Financial support for career training &amp; development.
+6. Staff Care Services Programme.
+7. Career break scheme.
+8. Discount pharmacy rates.
+
+PAGE 3 OF 3
+
+JD-IT- 014 Ed- 001 Date of Issue:04/02/2026
+Review Date:04/02/2029
+Terms and Conditions of Employment
+Remuneration: As per contract
+Annual Leave: As per contract
+Probation: Permanent appointment is subject to a probationary period of 6 months, which if required may be
+extended.
+Health: An independent medical advisor appointed by the hospital will carry out a pre-employment medical.
+Hours of Work: Thirty-seven hours each week exclusive of meal breaks, with flexibility (regarding actual
+working hours) to suit the local work practices and demands of the service.
+Confidentiality: The post holder must maintain the confidentiality of information about patients, staff and other
+health service business in accordance with Hospital Policy.
+Uniform: Attire must be in line with departmental policy: a neat, clean, business-like appearance must be
+always maintained.
+
+Please note: This Job Description is a Reflection of the present service requirements and may be subject to
+review and amendments to meet the changing needs of the service.

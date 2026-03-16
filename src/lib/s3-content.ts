@@ -189,7 +189,7 @@ export async function fetchImageSidecar(
     const validation = safeValidateSidecar(parsed)
 
     if (!validation.success) {
-      // eslint-disable-next-line no-console
+       
       console.warn(
         `[s3-content] Invalid sidecar at ${sidecarKey}:`,
         validation.error.issues,
@@ -203,7 +203,7 @@ export async function fetchImageSidecar(
     if (error.name === 'NoSuchKey') {
       return null
     }
-    // eslint-disable-next-line no-console
+     
     console.warn(`[s3-content] Failed to fetch sidecar: ${sidecarKey}`)
     return null
   }

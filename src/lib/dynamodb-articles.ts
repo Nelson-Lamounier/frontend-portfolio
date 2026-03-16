@@ -167,7 +167,7 @@ export async function queryPublishedArticles(): Promise<ArticleWithSlug[]> {
     }
   } catch {
     // GSI doesn't exist — fall through to Scan
-    // eslint-disable-next-line no-console
+     
     console.warn('[dynamodb] GSI1 unavailable, falling back to Scan')
   }
 

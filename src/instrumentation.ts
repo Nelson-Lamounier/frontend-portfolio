@@ -24,6 +24,7 @@ export async function register() {
   if (process.env.NEXT_RUNTIME === 'nodejs') {
     // Skip if explicitly disabled (e.g. local development)
     if (process.env.OTEL_SDK_DISABLED === 'true') {
+      // eslint-disable-next-line no-console
       console.log('[OTel] Tracing disabled via OTEL_SDK_DISABLED=true')
       return
     }
@@ -83,16 +84,18 @@ export async function register() {
       })
 
       sdk.start()
+      // eslint-disable-next-line no-console
       console.log(`[OTel] ✅ Tracing initialized (service: ${serviceName})`)
 
       // Graceful shutdown on process exit
       const shutdown = () => {
-        sdk.shutdown().catch(console.error)
+        sdk.shutdown().catch(console.error) // eslint-disable-line no-console
       }
       process.on('SIGTERM', shutdown)
       process.on('SIGINT', shutdown)
     } catch (error) {
       // Non-fatal — app continues without tracing
+      // eslint-disable-next-line no-console
       console.warn('[OTel] ⚠️ Failed to initialize tracing:', error)
     }
   }
