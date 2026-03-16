@@ -72,7 +72,6 @@ export function ResumeDownloadButton() {
       const pdfWidth = pdf.internal.pageSize.getWidth()
       const pdfHeight = pdf.internal.pageSize.getHeight()
 
-      const scaleFactor = pdfWidth / A4_WIDTH
       const pageCount = Math.round(actualHeight / A4_HEIGHT)
 
       for (let page = 0; page < pageCount; page++) {

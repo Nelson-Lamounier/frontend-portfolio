@@ -43,7 +43,7 @@ import {
 } from './dynamodb-articles'
 
 // Import S3 content layer
-import { fetchArticleContent, buildContentRef, isS3Article } from './s3-content'
+import { fetchArticleContent, buildContentRef } from './s3-content'
 
 // Import Zod validation for runtime SEO safety
 import { safeValidateMetadata, type ValidatedArticleMetadata } from './types/content-schemas'
@@ -126,7 +126,7 @@ export class ArticleServiceError extends Error {
  * @param options - Pagination options (currently only used by file-based)
  * @returns Array of articles with metadata
  */
-export async function getAllArticles(options?: {
+export async function getAllArticles(_options?: {
   page?: number
   pageSize?: number
 }): Promise<ArticleWithSlug[]> {

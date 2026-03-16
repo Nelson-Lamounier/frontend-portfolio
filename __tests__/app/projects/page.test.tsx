@@ -258,6 +258,7 @@ describe('Projects Page', () => {
         title.includes('cloud') ||
         title.includes('devops') ||
         title.includes('infrastructure') ||
+        title.includes('aws') ||
         description.includes('kubernetes') ||
         description.includes('aws')
 
