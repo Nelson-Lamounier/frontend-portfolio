@@ -1,8 +1,8 @@
 import { render, screen } from '@testing-library/react'
 import Home from '@/app/page'
 
-// Mock the getAllArticles function
-jest.mock('@/lib/articles', () => ({
+// Mock the article-service (DynamoDB-only)
+jest.mock('@/lib/article-service', () => ({
   getAllArticles: jest.fn(() =>
     Promise.resolve([
       {

@@ -23,7 +23,8 @@ services:
       - NODE_ENV=production
       - PORT=3000
       - HOSTNAME=0.0.0.0
-      - USE_FILE_FALLBACK=true
+      # Set DYNAMODB_TABLE_NAME to enable article serving locally
+      # - DYNAMODB_TABLE_NAME=your-table-name
       - OTEL_SDK_DISABLED=true
       - OTEL_SERVICE_NAME=nextjs-portfolio
       - METRICS_ENABLED=true

@@ -1,7 +1,7 @@
 /**
  * Unit tests for article-service.ts
  *
- * Tests the hybrid DynamoDB metadata + S3 content / file-based fallback logic.
+ * Tests the DynamoDB-only article serving pipeline.
  * DynamoDB and S3 calls are mocked — no real AWS credentials needed.
  */
 
@@ -35,31 +35,6 @@ const mockBuildContentRef = jest.fn((slug: string) => `published/${slug}.mdx`)
 jest.mock('@/lib/s3-content', () => ({
   fetchArticleContent: (contentRef: string) => mockFetchArticleContent(contentRef),
   buildContentRef: (slug: string) => mockBuildContentRef(slug),
-}))
-
-// ========================================
-// Mock file-based articles (fallback)
-// ========================================
-
-const mockFileArticles: ArticleWithSlug[] = [
-  {
-    slug: 'file-article-one',
-    title: 'File Article One',
-    description: 'First file-based article',
-    author: 'Test Author',
-    date: '2025-01-01',
-  },
-  {
-    slug: 'file-article-two',
-    title: 'File Article Two',
-    description: 'Second file-based article',
-    author: 'Test Author',
-    date: '2024-12-15',
-  },
-]
-
-jest.mock('@/lib/articles', () => ({
-  getAllArticles: jest.fn(() => Promise.resolve(mockFileArticles)),
 }))
 
 // ========================================
@@ -111,26 +86,24 @@ describe('ArticleService', () => {
       expect(articles[0].slug).toBe('dynamo-article-one')
     })
 
-    it('falls back to file-based when DynamoDB is not configured', async () => {
+    it('returns empty array when DynamoDB is not configured', async () => {
       mockIsDynamoDBConfigured.mockReturnValue(false)
 
       const { getAllArticles } = require('@/lib/article-service')
       const articles = await getAllArticles()
 
       expect(mockQueryPublishedArticles).not.toHaveBeenCalled()
-      expect(articles).toEqual(mockFileArticles)
-      expect(articles).toHaveLength(2)
-      expect(articles[0].slug).toBe('file-article-one')
+      expect(articles).toEqual([])
+      expect(articles).toHaveLength(0)
     })
 
-    it('falls back to file-based when DynamoDB query fails', async () => {
+    it('propagates error when DynamoDB query fails', async () => {
       mockIsDynamoDBConfigured.mockReturnValue(true)
       mockQueryPublishedArticles.mockRejectedValue(new Error('DynamoDB unreachable'))
 
       const { getAllArticles } = require('@/lib/article-service')
-      const articles = await getAllArticles()
 
-      expect(articles).toEqual(mockFileArticles)
+      await expect(getAllArticles()).rejects.toThrow('DynamoDB unreachable')
     })
 
     it('returns articles with required properties', async () => {
@@ -173,28 +146,33 @@ describe('ArticleService', () => {
       expect(result?.metadata.slug).toBe('dynamo-article-one')
     })
 
-    it('returns null when article not found in DynamoDB and no fallback', async () => {
+    it('returns null when article not found in DynamoDB', async () => {
       mockIsDynamoDBConfigured.mockReturnValue(true)
       mockGetArticleDetailBySlug.mockResolvedValue(null)
 
-      // File-based fallback will try but won't find 'nonexistent'
       const { getArticleBySlug } = require('@/lib/article-service')
       const result = await getArticleBySlug('nonexistent')
 
       expect(result).toBeNull()
     })
 
-    it('falls back to file-based when DynamoDB slug not found', async () => {
-      mockIsDynamoDBConfigured.mockReturnValue(true)
-      mockGetArticleDetailBySlug.mockResolvedValue(null)
+    it('returns null when DynamoDB is not configured', async () => {
+      mockIsDynamoDBConfigured.mockReturnValue(false)
 
       const { getArticleBySlug } = require('@/lib/article-service')
-      const result = await getArticleBySlug('file-article-one')
+      const result = await getArticleBySlug('any-slug')
 
-      // Should find it in file-based articles
-      expect(result).not.toBeNull()
-      expect(result?.metadata.slug).toBe('file-article-one')
-      expect(result?.content.isFileBased).toBe(true)
+      expect(result).toBeNull()
+      expect(mockGetArticleDetailBySlug).not.toHaveBeenCalled()
+    })
+
+    it('propagates error when DynamoDB fails', async () => {
+      mockIsDynamoDBConfigured.mockReturnValue(true)
+      mockGetArticleDetailBySlug.mockRejectedValue(new Error('Connection refused'))
+
+      const { getArticleBySlug } = require('@/lib/article-service')
+
+      await expect(getArticleBySlug('any-slug')).rejects.toThrow('Connection refused')
     })
   })
 
@@ -211,14 +189,14 @@ describe('ArticleService', () => {
       expect(articles).toEqual(tagResults)
     })
 
-    it('filters file-based articles by tag when DynamoDB not configured', async () => {
+    it('returns empty array when DynamoDB is not configured', async () => {
       mockIsDynamoDBConfigured.mockReturnValue(false)
 
       const { getArticlesByTag } = require('@/lib/article-service')
       const articles = await getArticlesByTag('aws')
 
-      // File-based articles don't have tags, so result should be empty
-      expect(articles).toHaveLength(0)
+      expect(articles).toEqual([])
+      expect(mockQueryArticlesByTag).not.toHaveBeenCalled()
     })
   })
 
@@ -233,13 +211,14 @@ describe('ArticleService', () => {
       expect(metadata).toEqual(mockDynamoArticles[0])
     })
 
-    it('falls back to file-based articles for metadata', async () => {
+    it('returns null when DynamoDB is not configured', async () => {
       mockIsDynamoDBConfigured.mockReturnValue(false)
 
       const { getArticleMetadata } = require('@/lib/article-service')
-      const metadata = await getArticleMetadata('file-article-one')
+      const metadata = await getArticleMetadata('any-slug')
 
-      expect(metadata?.slug).toBe('file-article-one')
+      expect(metadata).toBeNull()
+      expect(mockGetArticleMetadataBySlug).not.toHaveBeenCalled()
     })
   })
 
@@ -251,11 +230,11 @@ describe('ArticleService', () => {
       expect(getDataSource()).toBe('dynamodb-sdk')
     })
 
-    it('returns file-based when DynamoDB not configured', () => {
+    it('returns none when DynamoDB is not configured', () => {
       mockIsDynamoDBConfigured.mockReturnValue(false)
 
       const { getDataSource } = require('@/lib/article-service')
-      expect(getDataSource()).toBe('file-based')
+      expect(getDataSource()).toBe('none')
     })
   })
 
