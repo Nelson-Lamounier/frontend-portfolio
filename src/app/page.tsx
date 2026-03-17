@@ -21,6 +21,10 @@ import { getAllArticles } from '@/lib/article-service'
 import type { ArticleWithSlug } from '@/lib/types/article.types'
 import { formatDate } from '@/lib/formatDate'
 
+// ISR: revalidate every hour so runtime env vars (DYNAMODB_TABLE_NAME)
+// are picked up after the Docker build, which has no DynamoDB access.
+export const revalidate = 3600
+
 
 
 function BriefcaseIcon(props: React.ComponentPropsWithoutRef<'svg'>) {

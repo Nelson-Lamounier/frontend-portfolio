@@ -8,6 +8,10 @@ import { formatDate } from '@/lib/formatDate'
 import { getAllArticles, getDataSource } from '@/lib/article-service'
 import type { ArticleWithSlug } from '@/lib/types/article.types'
 
+// ISR: revalidate every hour so runtime env vars (DYNAMODB_TABLE_NAME)
+// are picked up after the Docker build, which has no DynamoDB access.
+export const revalidate = 3600
+
 function Article({ article }: { article: ArticleWithSlug }) {
   return (
     <article className="md:grid md:grid-cols-4 md:items-baseline">
