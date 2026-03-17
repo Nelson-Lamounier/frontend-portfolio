@@ -13,8 +13,8 @@ jest.mock('next/image', () => ({
   },
 }))
 
-// Mock articles
-jest.mock('@/lib/articles', () => ({
+// Mock article-service (DynamoDB-only)
+jest.mock('@/lib/article-service', () => ({
   getAllArticles: jest.fn(() =>
     Promise.resolve([
       {

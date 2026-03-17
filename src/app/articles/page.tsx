@@ -60,9 +60,15 @@ export default async function ArticlesIndex() {
         data-article-count={articles.length}
       >
         <div className="flex max-w-3xl flex-col space-y-16">
-          {articles.map((article) => (
-            <Article key={article.slug} article={article} />
-          ))}
+          {articles.length > 0 ? (
+            articles.map((article) => (
+              <Article key={article.slug} article={article} />
+            ))
+          ) : (
+            <p className="text-sm text-zinc-600 dark:text-zinc-400">
+              No articles published yet. Check back soon — new content is on the way.
+            </p>
+          )}
         </div>
       </div>
     </SimpleLayout>

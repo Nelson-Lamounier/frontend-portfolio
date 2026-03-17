@@ -1,8 +1,8 @@
 import { render, screen } from '@testing-library/react'
 import ArticlesIndex from '@/app/articles/page'
 
-// Mock the getAllArticles function
-jest.mock('@/lib/articles', () => ({
+// Mock the article-service (DynamoDB-only)
+jest.mock('@/lib/article-service', () => ({
   getAllArticles: jest.fn(() =>
     Promise.resolve([
       {
@@ -28,6 +28,7 @@ jest.mock('@/lib/articles', () => ({
       },
     ]),
   ),
+  getDataSource: jest.fn(() => 'dynamodb-sdk'),
 }))
 
 // Mock formatDate function
@@ -247,7 +248,7 @@ describe('Articles Page', () => {
   describe('Empty State', () => {
     it('handles empty articles array gracefully', async () => {
       // Override the mock for this test
-      const { getAllArticles } = require('@/lib/articles')
+      const { getAllArticles } = require('@/lib/article-service')
       getAllArticles.mockResolvedValueOnce([])
 
       render(await ArticlesIndex())
@@ -288,7 +289,7 @@ describe('Articles Page', () => {
 
   describe('Data Loading', () => {
     it('calls getAllArticles function', async () => {
-      const { getAllArticles } = require('@/lib/articles')
+      const { getAllArticles } = require('@/lib/article-service')
 
       render(await ArticlesIndex())
 
@@ -296,7 +297,7 @@ describe('Articles Page', () => {
     })
 
     it('handles async data loading', async () => {
-      const { getAllArticles } = require('@/lib/articles')
+      const { getAllArticles } = require('@/lib/article-service')
       getAllArticles.mockResolvedValueOnce([
         {
           slug: 'test-article',
@@ -339,7 +340,7 @@ describe('Articles Page', () => {
 
   describe('Error Boundaries', () => {
     it('handles malformed article data gracefully', async () => {
-      const { getAllArticles } = require('@/lib/articles')
+      const { getAllArticles } = require('@/lib/article-service')
       getAllArticles.mockResolvedValueOnce([
         {
           slug: 'incomplete-article',

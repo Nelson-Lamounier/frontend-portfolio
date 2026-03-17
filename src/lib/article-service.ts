@@ -1,21 +1,21 @@
 /**
- * Article Service - Hybrid DynamoDB SDK / File-based Integration
+ * Article Service — DynamoDB-Only Integration
  *
- * Data source priority for server-side rendering:
- * 1. DynamoDB SDK via VPC Gateway Endpoint (if DYNAMODB_TABLE_NAME is set)
- * 2. File-based MDX articles (fallback)
+ * The frontend is the Consumer in the Producer-Consumer architecture.
+ * Articles are created by the Agentic Content Supply Chain (Bedrock pipeline
+ * in cdk-monitoring) which pushes metadata to DynamoDB and MDX content to S3.
+ * This service only queries — it never generates article files.
+ *
+ * Data source: DynamoDB SDK via VPC Gateway Endpoint
  *
  * Observability:
  * - Structured JSON logs (AIOps-ready for CloudWatch / LLM auto-diagnosis)
  * - Custom OpenTelemetry spans for business-level tracing in X-Ray
  *
- * Client-side code still uses NEXT_PUBLIC_API_URL for browser fetch calls.
- *
  * Environment Variables (server-side):
  * - DYNAMODB_TABLE_NAME: Table name → enables direct DynamoDB access
  * - DYNAMODB_GSI1_NAME: GSI for status+date queries (default: gsi1-status-date)
  * - DYNAMODB_GSI2_NAME: GSI for tag+date queries (default: gsi2-tag-date)
- * - USE_FILE_FALLBACK: Set to 'false' to disable file-based fallback (default: true)
  *
  * Environment Variables (client-side, kept for browser API calls):
  * - NEXT_PUBLIC_API_URL: Base URL for the articles API (used by client components)
@@ -29,9 +29,6 @@ import type {
   ArticlesListResponse,
   ArticleDetailResponse,
 } from './types/article.types'
-
-// Import file-based article functions for fallback
-import { getAllArticles as getFileBasedArticles } from './articles'
 
 // Import DynamoDB data layer
 import {
@@ -53,12 +50,6 @@ export { isS3Article } from './s3-content'
 
 // Import Prometheus metrics helpers
 import { trackArticleRequest } from './metrics'
-
-// ========================================
-// Configuration
-// ========================================
-
-const USE_FILE_FALLBACK = process.env.USE_FILE_FALLBACK !== 'false' // Default: true
 
 // ========================================
 // OpenTelemetry Tracer (business-level spans)
@@ -119,11 +110,10 @@ export class ArticleServiceError extends Error {
 /**
  * Fetches all published articles, sorted by date (newest first)
  *
- * Priority:
- * 1. DynamoDB SDK (if DYNAMODB_TABLE_NAME is set)
- * 2. File-based MDX articles (fallback)
+ * Source: DynamoDB SDK via VPC Gateway Endpoint.
+ * Returns empty array when DynamoDB is not configured (e.g. during build).
  *
- * @param options - Pagination options (currently only used by file-based)
+ * @param options - Pagination options
  * @returns Array of articles with metadata
  */
 export async function getAllArticles(_options?: {
@@ -133,43 +123,24 @@ export async function getAllArticles(_options?: {
   return tracer.startActiveSpan('ArticleService.getAllArticles', async (span) => {
     const start = Date.now()
     try {
-      // Priority 1: Direct DynamoDB SDK
-      if (isDynamoDBConfigured()) {
-        try {
-          const articles = await queryPublishedArticles()
-          span.setAttributes({ 'article.source': 'dynamodb-sdk', 'article.count': articles.length })
-          slog({ service: 'article-service', operation: 'getAllArticles', source: 'dynamodb-sdk', count: articles.length, latencyMs: Date.now() - start, level: 'info' })
-          trackArticleRequest('getAllArticles', 'dynamodb-sdk', 'success', (Date.now() - start) / 1000)
-          return articles
-        } catch (error) {
-          const errMsg = error instanceof Error ? error.message : String(error)
-          span.setAttributes({ 'article.source': 'dynamodb-sdk', 'article.error': errMsg })
-          slog({ service: 'article-service', operation: 'getAllArticles', source: 'dynamodb-sdk', error: errMsg, latencyMs: Date.now() - start, level: 'error' })
-          trackArticleRequest('getAllArticles', 'dynamodb-sdk', 'error', (Date.now() - start) / 1000)
-          if (USE_FILE_FALLBACK) {
-            slog({ service: 'article-service', operation: 'getAllArticles', source: 'file-based', level: 'warn', fallback: true })
-            const articles = await getFileBasedArticles()
-            span.setAttributes({ 'article.source': 'file-based-fallback', 'article.count': articles.length })
-            slog({ service: 'article-service', operation: 'getAllArticles', source: 'file-based', count: articles.length, latencyMs: Date.now() - start, level: 'info', fallback: true })
-            trackArticleRequest('getAllArticles', 'file-based-fallback', 'success', (Date.now() - start) / 1000)
-            return articles
-          }
-          span.setStatus({ code: SpanStatusCode.ERROR, message: errMsg })
-          throw error
-        }
+      if (!isDynamoDBConfigured()) {
+        slog({ service: 'article-service', operation: 'getAllArticles', source: 'none', level: 'warn' })
+        span.setAttributes({ 'article.source': 'none', 'article.count': 0 })
+        return []
       }
 
-      // Priority 2: File-based fallback
-      if (USE_FILE_FALLBACK) {
-        const articles = await getFileBasedArticles()
-        span.setAttributes({ 'article.source': 'file-based', 'article.count': articles.length })
-        slog({ service: 'article-service', operation: 'getAllArticles', source: 'file-based', count: articles.length, latencyMs: Date.now() - start, level: 'info' })
-        trackArticleRequest('getAllArticles', 'file-based', 'success', (Date.now() - start) / 1000)
-        return articles
-      }
-
-      slog({ service: 'article-service', operation: 'getAllArticles', source: 'none', level: 'warn' })
-      return []
+      const articles = await queryPublishedArticles()
+      span.setAttributes({ 'article.source': 'dynamodb-sdk', 'article.count': articles.length })
+      slog({ service: 'article-service', operation: 'getAllArticles', source: 'dynamodb-sdk', count: articles.length, latencyMs: Date.now() - start, level: 'info' })
+      trackArticleRequest('getAllArticles', 'dynamodb-sdk', 'success', (Date.now() - start) / 1000)
+      return articles
+    } catch (error) {
+      const errMsg = error instanceof Error ? error.message : String(error)
+      span.setAttributes({ 'article.source': 'dynamodb-sdk', 'article.error': errMsg })
+      span.setStatus({ code: SpanStatusCode.ERROR, message: errMsg })
+      slog({ service: 'article-service', operation: 'getAllArticles', source: 'dynamodb-sdk', error: errMsg, latencyMs: Date.now() - start, level: 'error' })
+      trackArticleRequest('getAllArticles', 'dynamodb-sdk', 'error', (Date.now() - start) / 1000)
+      throw error
     } finally {
       span.end()
     }
@@ -208,9 +179,8 @@ export async function getArticlesWithPagination(options?: {
 /**
  * Fetches a single article by slug, including full content
  *
- * Priority:
- * 1. DynamoDB SDK (metadata + content)
- * 2. File-based MDX (metadata only, MDX rendered separately)
+ * Source: DynamoDB SDK (metadata) + S3 (content via contentRef pointer).
+ * Returns null when DynamoDB is not configured or article not found.
  *
  * @param slug - URL-friendly article identifier
  * @returns Article metadata and content, or null if not found
@@ -222,68 +192,28 @@ export async function getArticleBySlug(
     const start = Date.now()
     span.setAttribute('article.slug', slug)
     try {
-      // Priority 1: Direct DynamoDB SDK
-      if (isDynamoDBConfigured()) {
-        try {
-          const detail = await getArticleDetailBySlug(slug)
-          if (detail) {
-            span.setAttribute('article.source', 'dynamodb-sdk')
-            slog({ service: 'article-service', operation: 'getArticleBySlug', source: 'dynamodb-sdk', slug, latencyMs: Date.now() - start, level: 'info' })
-            return detail
-          }
-          slog({ service: 'article-service', operation: 'getArticleBySlug', slug, level: 'info', found: false })
-        } catch (error) {
-          const errMsg = error instanceof Error ? error.message : String(error)
-          span.setAttributes({ 'article.source': 'dynamodb-sdk', 'article.error': errMsg })
-          slog({ service: 'article-service', operation: 'getArticleBySlug', source: 'dynamodb-sdk', slug, error: errMsg, latencyMs: Date.now() - start, level: 'error' })
-        }
+      if (!isDynamoDBConfigured()) {
+        return null
       }
 
-      // Priority 2: File-based fallback
-      if (USE_FILE_FALLBACK) {
-        span.setAttribute('article.source', 'file-based')
-        return getFileBasedArticleBySlug(slug)
+      const detail = await getArticleDetailBySlug(slug)
+      if (detail) {
+        span.setAttribute('article.source', 'dynamodb-sdk')
+        slog({ service: 'article-service', operation: 'getArticleBySlug', source: 'dynamodb-sdk', slug, latencyMs: Date.now() - start, level: 'info' })
+        return detail
       }
 
+      slog({ service: 'article-service', operation: 'getArticleBySlug', slug, level: 'info', found: false })
       return null
+    } catch (error) {
+      const errMsg = error instanceof Error ? error.message : String(error)
+      span.setAttributes({ 'article.source': 'dynamodb-sdk', 'article.error': errMsg })
+      slog({ service: 'article-service', operation: 'getArticleBySlug', source: 'dynamodb-sdk', slug, error: errMsg, latencyMs: Date.now() - start, level: 'error' })
+      throw error
     } finally {
       span.end()
     }
   })
-}
-
-/**
- * Fetches article from file-based MDX (fallback method)
- * Returns metadata and a placeholder for content (MDX will be rendered separately)
- */
-async function getFileBasedArticleBySlug(
-  slug: string
-): Promise<ArticleDetailResponse | null> {
-  try {
-    const articles = await getFileBasedArticles()
-    const article = articles.find((a) => a.slug === slug)
-
-    if (!article) {
-      return null
-    }
-
-    // Return metadata with a marker for file-based content
-    return {
-      metadata: article,
-      content: {
-        contentType: 'mdx',
-        content: '', // Empty - MDX content rendered via file-based page
-        componentData: [],
-        images: [],
-        version: 1,
-        isFileBased: true, // Marker to indicate file-based rendering needed
-      } as ArticleContent & { isFileBased: boolean },
-    }
-  } catch (error) {
-    console.error(`[ArticleService] File fallback failed for ${slug}:`, error)
-      slog({ service: 'article-service', operation: 'getFileBasedArticleBySlug', source: 'file-based', slug, error: error instanceof Error ? error.message : String(error), level: 'error' })
-    return null
-  }
 }
 
 /**
@@ -299,28 +229,21 @@ export async function getArticleMetadata(
   return tracer.startActiveSpan('ArticleService.getArticleMetadata', async (span) => {
     span.setAttribute('article.slug', slug)
     try {
-      // Priority 1: DynamoDB SDK
-      if (isDynamoDBConfigured()) {
-        try {
-          const metadata = await getArticleMetadataBySlug(slug)
-          if (metadata) {
-            span.setAttribute('article.source', 'dynamodb-sdk')
-            return metadata
-          }
-        } catch (error) {
-          const errMsg = error instanceof Error ? error.message : String(error)
-          slog({ service: 'article-service', operation: 'getArticleMetadata', source: 'dynamodb-sdk', slug, error: errMsg, level: 'error' })
-        }
+      if (!isDynamoDBConfigured()) {
+        return null
       }
 
-      // Priority 2: File-based fallback
-      if (USE_FILE_FALLBACK) {
-        const articles = await getFileBasedArticles()
-        span.setAttribute('article.source', 'file-based')
-        return articles.find((a) => a.slug === slug) || null
+      const metadata = await getArticleMetadataBySlug(slug)
+      if (metadata) {
+        span.setAttribute('article.source', 'dynamodb-sdk')
+        return metadata
       }
 
       return null
+    } catch (error) {
+      const errMsg = error instanceof Error ? error.message : String(error)
+      slog({ service: 'article-service', operation: 'getArticleMetadata', source: 'dynamodb-sdk', slug, error: errMsg, level: 'error' })
+      throw error
     } finally {
       span.end()
     }
@@ -407,30 +330,18 @@ export async function getArticlesByTag(tag: string): Promise<ArticleWithSlug[]> 
     const start = Date.now()
     span.setAttribute('article.tag', tag)
     try {
-      // Priority 1: DynamoDB SDK via GSI2
-      if (isDynamoDBConfigured()) {
-        try {
-          const articles = await queryArticlesByTag(tag)
-          span.setAttributes({ 'article.source': 'dynamodb-sdk', 'article.count': articles.length })
-          slog({ service: 'article-service', operation: 'getArticlesByTag', source: 'dynamodb-sdk', tag, count: articles.length, latencyMs: Date.now() - start, level: 'info' })
-          return articles
-        } catch (error) {
-          const errMsg = error instanceof Error ? error.message : String(error)
-          slog({ service: 'article-service', operation: 'getArticlesByTag', source: 'dynamodb-sdk', tag, error: errMsg, latencyMs: Date.now() - start, level: 'error' })
-        }
+      if (!isDynamoDBConfigured()) {
+        return []
       }
 
-      // Priority 2: Filter file-based articles by tag
-      if (USE_FILE_FALLBACK) {
-        const articles = await getFileBasedArticles() as ArticleWithSlug[]
-        const filtered = articles.filter(
-          (a: ArticleWithSlug) => a.tags?.some((t: string) => t.toLowerCase() === tag.toLowerCase())
-        )
-        span.setAttributes({ 'article.source': 'file-based', 'article.count': filtered.length })
-        return filtered
-      }
-
-      return []
+      const articles = await queryArticlesByTag(tag)
+      span.setAttributes({ 'article.source': 'dynamodb-sdk', 'article.count': articles.length })
+      slog({ service: 'article-service', operation: 'getArticlesByTag', source: 'dynamodb-sdk', tag, count: articles.length, latencyMs: Date.now() - start, level: 'info' })
+      return articles
+    } catch (error) {
+      const errMsg = error instanceof Error ? error.message : String(error)
+      slog({ service: 'article-service', operation: 'getArticlesByTag', source: 'dynamodb-sdk', tag, error: errMsg, latencyMs: Date.now() - start, level: 'error' })
+      throw error
     } finally {
       span.end()
     }
@@ -559,8 +470,7 @@ export function calculateReadingTime(content: string): number {
  * Returns the current data source being used
  * Useful for observability and debugging
  */
-export function getDataSource(): 'dynamodb-sdk' | 'file-based' | 'none' {
+export function getDataSource(): 'dynamodb-sdk' | 'none' {
   if (isDynamoDBConfigured()) return 'dynamodb-sdk'
-  if (USE_FILE_FALLBACK) return 'file-based'
   return 'none'
 }
