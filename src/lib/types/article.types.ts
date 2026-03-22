@@ -31,6 +31,7 @@ export interface ArticleWithSlug extends Article {
   category?: string
   readingTimeMinutes?: number
   heroImageUrl?: string
+  githubUrl?: string
   status?: ArticleStatus
   contentRef?: string
   aiSummary?: string
@@ -153,6 +154,9 @@ export interface ArticleMetadataEntity {
   // AI-Generated Summary (populated by Bedrock pipeline)
   aiSummary?: string
 
+  // GitHub repository URL (optional, set by Bedrock or admin)
+  githubUrl?: string
+
   // Timestamps
   createdAt: string
   updatedAt: string
@@ -249,6 +253,12 @@ export function entityToArticle(
       ? e.heroImageUrl
       : undefined
 
+  // githubUrl: only pass through if it's a valid non-empty string
+  const githubUrl =
+    typeof e.githubUrl === 'string' && e.githubUrl.length > 0
+      ? e.githubUrl
+      : undefined
+
   return {
     slug,
     title: (e.title as string) || slug,
@@ -259,6 +269,7 @@ export function entityToArticle(
     category: (e.category as string) || undefined,
     readingTimeMinutes,
     heroImageUrl,
+    githubUrl,
     status: (e.status as ArticleStatus) || 'published',
     contentRef: (e.contentRef as string) || '',
     aiSummary: (e.aiSummary as string) || undefined,
