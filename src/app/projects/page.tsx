@@ -1,4 +1,14 @@
-import { type Metadata } from 'next'
+/**
+ * Projects Page — DynamoDB-driven
+ *
+ * Lists all published articles from DynamoDB as project cards.
+ * Categories and icons are derived from article metadata.
+ * No hardcoded project data — the source of truth is DynamoDB.
+ *
+ * Route: /projects
+ */
+
+import { type Metadata, type ReactNode } from 'next'
 
 import { SimpleLayout } from '@/components/layout'
 import { ProjectsList } from '@/components/projects'
@@ -13,156 +23,78 @@ import {
   Shield,
   GitBranch,
   Award,
+  Cpu,
 } from 'lucide-react'
 
-const projects = [
-  {
-    id: 1,
-    title: 'Enterprise CI/CD Pipeline',
-    description:
-      '19 workflow files deploying 4 CDK projects across 3 AWS accounts with OIDC federation, SLSA provenance tagging, environment-scoped Checkov scanning, and auto-rollback — zero long-lived credentials.',
-    tags: ['GitHub Actions', 'CDK', 'OIDC', 'SLSA'],
-    category: 'CI/CD',
-    link: {
-      href: '/articles/enterprise-cicd-pipeline-github-actions',
-      label: 'Read article',
-    },
-    icon: <GitBranch className="h-8 w-8 text-orange-400" />,
-    logo: logoAws,
-  },
-  {
-    id: 2,
-    title: 'CDK Project Factory Pattern',
-    description:
-      'A construct-to-factory pipeline managing 4 projects and 11 stacks from a single 105-line entry point — with typed config modules, SSM-based cross-stack discovery, and a 31-file L3 construct library.',
-    tags: ['CDK', 'TypeScript', 'Factory Pattern', 'L3 Constructs'],
-    category: 'Infrastructure',
-    link: {
-      href: '/articles/cdk-project-factory-pattern',
-      label: 'Read article',
-    },
-    icon: <Server className="h-8 w-8 text-purple-400" />,
-    logo: logoAws,
-  },
-  {
-    id: 3,
-    title: 'DevSecOps Pipeline',
-    description:
-      '33 custom Checkov rules across 26 Python files, CDK-Nag with 4 compliance frameworks, SARIF integration with GitHub Security — catching IMDSv1 bugs before they reach CloudFormation.',
-    tags: ['Checkov', 'CDK-Nag', 'SARIF', 'Python'],
-    category: 'Security',
-    link: {
-      href: '/articles/devsecops-pipeline-checkov-cdk-nag',
-      label: 'Read article',
-    },
-    icon: <Shield className="h-8 w-8 text-red-400" />,
-    logo: logoAws,
-  },
-  {
-    id: 4,
-    title: 'Direct DynamoDB X-Ray Tracing',
-    description:
-      'Eliminated a 5-hop API round-trip with sub-5ms VPC Gateway Endpoint reads, OpenTelemetry instrumentation, in-memory TTL cache, and file-based fallback — at $0/month incremental cost.',
-    tags: ['DynamoDB', 'X-Ray', 'OpenTelemetry', 'VPC'],
-    category: 'Infrastructure',
-    link: {
-      href: '/articles/direct-dynamodb-xray-instrumentation',
-      label: 'Read article',
-    },
-    icon: <Database className="h-8 w-8 text-yellow-400" />,
-    logo: logoAws,
-  },
-  {
-    id: 5,
-    title: 'Full-Stack Observability',
-    description:
-      '7 Docker containers on a single EC2 instance — Prometheus, Grafana, Loki, Tempo — with Cloud Map DNS service discovery, 9 dashboards from S3, and zero public ingress.',
-    tags: ['Prometheus', 'Grafana', 'Loki', 'Tempo'],
-    category: 'Monitoring',
-    link: {
-      href: '/articles/full-stack-observability',
-      label: 'Read article',
-    },
-    icon: <Terminal className="h-8 w-8 text-green-400" />,
-    logo: logoAws,
-  },
-  {
-    id: 6,
-    title: 'Next.js ECS CloudFront Deployment',
-    description:
-      'A 6-stack CDK architecture deploying containerized Next.js across ECS on EC2, CloudFront with WAF, API Gateway with Lambda, DynamoDB, and S3 — with auto-deploy from ECR pushes and deployment circuit breakers.',
-    tags: ['ECS', 'CloudFront', 'API Gateway', 'WAF'],
-    category: 'Infrastructure',
-    link: {
-      href: '/articles/nextjs-ecs-cloudfront-aws-deployment',
-      label: 'Read article',
-    },
-    icon: <Cloud className="h-8 w-8 text-blue-400" />,
-    logo: logoAws,
-  },
-  {
-    id: 7,
-    title: 'AWS DevOps Pro Certification',
-    description:
-      'From scoring 726 (24 points short) to passing — a refined exam strategy covering multi-service architectures, deployment decision trees, and the SPIDER elimination method.',
-    tags: ['AWS', 'Certification', 'DevOps Professional'],
-    category: 'Certification',
-    link: {
-      href: '/articles/aws-devops-pro-exam-failure-to-success',
-      label: 'Read article',
-    },
-    icon: <Award className="h-8 w-8 text-teal-400" />,
-    logo: logoAws,
-  },
-]
-
-const categories = [
-  'All',
-  'Infrastructure',
-  'CI/CD',
-  'Security',
-  'Monitoring',
-  'Certification',
-]
-
-export const metadata: Metadata = {
-  title:
-    'Projects | AWS CDK, CI/CD & Observability',
-  description:
-    'CDK factory patterns, CI/CD pipelines with OIDC, DevSecOps with Checkov, full-stack observability, and containerized Next.js on ECS — each with a detailed technical write-up.',
-}
+// ========================================
+// Category → Icon Mapping
+// ========================================
 
 /**
- * Projects page — enriches hardcoded projects with `githubUrl` from DynamoDB.
- *
- * The projects array stays hardcoded (icons/logos can't live in DynamoDB),
- * but `githubUrl` is merged at render time by matching article slugs.
+ * Maps article categories to lucide-react icons.
+ * Articles without a matching category get the default Cloud icon.
+ */
+const categoryIcons: Record<string, ReactNode> = {
+  'CI/CD': <GitBranch className="h-8 w-8 text-orange-400" />,
+  'Infrastructure': <Server className="h-8 w-8 text-purple-400" />,
+  'Security': <Shield className="h-8 w-8 text-red-400" />,
+  'Monitoring': <Terminal className="h-8 w-8 text-green-400" />,
+  'Certification': <Award className="h-8 w-8 text-teal-400" />,
+  'Database': <Database className="h-8 w-8 text-yellow-400" />,
+  'Compute': <Cpu className="h-8 w-8 text-blue-400" />,
+}
+
+/** Fallback icon for categories not in the map */
+const defaultIcon = <Cloud className="h-8 w-8 text-blue-400" />
+
+// ========================================
+// Metadata
+// ========================================
+
+export const metadata: Metadata = {
+  title: 'Projects | AWS CDK, CI/CD & Observability',
+  description:
+    'CDK factory patterns, CI/CD pipelines with OIDC, DevSecOps with Checkov, full-stack observability, and containerised Next.js on ECS — each with a detailed technical write-up.',
+}
+
+// ========================================
+// Page Component
+// ========================================
+
+/**
+ * Projects page — fetches published articles from DynamoDB and
+ * renders them as project cards with category-based icons.
  */
 export default async function Projects() {
-  // Build slug → githubUrl map from DynamoDB articles
   const articles = await getAllArticles()
-  const githubUrlMap = new Map<string, string>()
 
-  for (const article of articles) {
-    if (article.githubUrl) {
-      githubUrlMap.set(article.slug, article.githubUrl)
-    }
-  }
+  // Map articles to project card data
+  const projects = articles.map((article, index) => ({
+    id: index + 1,
+    title: article.title,
+    description: article.description || article.aiSummary || '',
+    tags: article.tags || [],
+    category: article.category || 'Infrastructure',
+    link: {
+      href: `/articles/${article.slug}`,
+      label: 'Read article',
+    },
+    icon: categoryIcons[article.category || ''] || defaultIcon,
+    logo: logoAws,
+  }))
 
-  // Enrich hardcoded projects with githubUrl where available
-  const enrichedProjects = projects.map((project) => {
-    const slug = project.link.href.replace('/articles/', '')
-    const githubUrl = githubUrlMap.get(slug)
-    return githubUrl ? { ...project, githubUrl } : project
-  })
+  // Derive categories dynamically from article data
+  const uniqueCategories = [
+    ...new Set(articles.map((a) => a.category || 'Infrastructure')),
+  ].sort()
+  const categories = ['All', ...uniqueCategories]
 
   return (
     <SimpleLayout
       title="What I've Built"
       intro="Everything here runs in production on AWS — deployed from a single CDK monorepo, secured with custom Checkov rules, and monitored with a self-hosted Prometheus/Grafana stack. Each project links to a detailed article explaining the architecture, trade-offs, and what I'd do differently."
     >
-      <ProjectsList projects={enrichedProjects} categories={categories} />
+      <ProjectsList projects={projects} categories={categories} />
     </SimpleLayout>
   )
 }
-

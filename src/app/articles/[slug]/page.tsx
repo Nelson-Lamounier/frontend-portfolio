@@ -115,6 +115,7 @@ export default async function DynamicArticlePage({
     tags: metadata.tags,
     heroImageUrl: metadata.heroImageUrl,
     aiSummary: metadata.aiSummary,
+    githubUrl: metadata.githubUrl,
   }
 
   return (
