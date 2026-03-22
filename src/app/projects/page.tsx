@@ -2,6 +2,7 @@ import { type Metadata } from 'next'
 
 import { SimpleLayout } from '@/components/layout'
 import { ProjectsList } from '@/components/projects'
+import { getAllArticles } from '@/lib/article-service'
 import logoAws from '@/images/logos/aws.png'
 
 import {
@@ -131,13 +132,37 @@ export const metadata: Metadata = {
     'CDK factory patterns, CI/CD pipelines with OIDC, DevSecOps with Checkov, full-stack observability, and containerized Next.js on ECS — each with a detailed technical write-up.',
 }
 
-export default function Projects() {
+/**
+ * Projects page — enriches hardcoded projects with `githubUrl` from DynamoDB.
+ *
+ * The projects array stays hardcoded (icons/logos can't live in DynamoDB),
+ * but `githubUrl` is merged at render time by matching article slugs.
+ */
+export default async function Projects() {
+  // Build slug → githubUrl map from DynamoDB articles
+  const articles = await getAllArticles()
+  const githubUrlMap = new Map<string, string>()
+
+  for (const article of articles) {
+    if (article.githubUrl) {
+      githubUrlMap.set(article.slug, article.githubUrl)
+    }
+  }
+
+  // Enrich hardcoded projects with githubUrl where available
+  const enrichedProjects = projects.map((project) => {
+    const slug = project.link.href.replace('/articles/', '')
+    const githubUrl = githubUrlMap.get(slug)
+    return githubUrl ? { ...project, githubUrl } : project
+  })
+
   return (
     <SimpleLayout
       title="What I've Built"
       intro="Everything here runs in production on AWS — deployed from a single CDK monorepo, secured with custom Checkov rules, and monitored with a self-hosted Prometheus/Grafana stack. Each project links to a detailed article explaining the architecture, trade-offs, and what I'd do differently."
     >
-      <ProjectsList projects={projects} categories={categories} />
+      <ProjectsList projects={enrichedProjects} categories={categories} />
     </SimpleLayout>
   )
 }
+
