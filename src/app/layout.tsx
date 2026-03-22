@@ -3,6 +3,7 @@ import { type Metadata } from 'next'
 import { Providers } from '@/app/providers'
 import { Layout } from '@/components/layout'
 import { CookieConsent } from '@/components/analytics'
+import { ChatWidget } from '@/components/chat'
 
 import '@/styles/tailwind.css'
 
@@ -34,6 +35,7 @@ export default function RootLayout({
           <div className="flex w-full">
             <Layout>{children}</Layout>
           </div>
+          <ChatWidget />
         </Providers>
       </body>
     </html>

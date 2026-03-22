@@ -23,6 +23,7 @@ import {
   GetCommand,
   QueryCommand,
   ScanCommand,
+  UpdateCommand,
 } from '@aws-sdk/lib-dynamodb'
 
 import type {
@@ -325,4 +326,140 @@ export async function queryArticlesByTag(
   }))
   cache.set(cacheKey, articles)
   return articles
+}
+
+/**
+ * Fetch all draft articles, sorted by date descending.
+ *
+ * Uses GSI1 with `STATUS#draft` partition key.
+ * Falls back to a Scan if the GSI query returns no results
+ * (handles cases where the GSI hasn't been populated yet).
+ *
+ * @returns Array of draft articles awaiting review
+ */
+export async function queryDraftArticles(): Promise<ArticleWithSlug[]> {
+  const cacheKey = 'draft-articles'
+  const cached = cache.get<ArticleWithSlug[]>(cacheKey)
+  if (cached) {
+    trackDynamoDBCache('draft-articles', true)
+    return cached
+  }
+  trackDynamoDBCache('draft-articles', false)
+
+  const docClient = getDocClient()
+  const start = Date.now()
+
+  // Try GSI1 first
+  try {
+    const result = await docClient.send(
+      new QueryCommand({
+        TableName: TABLE_NAME,
+        IndexName: GSI1_NAME,
+        KeyConditionExpression: 'gsi1pk = :pk',
+        ExpressionAttributeValues: {
+          ':pk': 'STATUS#draft',
+        },
+        ScanIndexForward: false,
+      }),
+    )
+
+    trackDynamoDB('Query', 'gsi1', (Date.now() - start) / 1000)
+
+    if (result.Items && result.Items.length > 0) {
+      const articles = result.Items.map((item) =>
+        entityToArticle(item as ArticleMetadataEntity),
+      )
+      cache.set(cacheKey, articles, 30_000) // Short TTL for drafts (30s)
+      return articles
+    }
+  } catch {
+    console.warn('[dynamodb] GSI1 unavailable for drafts, falling back to Scan')
+  }
+
+  // Fallback: Scan filtered by status=draft
+  const scanStart = Date.now()
+  const scanResult = await docClient.send(
+    new ScanCommand({
+      TableName: TABLE_NAME,
+      FilterExpression: 'sk = :sk AND #status = :status',
+      ExpressionAttributeNames: {
+        '#status': 'status',
+      },
+      ExpressionAttributeValues: {
+        ':sk': 'METADATA',
+        ':status': 'draft',
+      },
+    }),
+  )
+
+  trackDynamoDB('Scan', 'primary', (Date.now() - scanStart) / 1000)
+
+  if (!scanResult.Items || scanResult.Items.length === 0) {
+    return []
+  }
+
+  const articles = scanResult.Items
+    .map((item) => entityToArticle(item as ArticleMetadataEntity))
+    .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
+
+  cache.set(cacheKey, articles, 30_000)
+  return articles
+}
+
+/**
+ * Publish a draft article by updating its status in DynamoDB.
+ *
+ * Updates:
+ * - `status` → `'published'`
+ * - `gsi1pk` → `'STATUS#published'` (moves it into the published index)
+ * - `publishedAt` → current ISO timestamp
+ * - `updatedAt` → current ISO timestamp
+ *
+ * Invalidates both draft and published article caches so the
+ * next listing query reflects the change immediately.
+ *
+ * @param slug - URL-friendly article identifier
+ * @returns Updated article metadata
+ * @throws Error if article not found or update fails
+ */
+export async function publishArticle(slug: string): Promise<ArticleWithSlug> {
+  const docClient = getDocClient()
+  const now = new Date().toISOString()
+  const start = Date.now()
+
+  const result = await docClient.send(
+    new UpdateCommand({
+      TableName: TABLE_NAME,
+      Key: {
+        pk: `ARTICLE#${slug}`,
+        sk: 'METADATA',
+      },
+      UpdateExpression:
+        'SET #status = :status, gsi1pk = :gsi1pk, publishedAt = :publishedAt, updatedAt = :updatedAt',
+      ExpressionAttributeNames: {
+        '#status': 'status',
+      },
+      ExpressionAttributeValues: {
+        ':status': 'published',
+        ':gsi1pk': 'STATUS#published',
+        ':publishedAt': now,
+        ':updatedAt': now,
+      },
+      ConditionExpression: 'attribute_exists(pk)',
+      ReturnValues: 'ALL_NEW',
+    }),
+  )
+
+  trackDynamoDB('UpdateItem', 'primary', (Date.now() - start) / 1000)
+
+  if (!result.Attributes) {
+    throw new Error(`Article not found: ${slug}`)
+  }
+
+  // Invalidate caches so listings refresh immediately
+  cache.invalidate('draft-articles')
+  cache.invalidate('published-articles')
+  cache.invalidate(`metadata:${slug}`)
+
+  return entityToArticle(result.Attributes as ArticleMetadataEntity)
 }
