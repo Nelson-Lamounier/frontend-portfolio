@@ -125,6 +125,36 @@ export default function About() {
               debugging.
             </p>
           </div>
+          <div className="mt-10 border-t border-zinc-100 pt-8 dark:border-zinc-700/40">
+            <h2 className="flex items-center gap-2 text-sm font-semibold text-zinc-900 dark:text-zinc-100">
+              <svg
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth={1.5}
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                className="h-5 w-5 text-teal-500"
+                aria-hidden="true"
+              >
+                <path d="M9 18V5l12-2v13" />
+                <circle cx="6" cy="18" r="3" />
+                <circle cx="18" cy="16" r="3" />
+              </svg>
+              Beyond Code
+            </h2>
+            <p className="mt-3 text-sm text-zinc-600 dark:text-zinc-400">
+              When I&apos;m not building infrastructure, I&apos;m making music.
+              It&apos;s a creative outlet that keeps me sane — and a reminder
+              that not every problem requires a YAML file.{' '}
+              <a
+                href="/music"
+                className="font-medium text-teal-500 transition hover:text-teal-600 dark:hover:text-teal-400"
+              >
+                Have a listen →
+              </a>
+            </p>
+          </div>
         </div>
         <div className="lg:pl-20">
           <TrackedSocialLinks>
