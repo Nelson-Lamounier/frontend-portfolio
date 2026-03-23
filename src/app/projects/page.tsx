@@ -52,9 +52,9 @@ const defaultIcon = <Cloud className="h-8 w-8 text-blue-400" />
 // ========================================
 
 export const metadata: Metadata = {
-  title: 'Projects | AWS CDK, CI/CD & Observability',
+  title: 'Projects | Nelson Lamounier, Cloud & DevOps Engineer',
   description:
-    'CDK factory patterns, CI/CD pipelines with OIDC, DevSecOps with Checkov, full-stack observability, and containerised Next.js on ECS — each with a detailed technical write-up.',
+    'Production AWS projects built with CDK, self-managed Kubernetes, ArgoCD GitOps, Bedrock AI tooling, and full-stack observability. Each project includes a detailed technical write-up.',
 }
 
 // ========================================
@@ -92,7 +92,7 @@ export default async function Projects() {
   return (
     <SimpleLayout
       title="What I've Built"
-      intro="Everything here runs in production on AWS — deployed from a single CDK monorepo, secured with custom Checkov rules, and monitored with a self-hosted Prometheus/Grafana stack. Each project links to a detailed article explaining the architecture, trade-offs, and what I'd do differently."
+      intro="Everything here runs in production on AWS. Deployed from a CDK monorepo, delivered through ArgoCD GitOps on self-managed Kubernetes, and monitored with Prometheus, Grafana, Loki, and Tempo. Each project links to a detailed article explaining the architecture, trade-offs, and what I'd do differently."
     >
       <ProjectsList projects={projects} categories={categories} />
     </SimpleLayout>
