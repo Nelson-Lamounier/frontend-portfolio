@@ -17,6 +17,14 @@ import { Callout } from './Callout'
 import { CodeBlock } from './CodeBlock'
 import { ImageRequest } from './ImageRequest'
 import { Mermaid } from './Mermaid'
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeaderCell,
+  TableRow,
+} from './MDXTable'
 import { ProcessTimeline } from './ProcessTimeline'
 import { SmartImage } from './SmartImage'
 import { ScenarioKeywords } from './ScenarioKeywords'
@@ -54,6 +62,14 @@ const mdxComponents = {
 
   // Legacy screenshot placeholder
   ScreenshotPlaceholder,
+
+  // HTML table element overrides — modern styled tables
+  table: Table,
+  thead: TableHead,
+  tbody: TableBody,
+  tr: TableRow,
+  th: TableHeaderCell,
+  td: TableCell,
 }
 
 // ========================================
