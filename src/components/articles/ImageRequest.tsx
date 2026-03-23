@@ -44,7 +44,7 @@ export function ImageRequest({ id, instruction }: ImageRequestProps) {
     : ''
 
   // Development: local repo image in public/images/articles/
-  const localUrl = `/images/articles/${id}.png`
+  const localUrl = `/images/articles/${id}.jpeg`
 
   // Choose the image source
   const imageUrl = isProduction && s3Url ? s3Url : localUrl
