@@ -33,6 +33,7 @@ interface ImageRequestProps {
  */
 export function ImageRequest({ id, instruction }: ImageRequestProps) {
   const [imgError, setImgError] = useState(false)
+  const [usePngFallback, setUsePngFallback] = useState(false)
 
   const bucketName = process.env.NEXT_PUBLIC_ASSETS_BUCKET_NAME
   const region = process.env.NEXT_PUBLIC_AWS_REGION ?? 'eu-west-1'
@@ -44,7 +45,9 @@ export function ImageRequest({ id, instruction }: ImageRequestProps) {
     : ''
 
   // Development: local repo image in public/images/articles/
-  const localUrl = `/images/articles/${id}.jpeg`
+  // Try .jpeg first, fall back to .png (screenshots are often PNG)
+  const localExt = usePngFallback ? 'png' : 'jpeg'
+  const localUrl = `/images/articles/${id}.${localExt}`
 
   // Choose the image source
   const imageUrl = isProduction && s3Url ? s3Url : localUrl
@@ -94,11 +97,19 @@ export function ImageRequest({ id, instruction }: ImageRequestProps) {
       <div className="overflow-hidden rounded-xl border border-zinc-200 shadow-sm dark:border-zinc-700/50">
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
+          key={imageUrl}
           src={imageUrl}
           alt={instruction}
           loading="lazy"
           className="h-auto w-full"
-          onError={() => setImgError(true)}
+          onError={() => {
+            // In dev: try .png if .jpeg failed, then show placeholder
+            if (!isProduction && !usePngFallback) {
+              setUsePngFallback(true)
+            } else {
+              setImgError(true)
+            }
+          }}
         />
       </div>
       <figcaption className="mt-3 text-center text-sm text-zinc-500 dark:text-zinc-400">
