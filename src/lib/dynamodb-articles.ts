@@ -20,6 +20,7 @@
 import { DynamoDBClient } from '@aws-sdk/client-dynamodb'
 import {
   DynamoDBDocumentClient,
+  DeleteCommand,
   GetCommand,
   QueryCommand,
   ScanCommand,
@@ -462,4 +463,97 @@ export async function publishArticle(slug: string): Promise<ArticleWithSlug> {
   cache.invalidate(`metadata:${slug}`)
 
   return entityToArticle(result.Attributes as ArticleMetadataEntity)
+}
+
+/**
+ * Unpublish an article — transition from 'published' back to 'draft'.
+ *
+ * @param slug - URL-friendly article identifier
+ * @returns Updated article metadata
+ * @throws Error if article not found or update fails
+ */
+export async function unpublishArticle(slug: string): Promise<ArticleWithSlug> {
+  const docClient = getDocClient()
+  const now = new Date().toISOString()
+  const start = Date.now()
+
+  const result = await docClient.send(
+    new UpdateCommand({
+      TableName: TABLE_NAME,
+      Key: {
+        pk: `ARTICLE#${slug}`,
+        sk: 'METADATA',
+      },
+      UpdateExpression:
+        'SET #status = :status, gsi1pk = :gsi1pk, updatedAt = :updatedAt',
+      ExpressionAttributeNames: {
+        '#status': 'status',
+      },
+      ExpressionAttributeValues: {
+        ':status': 'draft',
+        ':gsi1pk': 'STATUS#draft',
+        ':updatedAt': now,
+      },
+      ConditionExpression: 'attribute_exists(pk)',
+      ReturnValues: 'ALL_NEW',
+    }),
+  )
+
+  trackDynamoDB('UpdateItem', 'primary', (Date.now() - start) / 1000)
+
+  if (!result.Attributes) {
+    throw new Error(`Article not found: ${slug}`)
+  }
+
+  cache.invalidate('draft-articles')
+  cache.invalidate('published-articles')
+  cache.invalidate(`metadata:${slug}`)
+
+  return entityToArticle(result.Attributes as ArticleMetadataEntity)
+}
+
+/**
+ * Delete an article and all its DynamoDB records (METADATA + CONTENT versions).
+ *
+ * This removes the metadata entity. S3 content is left intact as an archive.
+ *
+ * @param slug - URL-friendly article identifier
+ * @throws Error if the delete fails
+ */
+export async function deleteArticle(slug: string): Promise<void> {
+  const docClient = getDocClient()
+  const pk = `ARTICLE#${slug}`
+  const start = Date.now()
+
+  // 1. Query all SK entries for this article (METADATA, CONTENT#*)
+  const queryResult = await docClient.send(
+    new QueryCommand({
+      TableName: TABLE_NAME,
+      KeyConditionExpression: 'pk = :pk',
+      ExpressionAttributeValues: { ':pk': pk },
+      ProjectionExpression: 'pk, sk',
+    }),
+  )
+
+  const items = queryResult.Items ?? []
+  if (items.length === 0) {
+    throw new Error(`Article not found: ${slug}`)
+  }
+
+  // 2. Delete each record
+  for (const item of items) {
+    await docClient.send(
+      new DeleteCommand({
+        TableName: TABLE_NAME,
+        Key: { pk: item.pk, sk: item.sk },
+      }),
+    )
+  }
+
+  trackDynamoDB('DeleteItem', 'primary', (Date.now() - start) / 1000)
+
+  // 3. Invalidate caches
+  cache.invalidate('draft-articles')
+  cache.invalidate('published-articles')
+  cache.invalidate(`metadata:${slug}`)
 }

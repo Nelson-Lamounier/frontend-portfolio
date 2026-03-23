@@ -1,26 +1,28 @@
 /**
- * Admin Articles API — Draft Listing
+ * Admin Articles API — Draft and Published Listing
  *
- * GET /api/admin/articles — returns all draft articles from DynamoDB.
+ * GET /api/admin/articles              — returns all draft articles
+ * GET /api/admin/articles?status=all   — returns both drafts and published
+ * GET /api/admin/articles?status=published — returns only published
+ *
  * Guarded: only accessible when NODE_ENV === 'development'.
- *
- * This route is used by the local admin drafts page to list
- * articles awaiting review before publication.
  */
 
-import { NextResponse } from 'next/server'
+import { NextRequest, NextResponse } from 'next/server'
 
 import {
   isDynamoDBConfigured,
   queryDraftArticles,
+  queryPublishedArticles,
 } from '@/lib/dynamodb-articles'
 
 /**
- * Returns all draft articles for the admin review page.
+ * Returns articles for the admin page filtered by status.
  *
- * @returns JSON array of draft article metadata
+ * @param request - Optional `status` query param: 'draft' (default), 'published', or 'all'
+ * @returns JSON array of article metadata
  */
-export async function GET(): Promise<NextResponse> {
+export async function GET(request: NextRequest): Promise<NextResponse> {
   // Guard: dev-only
   if (process.env.NODE_ENV !== 'development') {
     return NextResponse.json(
@@ -36,14 +38,35 @@ export async function GET(): Promise<NextResponse> {
     )
   }
 
+  const status = request.nextUrl.searchParams.get('status') ?? 'draft'
+
   try {
+    if (status === 'all') {
+      const [drafts, published] = await Promise.all([
+        queryDraftArticles(),
+        queryPublishedArticles(),
+      ])
+      return NextResponse.json({
+        drafts,
+        published,
+        draftCount: drafts.length,
+        publishedCount: published.length,
+      })
+    }
+
+    if (status === 'published') {
+      const published = await queryPublishedArticles()
+      return NextResponse.json({ articles: published, count: published.length })
+    }
+
+    // Default: drafts only (backwards-compatible)
     const drafts = await queryDraftArticles()
     return NextResponse.json({ articles: drafts, count: drafts.length })
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error)
-    console.error('[admin/articles] Failed to fetch drafts:', message)
+    console.error('[admin/articles] Failed to fetch articles:', message)
     return NextResponse.json(
-      { error: 'Failed to fetch draft articles' },
+      { error: 'Failed to fetch articles' },
       { status: 500 },
     )
   }
