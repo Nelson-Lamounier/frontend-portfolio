@@ -140,6 +140,12 @@ export function AdminDraftCard({ article, onPublished }: AdminDraftCardProps) {
         >
           Preview ↗
         </a>
+        <a
+          href={`/admin/editor/${article.slug}`}
+          className="rounded-lg border border-blue-300 dark:border-blue-700 bg-blue-50 dark:bg-blue-900/20 px-4 py-2 text-sm font-medium text-blue-700 dark:text-blue-300 transition-colors hover:bg-blue-100 dark:hover:bg-blue-900/40"
+        >
+          Edit ✎
+        </a>
         <button
           onClick={handlePublish}
           disabled={isPublishing}
