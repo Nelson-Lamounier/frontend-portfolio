@@ -190,7 +190,7 @@ export function ChatWidget() {
           </div>
 
           {/* Messages */}
-          <ChatMessageList messages={state.messages} isLoading={state.isLoading} />
+          <ChatMessageList messages={state.messages} isLoading={state.isLoading} onSuggestionClick={handleSend} />
 
           {/* Error banner */}
           {state.error && (

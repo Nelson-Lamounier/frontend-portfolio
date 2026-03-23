@@ -15,6 +15,18 @@ import { useEffect, useRef } from 'react'
 import type { ChatMessage } from '@/lib/types/chat.types'
 
 // =============================================================================
+// SAMPLE QUESTIONS
+// =============================================================================
+
+/** Pre-fabricated questions that showcase the assistant's capabilities */
+const SAMPLE_QUESTIONS: readonly string[] = [
+  'What projects are in your portfolio?',
+  'Tell me about your AWS infrastructure',
+  'What certifications do you hold?',
+  'How is your Kubernetes cluster set up?',
+] as const
+
+// =============================================================================
 // PROPS
 // =============================================================================
 
@@ -23,6 +35,8 @@ interface ChatMessageListProps {
   readonly messages: ChatMessage[]
   /** Whether the agent is currently processing */
   readonly isLoading: boolean
+  /** Callback when a sample question is clicked */
+  readonly onSuggestionClick?: (prompt: string) => void
 }
 
 // =============================================================================
@@ -32,10 +46,10 @@ interface ChatMessageListProps {
 /**
  * Renders the list of chat messages with auto-scroll behaviour.
  *
- * @param props - Messages array and loading state
+ * @param props - Messages array, loading state, and optional suggestion click handler
  * @returns Scrollable message list JSX
  */
-export function ChatMessageList({ messages, isLoading }: ChatMessageListProps) {
+export function ChatMessageList({ messages, isLoading, onSuggestionClick }: ChatMessageListProps) {
   const bottomRef = useRef<HTMLDivElement>(null)
 
   // Auto-scroll to the latest message
@@ -45,18 +59,50 @@ export function ChatMessageList({ messages, isLoading }: ChatMessageListProps) {
 
   return (
     <div className="flex-1 overflow-y-auto px-4 py-3 space-y-3">
-      {/* Empty state */}
+      {/* Welcome state with sample questions */}
       {messages.length === 0 && !isLoading && (
-        <div className="flex flex-col items-center justify-center h-full text-center px-4">
-          <div className="text-3xl mb-3">💬</div>
-          <p className="text-sm font-medium text-zinc-700 dark:text-zinc-300">
-            Ask me anything about this portfolio
+        <div className="flex flex-col items-center justify-center h-full text-center px-2">
+          <div className="w-12 h-12 rounded-full bg-gradient-to-br from-teal-400 to-teal-600 flex items-center justify-center mb-3">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-6 h-6 text-white">
+              <path d="M10 1c.956 0 1.886.078 2.784.227a.75.75 0 0 1-.237 1.481A11.516 11.516 0 0 0 10 2.5c-5.006 0-8.5 3.005-8.5 5.5s3.494 5.5 8.5 5.5c5.006 0 8.5-3.005 8.5-5.5 0-1.093-.59-2.18-1.653-3.073a.75.75 0 1 1 .976-1.14C19.084 4.897 20 6.332 20 8c0 3.546-4.432 7-10 7-1.574 0-3.065-.27-4.39-.75L1.5 16V12.24C.527 11.09 0 9.626 0 8c0-3.546 4.432-7 10-7Zm4 5.5a1 1 0 1 0 0-2 1 1 0 0 0 0 2Zm-4 0a1 1 0 1 0 0-2 1 1 0 0 0 0 2ZM7 7.5a1 1 0 1 0 0-2 1 1 0 0 0 0 2Z" />
+            </svg>
+          </div>
+
+          <h4 className="text-sm font-semibold text-zinc-800 dark:text-zinc-200 mb-1">
+            Hi! I&apos;m Nelson&apos;s Portfolio Assistant
+          </h4>
+          <p className="text-xs text-zinc-500 dark:text-zinc-400 mb-4 max-w-[260px]">
+            I can answer questions about projects, skills, certifications, and infrastructure.
           </p>
-          <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-1">
-            I know about the projects, architecture, and skills showcased here.
-          </p>
+
+          <div className="w-full space-y-2">
+            <p className="text-[11px] font-medium text-zinc-400 dark:text-zinc-500 uppercase tracking-wider">
+              Try asking
+            </p>
+            {SAMPLE_QUESTIONS.map((question) => (
+              <button
+                key={question}
+                type="button"
+                onClick={() => onSuggestionClick?.(question)}
+                className="
+                  w-full text-left text-xs px-3 py-2.5
+                  rounded-xl border border-zinc-200 dark:border-zinc-600
+                  bg-zinc-50 dark:bg-zinc-700/50
+                  text-zinc-700 dark:text-zinc-300
+                  hover:bg-teal-50 hover:border-teal-300
+                  dark:hover:bg-teal-900/20 dark:hover:border-teal-600
+                  hover:text-teal-700 dark:hover:text-teal-300
+                  transition-all duration-150 cursor-pointer
+                "
+              >
+                <span className="mr-1.5 text-teal-500">→</span>
+                {question}
+              </button>
+            ))}
+          </div>
         </div>
       )}
+
 
       {/* Messages */}
       {messages.map((msg) => (
