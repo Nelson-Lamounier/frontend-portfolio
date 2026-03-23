@@ -11,6 +11,7 @@
  */
 
 import { MDXRemote } from 'next-mdx-remote/rsc'
+import remarkGfm from 'remark-gfm'
 
 import { Callout } from './Callout'
 import { CodeBlock } from './CodeBlock'
@@ -86,6 +87,9 @@ export function MDXRenderer({ source }: MDXRendererProps) {
       components={mdxComponents}
       options={{
         parseFrontmatter: true,
+        mdxOptions: {
+          remarkPlugins: [remarkGfm],
+        },
       }}
     />
   )
