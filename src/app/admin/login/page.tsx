@@ -11,7 +11,7 @@
 
 'use client'
 
-import { useCallback, useState, type FormEvent } from 'react'
+import { Suspense, useCallback, useState, type FormEvent } from 'react'
 import { signIn } from 'next-auth/react'
 import { useRouter, useSearchParams } from 'next/navigation'
 
@@ -22,15 +22,15 @@ import { useRouter, useSearchParams } from 'next/navigation'
 type LoginState = 'idle' | 'loading' | 'error'
 
 // =============================================================================
-// PAGE COMPONENT
+// INNER COMPONENT (uses useSearchParams)
 // =============================================================================
 
 /**
- * Admin login page with username/password form.
+ * Login form that reads the callback URL from search params.
  *
- * @returns Login page JSX
+ * @returns Login form JSX
  */
-export default function AdminLoginPage() {
+function AdminLoginForm() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const callbackUrl = searchParams.get('callbackUrl') || '/admin/drafts'
@@ -170,3 +170,28 @@ export default function AdminLoginPage() {
     </div>
   )
 }
+
+// =============================================================================
+// PAGE COMPONENT (wraps inner component in Suspense)
+// =============================================================================
+
+/**
+ * Admin login page — wraps the form in a Suspense boundary
+ * as required by Next.js 15 for useSearchParams().
+ *
+ * @returns Login page with Suspense wrapper
+ */
+export default function AdminLoginPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="flex min-h-screen items-center justify-center bg-zinc-50 dark:bg-zinc-950">
+          <div className="h-8 w-8 animate-spin rounded-full border-2 border-teal-500 border-t-transparent" />
+        </div>
+      }
+    >
+      <AdminLoginForm />
+    </Suspense>
+  )
+}
+

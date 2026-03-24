@@ -67,7 +67,6 @@ export function initialiseFaro(): Faro | null {
         // session tracking, view tracking
         ...getWebInstrumentations({
           captureConsole: true,
-          captureConsoleDisabledLevels: [], // Capture all levels
         }),
 
         // Client-side tracing → forwarded to Tempo via Alloy OTLP
