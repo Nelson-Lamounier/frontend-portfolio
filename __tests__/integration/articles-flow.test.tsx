@@ -10,6 +10,12 @@ jest.mock('next-mdx-remote/rsc', () => ({
   MDXRemote: () => null,
 }))
 
+// Mock remark-gfm ESM module
+jest.mock('remark-gfm', () => ({
+  __esModule: true,
+  default: () => {},
+}))
+
 // Mock dependencies
 jest.mock('next/navigation', () => ({
   useRouter: jest.fn(() => ({
@@ -18,11 +24,15 @@ jest.mock('next/navigation', () => ({
   })),
 }))
 
-jest.mock('@/app/providers', () => ({
-  AppContext: {
-    Provider: ({ children }: { children: React.ReactNode }) => children,
-  },
-}))
+jest.mock('@/app/providers', () => {
+  const React = require('react')
+  const mockContext = {
+    previousPathname: null,
+  }
+  return {
+    AppContext: React.createContext(mockContext),
+  }
+})
 
 jest.mock('@/lib/formatDate', () => ({
   formatDate: jest.fn((date: string) => {
@@ -35,7 +45,27 @@ jest.mock('@/lib/formatDate', () => ({
   }),
 }))
 
-// Mock the articles library
+// Mock analytics (used by ArticleLayout)
+jest.mock('@/lib/analytics', () => ({
+  trackArticleView: jest.fn(),
+  trackEvent: jest.fn(),
+}))
+
+// Mock global fetch for LikeButton/CommentSection API calls
+beforeEach(() => {
+  global.fetch = jest.fn(() =>
+    Promise.resolve({
+      ok: true,
+      json: () => Promise.resolve({ liked: false, count: 0, comments: [] }),
+    }),
+  ) as jest.Mock
+})
+
+afterEach(() => {
+  jest.restoreAllMocks()
+})
+
+// Mock the articles library (used for direct getAllArticles calls in tests)
 jest.mock('@/lib/articles', () => ({
   getAllArticles: jest.fn(() =>
     Promise.resolve([
@@ -59,6 +89,33 @@ jest.mock('@/lib/articles', () => ({
       },
     ]),
   ),
+}))
+
+// Mock article-service (used by ArticlesIndex page component)
+jest.mock('@/lib/article-service', () => ({
+  getAllArticles: jest.fn(() =>
+    Promise.resolve([
+      {
+        slug: 'aws-devops-pro-exam-failure-to-success',
+        title:
+          '24 Points from Heartbreak: How I Failed the AWS DevOps Pro and Returned to Conquer It',
+        description:
+          'After scoring 726 on my first attempt—just shy of the 750 required—I realized the AWS DevOps Professional exam demanded more than familiarity with AWS services.',
+        author: 'Nelson Lamounier',
+        date: '2025-11-20',
+      },
+      {
+        slug: 'golden-ami-multi-environment-deployment',
+        title:
+          'The "Golden AMI" Trap: Decoding Multi-Environment Deploys for the AWS DevOps Pro Exam',
+        description:
+          'If you are preparing for the AWS DevOps Professional exam, you will inevitably encounter a "Scenario Question" that feels impossible to solve.',
+        author: 'Nelson Lamounier',
+        date: '2024-10-23',
+      },
+    ]),
+  ),
+  getDataSource: jest.fn(() => 'mock'),
 }))
 
 describe('Articles Integration Flow', () => {
@@ -157,14 +214,6 @@ describe('Articles Integration Flow', () => {
       const articles = await getAllArticles()
       const firstArticle = articles[0]
 
-      const useContextMock = jest.fn(() => ({
-        previousPathname: '/articles',
-      }))
-
-      jest
-        .spyOn(require('react'), 'useContext')
-        .mockImplementation(useContextMock)
-
       render(
         <ArticleLayout article={firstArticle}>
           <p>Article content goes here</p>
@@ -179,14 +228,6 @@ describe('Articles Integration Flow', () => {
       const { getAllArticles } = require('@/lib/articles')
       const articles = await getAllArticles()
       const article = articles[0]
-
-      const useContextMock = jest.fn(() => ({
-        previousPathname: null,
-      }))
-
-      jest
-        .spyOn(require('react'), 'useContext')
-        .mockImplementation(useContextMock)
 
       render(
         <ArticleLayout article={article}>
@@ -270,7 +311,7 @@ describe('Articles Integration Flow', () => {
 
       // Should still render the page structure
       const heading = screen.getByRole('heading', {
-        name: /Writing on AWS infrastructure/i,
+        name: /Writing on Kubernetes, GitOps/i,
       })
       expect(heading).toBeInTheDocument()
     })

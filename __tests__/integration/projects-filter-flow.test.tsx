@@ -10,11 +10,65 @@ jest.mock('next/image', () => ({
   },
 }))
 
+// Mock analytics
+jest.mock('@/lib/analytics', () => ({
+  trackProjectView: jest.fn(),
+}))
+
+// Mock article-service (Projects page is now DynamoDB-driven)
+jest.mock('@/lib/article-service', () => ({
+  getAllArticles: jest.fn(() =>
+    Promise.resolve([
+      {
+        slug: 'golden-ami-pipeline',
+        title: 'Golden AMI Pipeline with CDK & Step Functions',
+        description: 'Automated golden AMI pipeline.',
+        category: 'CI/CD',
+        tags: ['cdk', 'ssm'],
+        date: '2025-01-10',
+      },
+      {
+        slug: 'self-managed-kubernetes',
+        title: 'Self-Managed Kubernetes on EC2 with kubeadm',
+        description: 'Production-grade Kubernetes cluster on EC2.',
+        category: 'Infrastructure',
+        tags: ['kubernetes', 'ec2'],
+        date: '2025-02-01',
+      },
+      {
+        slug: 'argocd-gitops',
+        title: 'ArgoCD GitOps with Helm on Self-Managed K8s',
+        description: 'GitOps workflow using ArgoCD.',
+        category: 'CI/CD',
+        tags: ['argocd', 'helm'],
+        date: '2025-02-15',
+      },
+      {
+        slug: 'observability-stack',
+        title: 'Full-Stack Observability with Prometheus, Grafana & Loki',
+        description: 'End-to-end observability pipeline.',
+        category: 'Monitoring',
+        tags: ['prometheus', 'grafana'],
+        date: '2025-03-01',
+      },
+      {
+        slug: 'network-policy-hardening',
+        title: 'Kubernetes Network Policy Hardening with Calico',
+        description: 'Zero-trust network policies using Calico CNI.',
+        category: 'Security',
+        tags: ['calico', 'security'],
+        date: '2025-03-10',
+      },
+    ]),
+  ),
+  getDataSource: jest.fn(() => 'mock'),
+}))
+
 describe('Projects Filter Flow Integration', () => {
   describe('Complete Filtering Journey', () => {
     it('user can filter projects by category and see results', async () => {
       const user = userEvent.setup()
-      render(<Projects />)
+      render(await Projects())
 
       // Start with all projects visible
       const initialProjects = screen.getAllByRole('listitem')
@@ -47,7 +101,7 @@ describe('Projects Filter Flow Integration', () => {
 
     it('filtered projects maintain proper structure', async () => {
       const user = userEvent.setup()
-      render(<Projects />)
+      render(await Projects())
 
       const securityButton = screen.getByRole('button', { name: 'Security' })
       await user.click(securityButton)
@@ -67,7 +121,7 @@ describe('Projects Filter Flow Integration', () => {
 
     it('filter state persists through multiple interactions', async () => {
       const user = userEvent.setup()
-      render(<Projects />)
+      render(await Projects())
 
       // Click through multiple filters
       const monitoringButton = screen.getByRole('button', {
@@ -90,7 +144,7 @@ describe('Projects Filter Flow Integration', () => {
 
   describe('Filter Accessibility', () => {
     it('filters are keyboard navigable', async () => {
-      render(<Projects />)
+      render(await Projects())
 
       const buttons = screen.getAllByRole('button')
 
@@ -102,7 +156,7 @@ describe('Projects Filter Flow Integration', () => {
 
     it('filtered content remains accessible', async () => {
       const user = userEvent.setup()
-      render(<Projects />)
+      render(await Projects())
 
       const infraButton = screen.getByRole('button', { name: 'Infrastructure' })
       await user.click(infraButton)
@@ -119,7 +173,7 @@ describe('Projects Filter Flow Integration', () => {
   describe('Filter Performance', () => {
     it('filtering happens instantly', async () => {
       const user = userEvent.setup()
-      render(<Projects />)
+      render(await Projects())
 
       const startTime = Date.now()
 
@@ -133,7 +187,7 @@ describe('Projects Filter Flow Integration', () => {
 
     it('multiple filter changes perform well', async () => {
       const user = userEvent.setup()
-      render(<Projects />)
+      render(await Projects())
 
       const startTime = Date.now()
 
@@ -159,7 +213,7 @@ describe('Projects Filter Flow Integration', () => {
   describe('Edge Cases', () => {
     it('handles empty filter results gracefully', async () => {
       const user = userEvent.setup()
-      render(<Projects />)
+      render(await Projects())
 
       // Even if a category has no projects, page should not crash
       const buttons = screen.getAllByRole('button')
@@ -173,7 +227,7 @@ describe('Projects Filter Flow Integration', () => {
 
     it('maintains grid layout after filtering', async () => {
       const user = userEvent.setup()
-      render(<Projects />)
+      render(await Projects())
 
       const list = screen.getByRole('list')
       const initialClasses = list.className
