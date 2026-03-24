@@ -31,6 +31,7 @@ export const ArticleMetadataSchema = z.object({
   aiSummary: z.string().optional(),
   contentRef: z.string().min(1),
   readingTimeMinutes: z.number().int().positive().optional(),
+  githubUrl: z.string().url().optional(),
   status: z.enum(['draft', 'published', 'archived']).default('published'),
 })
 

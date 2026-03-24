@@ -11,7 +11,7 @@
  *   AWS_REGION         – supplied by ECS task metadata
  */
 
-import { S3Client, GetObjectCommand } from '@aws-sdk/client-s3'
+import { S3Client, GetObjectCommand, PutObjectCommand } from '@aws-sdk/client-s3'
 
 import type { ArticleContent } from './types/article.types'
 import type { ImageSidecar } from './types/content-blocks'
@@ -207,4 +207,32 @@ export async function fetchImageSidecar(
     console.warn(`[s3-content] Failed to fetch sidecar: ${sidecarKey}`)
     return null
   }
+}
+
+// ========================================
+// Content Write Functions
+// ========================================
+
+/**
+ * Write updated article content back to S3.
+ *
+ * @param contentRef - S3 URI or key pointing to the MDX file
+ * @param content - Updated MDX string content
+ * @throws If the write fails
+ */
+export async function putArticleContent(
+  contentRef: string,
+  content: string,
+): Promise<void> {
+  const s3Client = getS3Client()
+  const { bucket, key } = parseContentRef(contentRef)
+
+  await s3Client.send(
+    new PutObjectCommand({
+      Bucket: bucket,
+      Key: key,
+      Body: content,
+      ContentType: 'text/mdx; charset=utf-8',
+    }),
+  )
 }

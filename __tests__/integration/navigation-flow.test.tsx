@@ -13,18 +13,26 @@ jest.mock('next/image', () => ({
   },
 }))
 
-// Mock article-service (DynamoDB-only)
+// Mock analytics
+jest.mock('@/lib/analytics', () => ({
+  trackProjectView: jest.fn(),
+}))
+
+// Mock article-service (Projects page is async/DynamoDB-driven)
 jest.mock('@/lib/article-service', () => ({
   getAllArticles: jest.fn(() =>
     Promise.resolve([
       {
         slug: 'test-article',
         title: 'Test Article',
-        date: '2024-01-01',
         description: 'Test description',
+        category: 'Infrastructure',
+        tags: ['test'],
+        date: '2024-01-01',
       },
     ]),
   ),
+  getDataSource: jest.fn(() => 'mock'),
 }))
 
 describe('Navigation Flow Integration', () => {
@@ -85,7 +93,7 @@ describe('Navigation Flow Integration', () => {
     })
 
     it('GitHub and LinkedIn links work across all pages', async () => {
-      const pages = [await Home(), <About />]
+      const pages = [await Home(), <About key="about" />]
 
       for (const page of pages) {
         const { unmount } = render(page)
@@ -113,7 +121,7 @@ describe('Navigation Flow Integration', () => {
       render(await Home())
 
       const emailInput = screen.getByPlaceholderText('Email address')
-      const submitButton = screen.getByRole('button', { name: /join/i })
+      const submitButton = screen.getByRole('button', { name: /subscribe/i })
 
       expect(emailInput).toBeInTheDocument()
       expect(emailInput).toHaveAttribute('type', 'email')
@@ -152,7 +160,7 @@ describe('Navigation Flow Integration', () => {
       const pages = [
         { component: await Home(), name: 'Home' },
         { component: <About />, name: 'About' },
-        { component: <Projects />, name: 'Projects' },
+        { component: await Projects(), name: 'Projects' },
         { component: <Uses />, name: 'Uses' },
       ]
 
@@ -167,7 +175,7 @@ describe('Navigation Flow Integration', () => {
     })
 
     it('all pages have accessible navigation', async () => {
-      const pages = [await Home(), <About />, <Projects />]
+      const pages = [await Home(), <About key="about" />, await Projects()]
 
       for (const page of pages) {
         const { unmount } = render(page)
@@ -199,7 +207,7 @@ describe('Navigation Flow Integration', () => {
       const pages = [
         { component: await Home(), name: 'Home' },
         { component: <About />, name: 'About' },
-        { component: <Projects />, name: 'Projects' },
+        { component: await Projects(), name: 'Projects' },
         { component: <Uses />, name: 'Uses' },
       ]
 

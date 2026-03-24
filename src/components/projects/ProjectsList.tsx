@@ -1,3 +1,10 @@
+/**
+ * Projects List Component
+ *
+ * Client component that renders project cards with category filtering.
+ * Each project links to its corresponding article page.
+ */
+
 'use client'
 
 import { useState } from 'react'
@@ -5,6 +12,10 @@ import Image, { StaticImageData } from 'next/image'
 import { Card } from '@/components/ui'
 import { FilterTabs } from './FilterTabs'
 import { trackProjectView } from '@/lib/analytics'
+
+// =============================================================================
+// TYPES
+// =============================================================================
 
 interface Project {
   id: number
@@ -22,6 +33,13 @@ interface ProjectsListProps {
   categories: string[]
 }
 
+// =============================================================================
+// ICONS
+// =============================================================================
+
+/**
+ * SVG link icon for the article link.
+ */
 function LinkIcon(props: React.ComponentPropsWithoutRef<'svg'>) {
   return (
     <svg viewBox="0 0 24 24" aria-hidden="true" {...props}>
@@ -32,6 +50,10 @@ function LinkIcon(props: React.ComponentPropsWithoutRef<'svg'>) {
     </svg>
   )
 }
+
+// =============================================================================
+// COMPONENT
+// =============================================================================
 
 export function ProjectsList({ projects, categories }: ProjectsListProps) {
   const [activeCategory, setActiveCategory] = useState<string>('All')
@@ -79,4 +101,3 @@ export function ProjectsList({ projects, categories }: ProjectsListProps) {
     </>
   )
 }
-

@@ -42,9 +42,9 @@ function Article({ article }: { article: ArticleWithSlug }) {
 }
 
 export const metadata: Metadata = {
-  title: 'Articles',
+  title: 'Articles | Nelson Lamounier, Cloud & DevOps Engineer',
   description:
-    'Writing on AWS infrastructure, DevOps practices, and cloud architecture decisions.',
+    'Practical articles on self-managed Kubernetes, CDK infrastructure-as-code, ArgoCD GitOps, AI-powered operations, and the real problems behind production AWS systems.',
 }
 
 export default async function ArticlesIndex() {
@@ -55,8 +55,8 @@ export default async function ArticlesIndex() {
 
   return (
     <SimpleLayout
-      title="Writing on AWS infrastructure, DevOps practices, and cloud architecture decisions."
-      intro="Practical guides on CI/CD pipelines, infrastructure-as-code, AWS services, and real implementation challenges—born from building production systems as a solo developer."
+      title="Writing on Kubernetes, GitOps, AI-powered infrastructure, and the architecture decisions behind production AWS systems."
+      intro="Practical guides on self-managed Kubernetes, CDK infrastructure-as-code, ArgoCD deployments, observability, and Bedrock AI tooling. Every article comes from a real problem I had to solve, not a tutorial I followed."
     >
       <div
         className="md:border-l md:border-zinc-100 md:pl-6 md:dark:border-zinc-700/40"

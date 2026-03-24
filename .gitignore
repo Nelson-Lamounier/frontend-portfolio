@@ -23,3 +23,6 @@ node_modules/
 # Large audio files — served from S3/CloudFront
 public/audio/*.mp3
 tsconfig.test.tsbuildinfo
+
+# Test coverage
+coverage/

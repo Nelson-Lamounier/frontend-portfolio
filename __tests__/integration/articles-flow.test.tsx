@@ -10,6 +10,12 @@ jest.mock('next-mdx-remote/rsc', () => ({
   MDXRemote: () => null,
 }))
 
+// Mock remark-gfm ESM module
+jest.mock('remark-gfm', () => ({
+  __esModule: true,
+  default: () => {},
+}))
+
 // Mock dependencies
 jest.mock('next/navigation', () => ({
   useRouter: jest.fn(() => ({
@@ -18,11 +24,15 @@ jest.mock('next/navigation', () => ({
   })),
 }))
 
-jest.mock('@/app/providers', () => ({
-  AppContext: {
-    Provider: ({ children }: { children: React.ReactNode }) => children,
-  },
-}))
+jest.mock('@/app/providers', () => {
+  const React = require('react')
+  const mockContext = {
+    previousPathname: null,
+  }
+  return {
+    AppContext: React.createContext(mockContext),
+  }
+})
 
 jest.mock('@/lib/formatDate', () => ({
   formatDate: jest.fn((date: string) => {
@@ -34,6 +44,26 @@ jest.mock('@/lib/formatDate', () => ({
     })
   }),
 }))
+
+// Mock analytics (used by ArticleLayout)
+jest.mock('@/lib/analytics', () => ({
+  trackArticleView: jest.fn(),
+  trackEvent: jest.fn(),
+}))
+
+// Mock global fetch for LikeButton/CommentSection API calls
+beforeEach(() => {
+  global.fetch = jest.fn(() =>
+    Promise.resolve({
+      ok: true,
+      json: () => Promise.resolve({ liked: false, count: 0, comments: [] }),
+    }),
+  ) as jest.Mock
+})
+
+afterEach(() => {
+  jest.restoreAllMocks()
+})
 
 // Mock the article-service (DynamoDB-only)
 jest.mock('@/lib/article-service', () => ({
@@ -61,6 +91,7 @@ jest.mock('@/lib/article-service', () => ({
   ),
   getDataSource: jest.fn(() => 'dynamodb-sdk'),
 }))
+
 
 describe('Articles Integration Flow', () => {
   describe('End-to-End Article Loading', () => {
@@ -158,14 +189,6 @@ describe('Articles Integration Flow', () => {
       const articles = await getAllArticles()
       const firstArticle = articles[0]
 
-      const useContextMock = jest.fn(() => ({
-        previousPathname: '/articles',
-      }))
-
-      jest
-        .spyOn(require('react'), 'useContext')
-        .mockImplementation(useContextMock)
-
       render(
         <ArticleLayout article={firstArticle}>
           <p>Article content goes here</p>
@@ -180,14 +203,6 @@ describe('Articles Integration Flow', () => {
       const { getAllArticles } = require('@/lib/article-service')
       const articles = await getAllArticles()
       const article = articles[0]
-
-      const useContextMock = jest.fn(() => ({
-        previousPathname: null,
-      }))
-
-      jest
-        .spyOn(require('react'), 'useContext')
-        .mockImplementation(useContextMock)
 
       render(
         <ArticleLayout article={article}>
@@ -271,7 +286,7 @@ describe('Articles Integration Flow', () => {
 
       // Should still render the page structure
       const heading = screen.getByRole('heading', {
-        name: /Writing on AWS infrastructure/i,
+        name: /Writing on Kubernetes, GitOps/i,
       })
       expect(heading).toBeInTheDocument()
     })

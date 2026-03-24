@@ -91,8 +91,11 @@ describe('About Page', () => {
       render(<About />)
 
       const links = screen.getAllByRole('link')
+      const externalLinks = links.filter((link) =>
+        link.getAttribute('href')?.startsWith('https://'),
+      )
 
-      links.forEach((link) => {
+      externalLinks.forEach((link) => {
         expect(link).toHaveAttribute('target', '_blank')
         expect(link).toHaveAttribute('rel', 'noopener noreferrer')
       })
@@ -117,7 +120,7 @@ describe('About Page', () => {
       render(<About />)
 
       const headings = screen.getAllByRole('heading')
-      expect(headings).toHaveLength(1)
+      expect(headings).toHaveLength(2)
       expect(headings[0].tagName).toBe('H1')
     })
 
@@ -155,7 +158,7 @@ describe('About Page', () => {
       render(<About />)
 
       const container = screen
-        .getByRole('heading')
+        .getByRole('heading', { level: 1 })
         .closest('div')?.parentElement
       expect(container).toHaveClass('grid', 'grid-cols-1', 'lg:grid-cols-2')
     })
