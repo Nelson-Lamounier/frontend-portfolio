@@ -32,6 +32,8 @@
     "@aws-sdk/credential-providers": "^3.975.0",
     "@aws-sdk/lib-dynamodb": "^3.975.0",
     "@aws-sdk/types": "^3.973.1",
+    "@grafana/faro-web-sdk": "^2.3.1",
+    "@grafana/faro-web-tracing": "^2.3.1",
     "@headlessui/react": "^2.2.6",
     "@mdx-js/loader": "^3.1.0",
     "@mdx-js/react": "^3.1.0",
