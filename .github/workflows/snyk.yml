@@ -16,7 +16,6 @@ on:
 
 permissions:
   contents: read
-  security-events: write
 
 env:
   NODE_VERSION: '22'
@@ -47,23 +46,7 @@ jobs:
           command: test
           args: --severity-threshold=high --all-projects
 
-      - name: Upload SARIF (Open Source)
-        if: always()
-        uses: snyk/actions/node@master
-        continue-on-error: true
-        env:
-          SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
-        with:
-          command: test
-          args: --sarif-file-output=snyk-oss.sarif
 
-      - name: Upload SARIF to GitHub
-        if: always()
-        uses: github/codeql-action/upload-sarif@v3
-        continue-on-error: true
-        with:
-          sarif_file: snyk-oss.sarif
-          category: snyk-oss
 
   # ============================================================================
   # Static Application Security Testing (SAST)
@@ -83,16 +66,7 @@ jobs:
           SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
         with:
           command: code test
-          args: --sarif-file-output=snyk-code.sarif
         continue-on-error: true
-
-      - name: Upload SARIF to GitHub
-        if: always()
-        uses: github/codeql-action/upload-sarif@v3
-        continue-on-error: true
-        with:
-          sarif_file: snyk-code.sarif
-          category: snyk-code
 
   # ============================================================================
   # Monitor (snapshot to Snyk dashboard — develop only)
