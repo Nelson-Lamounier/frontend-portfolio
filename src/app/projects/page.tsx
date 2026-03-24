@@ -8,7 +8,8 @@
  * Route: /projects
  */
 
-import { type Metadata, type ReactNode } from 'next'
+import { type Metadata } from 'next'
+import { type ReactNode } from 'react'
 
 import { SimpleLayout } from '@/components/layout'
 import { ProjectsList } from '@/components/projects'
