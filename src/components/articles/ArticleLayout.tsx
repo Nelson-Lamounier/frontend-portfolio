@@ -6,6 +6,8 @@ import { useRouter } from 'next/navigation'
 import { AppContext } from '@/app/providers'
 import { Container } from '@/components/layout'
 import { Prose } from '@/components/ui'
+import { LikeButton } from '@/components/articles/LikeButton'
+import { CommentSection } from '@/components/articles/CommentSection'
 import { formatDate } from '@/lib/formatDate'
 import { trackArticleView } from '@/lib/analytics'
 
@@ -95,6 +97,10 @@ export function ArticleLayout({
             <Prose className="mt-8" data-mdx-content>
               {children}
             </Prose>
+            <div className="mt-8">
+              <LikeButton slug={article.slug} />
+            </div>
+            <CommentSection slug={article.slug} />
           </article>
         </div>
       </div>

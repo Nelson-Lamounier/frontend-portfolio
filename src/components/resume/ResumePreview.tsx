@@ -8,14 +8,40 @@
  * Includes a "Download PDF" CTA that triggers the download.
  */
 
-import { useState, useCallback, useEffect } from 'react'
+import { useState, useCallback, useEffect, useRef } from 'react'
 import { ResumeDocument } from './ResumeDocument'
-import { resumeDataFullstack as resumeData } from '@/lib/resume-data-fullstack'
+import { resumeDataEsc as fallbackData } from '@/lib/resume-data-esc'
 import { trackResumeDownload } from '@/lib/analytics'
+import type { ResumeData } from '@/lib/resume-data'
 
 export function ResumePreview() {
   const [open, setOpen] = useState(false)
   const [downloading, setDownloading] = useState(false)
+  const [resumeData, setResumeData] = useState<ResumeData>(fallbackData)
+  const fetchedRef = useRef(false)
+
+  // Fetch active resume from API on mount
+  useEffect(() => {
+    if (fetchedRef.current) return
+    fetchedRef.current = true
+
+    async function loadActiveResume() {
+      try {
+        const res = await fetch('/api/resume/active')
+        if (res.ok) {
+          const body = await res.json()
+          if (body?.data) {
+            setResumeData(body.data)
+          }
+        }
+        // 204 or error → keep fallback data
+      } catch {
+        // Network error → keep fallback data
+      }
+    }
+
+    loadActiveResume()
+  }, [])
 
   // Lock body scroll when modal is open
   useEffect(() => {
