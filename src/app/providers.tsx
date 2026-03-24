@@ -3,6 +3,7 @@
 import { createContext, useEffect, useRef } from 'react'
 import { usePathname } from 'next/navigation'
 import { ThemeProvider, useTheme } from 'next-themes'
+import { initialiseFaro } from '@/lib/faro'
 
 function usePrevious<T>(value: T) {
   const ref = useRef<T | undefined>(undefined)
@@ -43,6 +44,11 @@ export const AppContext = createContext<{ previousPathname?: string }>({})
 export function Providers({ children }: { children: React.ReactNode }) {
   const pathname = usePathname()
   const previousPathname = usePrevious(pathname)
+
+  // Initialise Grafana Faro RUM (client-side only, runs once)
+  useEffect(() => {
+    initialiseFaro()
+  }, [])
 
   return (
     <AppContext.Provider value={{ previousPathname }}>
