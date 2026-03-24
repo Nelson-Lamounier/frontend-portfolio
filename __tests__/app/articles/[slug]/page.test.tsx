@@ -2,6 +2,12 @@ import { render, screen } from '@testing-library/react'
 import { ArticleLayout } from '@/components/articles'
 import { type ArticleWithSlug } from '@/lib/articles'
 
+// Mock remark-gfm ESM module (imported transitively via @/components/articles barrel)
+jest.mock('remark-gfm', () => ({
+  __esModule: true,
+  default: () => {},
+}))
+
 // Mock next-mdx-remote to avoid ESM parse errors in Jest
 jest.mock('next-mdx-remote', () => ({
   MDXRemote: () => null,
@@ -40,6 +46,26 @@ jest.mock('@/lib/formatDate', () => ({
     })
   }),
 }))
+
+// Mock analytics (used by ArticleLayout)
+jest.mock('@/lib/analytics', () => ({
+  trackArticleView: jest.fn(),
+  trackEvent: jest.fn(),
+}))
+
+// Mock global fetch for LikeButton/CommentSection API calls
+beforeEach(() => {
+  global.fetch = jest.fn(() =>
+    Promise.resolve({
+      ok: true,
+      json: () => Promise.resolve({ liked: false, count: 0, comments: [] }),
+    }),
+  ) as jest.Mock
+})
+
+afterEach(() => {
+  jest.restoreAllMocks()
+})
 
 describe('Individual Article Page', () => {
   const mockArticle: ArticleWithSlug = {
@@ -164,8 +190,12 @@ describe('Individual Article Page', () => {
       const h1 = screen.getByRole('heading', { level: 1 })
       expect(h1).toHaveTextContent('Test Article Title')
 
-      const h2 = screen.getByRole('heading', { level: 2 })
-      expect(h2).toHaveTextContent('Section Heading')
+      const h2Elements = screen.getAllByRole('heading', { level: 2 })
+      // At least the article content h2 ('Section Heading') should exist
+      const sectionHeading = h2Elements.find(
+        (h) => h.textContent === 'Section Heading',
+      )
+      expect(sectionHeading).toBeDefined()
     })
 
     it('time element has proper semantic markup', () => {
@@ -195,7 +225,9 @@ describe('Individual Article Page', () => {
         </ArticleLayout>,
       )
 
-      const backButton = screen.getByRole('button')
+      const backButton = screen.getByRole('button', {
+        name: 'Go back to articles',
+      })
       expect(backButton).toHaveAttribute('aria-label', 'Go back to articles')
     })
   })
