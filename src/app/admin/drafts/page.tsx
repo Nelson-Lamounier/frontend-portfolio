@@ -47,7 +47,6 @@ export default function AdminDraftsPage() {
   const [error, setError] = useState<string | null>(null)
 
   // Fetch articles on mount (auth is handled by middleware)
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
     fetchArticles()
   }, []) // eslint-disable-line react-hooks/exhaustive-deps

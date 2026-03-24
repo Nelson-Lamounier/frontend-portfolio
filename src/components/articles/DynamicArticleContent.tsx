@@ -86,6 +86,7 @@ function createImageComponent(images: ArticleImage[]) {
 
     // Fallback: render as regular img for relative paths
     return (
+      // eslint-disable-next-line @next/next/no-img-element
       <img
         src={src}
         alt={alt}
