@@ -8,6 +8,10 @@ import { formatDate } from '@/lib/formatDate'
 import { getAllArticles, getDataSource } from '@/lib/article-service'
 import type { ArticleWithSlug } from '@/lib/types/article.types'
 
+// ISR: revalidate every hour so runtime env vars (DYNAMODB_TABLE_NAME)
+// are picked up after the Docker build, which has no DynamoDB access.
+export const revalidate = 3600
+
 function Article({ article }: { article: ArticleWithSlug }) {
   return (
     <article className="md:grid md:grid-cols-4 md:items-baseline">
@@ -60,9 +64,15 @@ export default async function ArticlesIndex() {
         data-article-count={articles.length}
       >
         <div className="flex max-w-3xl flex-col space-y-16">
-          {articles.map((article) => (
-            <Article key={article.slug} article={article} />
-          ))}
+          {articles.length > 0 ? (
+            articles.map((article) => (
+              <Article key={article.slug} article={article} />
+            ))
+          ) : (
+            <p className="text-sm text-zinc-600 dark:text-zinc-400">
+              No articles published yet. Check back soon — new content is on the way.
+            </p>
+          )}
         </div>
       </div>
     </SimpleLayout>
