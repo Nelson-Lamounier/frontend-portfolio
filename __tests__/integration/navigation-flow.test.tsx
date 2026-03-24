@@ -25,7 +25,7 @@ jest.mock('@/lib/article-service', () => ({
       {
         slug: 'test-article',
         title: 'Test Article',
-        description: 'Test description for article service.',
+        description: 'Test description',
         category: 'Infrastructure',
         tags: ['test'],
         date: '2024-01-01',
@@ -33,20 +33,6 @@ jest.mock('@/lib/article-service', () => ({
     ]),
   ),
   getDataSource: jest.fn(() => 'mock'),
-}))
-
-// Mock articles
-jest.mock('@/lib/articles', () => ({
-  getAllArticles: jest.fn(() =>
-    Promise.resolve([
-      {
-        slug: 'test-article',
-        title: 'Test Article',
-        date: '2024-01-01',
-        description: 'Test description',
-      },
-    ]),
-  ),
 }))
 
 describe('Navigation Flow Integration', () => {

@@ -65,33 +65,7 @@ afterEach(() => {
   jest.restoreAllMocks()
 })
 
-// Mock the articles library (used for direct getAllArticles calls in tests)
-jest.mock('@/lib/articles', () => ({
-  getAllArticles: jest.fn(() =>
-    Promise.resolve([
-      {
-        slug: 'aws-devops-pro-exam-failure-to-success',
-        title:
-          '24 Points from Heartbreak: How I Failed the AWS DevOps Pro and Returned to Conquer It',
-        description:
-          'After scoring 726 on my first attempt—just shy of the 750 required—I realized the AWS DevOps Professional exam demanded more than familiarity with AWS services.',
-        author: 'Nelson Lamounier',
-        date: '2025-11-20',
-      },
-      {
-        slug: 'golden-ami-multi-environment-deployment',
-        title:
-          'The "Golden AMI" Trap: Decoding Multi-Environment Deploys for the AWS DevOps Pro Exam',
-        description:
-          'If you are preparing for the AWS DevOps Professional exam, you will inevitably encounter a "Scenario Question" that feels impossible to solve.',
-        author: 'Nelson Lamounier',
-        date: '2024-10-23',
-      },
-    ]),
-  ),
-}))
-
-// Mock article-service (used by ArticlesIndex page component)
+// Mock the article-service (DynamoDB-only)
 jest.mock('@/lib/article-service', () => ({
   getAllArticles: jest.fn(() =>
     Promise.resolve([
@@ -115,13 +89,14 @@ jest.mock('@/lib/article-service', () => ({
       },
     ]),
   ),
-  getDataSource: jest.fn(() => 'mock'),
+  getDataSource: jest.fn(() => 'dynamodb-sdk'),
 }))
+
 
 describe('Articles Integration Flow', () => {
   describe('End-to-End Article Loading', () => {
     it('loads articles from filesystem and renders them', async () => {
-      const { getAllArticles } = require('@/lib/articles')
+      const { getAllArticles } = require('@/lib/article-service')
       const articles = await getAllArticles()
 
       expect(articles).toHaveLength(2)
@@ -146,7 +121,7 @@ describe('Articles Integration Flow', () => {
     })
 
     it('maintains correct article order from load to render', async () => {
-      const { getAllArticles } = require('@/lib/articles')
+      const { getAllArticles } = require('@/lib/article-service')
       const articles = await getAllArticles()
       render(await ArticlesIndex())
 
@@ -173,7 +148,7 @@ describe('Articles Integration Flow', () => {
     })
 
     it('all articles have navigable links', async () => {
-      const { getAllArticles } = require('@/lib/articles')
+      const { getAllArticles } = require('@/lib/article-service')
       render(await ArticlesIndex())
 
       const articles = await getAllArticles()
@@ -189,7 +164,7 @@ describe('Articles Integration Flow', () => {
 
   describe('Article Metadata Flow', () => {
     it('preserves all metadata from MDX to render', async () => {
-      const { getAllArticles } = require('@/lib/articles')
+      const { getAllArticles } = require('@/lib/article-service')
       const articles = await getAllArticles()
       render(await ArticlesIndex())
 
@@ -210,7 +185,7 @@ describe('Articles Integration Flow', () => {
 
   describe('Individual Article Rendering', () => {
     it('renders individual article with ArticleLayout', async () => {
-      const { getAllArticles } = require('@/lib/articles')
+      const { getAllArticles } = require('@/lib/article-service')
       const articles = await getAllArticles()
       const firstArticle = articles[0]
 
@@ -225,7 +200,7 @@ describe('Articles Integration Flow', () => {
     })
 
     it('individual article maintains metadata integrity', async () => {
-      const { getAllArticles } = require('@/lib/articles')
+      const { getAllArticles } = require('@/lib/article-service')
       const articles = await getAllArticles()
       const article = articles[0]
 
@@ -242,7 +217,7 @@ describe('Articles Integration Flow', () => {
 
   describe('Data Consistency', () => {
     it('article slugs match URL patterns', async () => {
-      const { getAllArticles } = require('@/lib/articles')
+      const { getAllArticles } = require('@/lib/article-service')
       const articles = await getAllArticles()
 
       articles.forEach((article: any) => {
@@ -255,7 +230,7 @@ describe('Articles Integration Flow', () => {
     })
 
     it('all articles have complete metadata', async () => {
-      const { getAllArticles } = require('@/lib/articles')
+      const { getAllArticles } = require('@/lib/article-service')
       const articles = await getAllArticles()
 
       articles.forEach((article: any) => {
@@ -274,7 +249,7 @@ describe('Articles Integration Flow', () => {
 
   describe('Performance and Scalability', () => {
     it('handles multiple articles efficiently', async () => {
-      const { getAllArticles } = require('@/lib/articles')
+      const { getAllArticles } = require('@/lib/article-service')
       const startTime = Date.now()
       const articles = await getAllArticles()
       render(await ArticlesIndex())
@@ -297,7 +272,7 @@ describe('Articles Integration Flow', () => {
 
   describe('Error Recovery', () => {
     it('handles missing article gracefully', async () => {
-      const { getAllArticles } = require('@/lib/articles')
+      const { getAllArticles } = require('@/lib/article-service')
       const articles = await getAllArticles()
 
       // Attempt to render with potentially missing data
@@ -347,7 +322,7 @@ describe('Articles Integration Flow', () => {
 
   describe('SEO Optimization', () => {
     it('article metadata is SEO-friendly', async () => {
-      const { getAllArticles } = require('@/lib/articles')
+      const { getAllArticles } = require('@/lib/article-service')
       const articles = await getAllArticles()
 
       articles.forEach((article: any) => {
@@ -362,7 +337,7 @@ describe('Articles Integration Flow', () => {
     })
 
     it('dates are in ISO format for SEO', async () => {
-      const { getAllArticles } = require('@/lib/articles')
+      const { getAllArticles } = require('@/lib/article-service')
       const articles = await getAllArticles()
 
       articles.forEach((article: any) => {

@@ -21,6 +21,10 @@ import { getAllArticles } from '@/lib/article-service'
 import type { ArticleWithSlug } from '@/lib/types/article.types'
 import { formatDate } from '@/lib/formatDate'
 
+// ISR: revalidate every hour so runtime env vars (DYNAMODB_TABLE_NAME)
+// are picked up after the Docker build, which has no DynamoDB access.
+export const revalidate = 3600
+
 
 
 function BriefcaseIcon(props: React.ComponentPropsWithoutRef<'svg'>) {
@@ -240,9 +244,15 @@ export default async function Home() {
       <Container className="mt-24 md:mt-28">
         <div className="mx-auto grid max-w-xl grid-cols-1 gap-y-20 lg:max-w-none lg:grid-cols-2">
           <div className="flex flex-col gap-16">
-            {articles.map((article) => (
-              <Article key={article.slug} article={article} />
-            ))}
+            {articles.length > 0 ? (
+              articles.map((article) => (
+                <Article key={article.slug} article={article} />
+              ))
+            ) : (
+              <p className="text-sm text-zinc-600 dark:text-zinc-400">
+                Articles coming soon — stay tuned.
+              </p>
+            )}
           </div>
           <div className="space-y-10 lg:pl-16 xl:pl-24">
             <NewsletterForm />

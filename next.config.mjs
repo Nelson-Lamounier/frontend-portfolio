@@ -5,9 +5,6 @@ import remarkGfm from 'remark-gfm'
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   pageExtensions: ['js', 'jsx', 'ts', 'tsx', 'mdx'],
-  outputFileTracingIncludes: {
-    '/articles/*': ['./src/app/articles/**/*.mdx'],
-  },
   // Standalone output for ECS container deployments
   output: 'standalone',
   // instrumentationHook is built-in since Next.js 15.5 — no longer needed
