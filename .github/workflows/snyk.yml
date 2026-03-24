@@ -1,0 +1,121 @@
+# .github/workflows/snyk.yml
+# Snyk Security Scanning — SCA (dependencies) + SAST (code)
+# Runs on PRs, weekly schedule, and manual trigger.
+
+name: Snyk Security
+
+on:
+  pull_request:
+    branches: [main, develop]
+  push:
+    branches: [develop]
+  schedule:
+    # Weekly scan: Monday 08:00 UTC
+    - cron: '0 8 * * 1'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  security-events: write
+
+env:
+  NODE_VERSION: '22'
+
+jobs:
+  # ============================================================================
+  # Open Source Dependency Scan (SCA)
+  # ============================================================================
+  snyk-oss:
+    name: Snyk Open Source
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js and Yarn
+        uses: ./.github/actions/setup-node-yarn
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+
+      - name: Run Snyk Open Source Test
+        uses: snyk/actions/node@master
+        env:
+          SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+        with:
+          command: test
+          args: --severity-threshold=high --all-projects
+
+      - name: Upload SARIF (Open Source)
+        if: always()
+        uses: snyk/actions/node@master
+        continue-on-error: true
+        env:
+          SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+        with:
+          command: test
+          args: --sarif-file-output=snyk-oss.sarif
+
+      - name: Upload SARIF to GitHub
+        if: always()
+        uses: github/codeql-action/upload-sarif@v3
+        continue-on-error: true
+        with:
+          sarif_file: snyk-oss.sarif
+          category: snyk-oss
+
+  # ============================================================================
+  # Static Application Security Testing (SAST)
+  # ============================================================================
+  snyk-code:
+    name: Snyk Code
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Run Snyk Code Test
+        uses: snyk/actions/node@master
+        env:
+          SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+        with:
+          command: code test
+          args: --sarif-file-output=snyk-code.sarif
+        continue-on-error: true
+
+      - name: Upload SARIF to GitHub
+        if: always()
+        uses: github/codeql-action/upload-sarif@v3
+        continue-on-error: true
+        with:
+          sarif_file: snyk-code.sarif
+          category: snyk-code
+
+  # ============================================================================
+  # Monitor (snapshot to Snyk dashboard — develop only)
+  # ============================================================================
+  snyk-monitor:
+    name: Snyk Monitor
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    if: github.ref == 'refs/heads/develop' && github.event_name == 'push'
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js and Yarn
+        uses: ./.github/actions/setup-node-yarn
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+
+      - name: Snyk Monitor
+        uses: snyk/actions/node@master
+        env:
+          SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+        with:
+          command: monitor
+          args: --all-projects

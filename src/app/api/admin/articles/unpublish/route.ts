@@ -5,11 +5,12 @@
  * 'published' back to 'draft' status in DynamoDB.
  *
  * Request body: { slug: string }
- * Guarded: only accessible when NODE_ENV === 'development'.
+ * Guarded: requires an active NextAuth.js admin session.
  */
 
 import { NextRequest, NextResponse } from 'next/server'
 
+import { auth } from '@/lib/auth'
 import {
   isDynamoDBConfigured,
   unpublishArticle,
@@ -27,11 +28,12 @@ interface UnpublishRequestBody {
  * @returns Updated article metadata on success
  */
 export async function POST(request: NextRequest): Promise<NextResponse> {
-  // Guard: dev-only
-  if (process.env.NODE_ENV !== 'development') {
+  // Guard: authenticated admin session required
+  const session = await auth()
+  if (!session?.user) {
     return NextResponse.json(
-      { error: 'Admin routes are only available in development' },
-      { status: 403 },
+      { error: 'Unauthorised — admin session required' },
+      { status: 401 },
     )
   }
 

@@ -156,8 +156,7 @@ jobs:
           node-version: ${{ needs.setup.outputs.node-version }}
 
       - name: Run Audit
-        continue-on-error: true
-        run: yarn npm audit --all
+        run: yarn npm audit --all --severity high
 
   # ============================================================================
   # Code Quality
