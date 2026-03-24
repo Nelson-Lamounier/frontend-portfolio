@@ -5,11 +5,12 @@
  * GET /api/admin/articles?status=all   — returns both drafts and published
  * GET /api/admin/articles?status=published — returns only published
  *
- * Guarded: only accessible when NODE_ENV === 'development'.
+ * Guarded: requires an active NextAuth.js admin session.
  */
 
 import { NextRequest, NextResponse } from 'next/server'
 
+import { auth } from '@/lib/auth'
 import {
   isDynamoDBConfigured,
   queryDraftArticles,
@@ -23,11 +24,12 @@ import {
  * @returns JSON array of article metadata
  */
 export async function GET(request: NextRequest): Promise<NextResponse> {
-  // Guard: dev-only
-  if (process.env.NODE_ENV !== 'development') {
+  // Guard: authenticated admin session required
+  const session = await auth()
+  if (!session?.user) {
     return NextResponse.json(
-      { error: 'Admin routes are only available in development' },
-      { status: 403 },
+      { error: 'Unauthorised — admin session required' },
+      { status: 401 },
     )
   }
 

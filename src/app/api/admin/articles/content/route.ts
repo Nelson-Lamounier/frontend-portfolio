@@ -4,11 +4,12 @@
  * GET  /api/admin/articles/content?slug=<slug> — fetch raw MDX from S3
  * PUT  /api/admin/articles/content              — write updated MDX to S3
  *
- * Guarded: only accessible when NODE_ENV === 'development'.
+ * Guarded: requires an active NextAuth.js admin session.
  */
 
 import { NextRequest, NextResponse } from 'next/server'
 
+import { auth } from '@/lib/auth'
 import {
   isDynamoDBConfigured,
   getArticleMetadataBySlug,
@@ -20,15 +21,16 @@ import { fetchArticleContent, putArticleContent } from '@/lib/s3-content'
 // ========================================
 
 /**
- * Validates the request is from a development environment and DynamoDB is configured.
+ * Validates the request has an active admin session and DynamoDB is configured.
  *
  * @returns Error response or null if valid
  */
-function guardRequest(): NextResponse | null {
-  if (process.env.NODE_ENV !== 'development') {
+async function guardRequest(): Promise<NextResponse | null> {
+  const session = await auth()
+  if (!session?.user) {
     return NextResponse.json(
-      { error: 'Admin routes are only available in development' },
-      { status: 403 },
+      { error: 'Unauthorised — admin session required' },
+      { status: 401 },
     )
   }
 
@@ -53,7 +55,7 @@ function guardRequest(): NextResponse | null {
  * @returns JSON with `{ content, slug, contentRef }`
  */
 export async function GET(request: NextRequest): Promise<NextResponse> {
-  const guardError = guardRequest()
+  const guardError = await guardRequest()
   if (guardError) return guardError
 
   const slug = request.nextUrl.searchParams.get('slug')
@@ -126,7 +128,7 @@ interface UpdateContentBody {
  * @returns JSON with `{ saved: true, slug }`
  */
 export async function PUT(request: NextRequest): Promise<NextResponse> {
-  const guardError = guardRequest()
+  const guardError = await guardRequest()
   if (guardError) return guardError
 
   // Parse body

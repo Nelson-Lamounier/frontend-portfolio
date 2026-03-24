@@ -69,14 +69,8 @@ export default function AdminEditorPage() {
 
   const hasUnsavedChanges = content !== originalContent
 
-  // ── Dev-only guard + fetch on mount ──
+  // Fetch content on mount (auth is handled by middleware)
   useEffect(() => {
-    if (process.env.NODE_ENV !== 'development') {
-      router.replace('/')
-      setState('blocked')
-      return
-    }
-
     fetchContent()
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [slug])
