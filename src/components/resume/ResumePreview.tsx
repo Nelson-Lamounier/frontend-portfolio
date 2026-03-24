@@ -170,7 +170,7 @@ export function ResumePreview() {
     } finally {
       setDownloading(false)
     }
-  }, [downloading])
+  }, [downloading, resumeData])
 
   return (
     <>

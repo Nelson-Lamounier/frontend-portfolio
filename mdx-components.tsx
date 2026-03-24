@@ -5,7 +5,7 @@ import { Callout, Mermaid, ProcessTimeline, ScreenshotPlaceholder } from '@/comp
 export function useMDXComponents(components: MDXComponents) {
   return {
     ...components,
-    Image: (props: ImageProps) => <Image {...props} />,
+    Image: ({ alt, ...rest }: ImageProps) => <Image alt={alt} {...rest} />,
     Callout,
     Mermaid,
     ProcessTimeline,
