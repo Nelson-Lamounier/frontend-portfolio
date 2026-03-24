@@ -112,7 +112,7 @@ describe('Home Page', () => {
     it('renders newsletter submit button', async () => {
       render(await Home())
 
-      const submitButton = screen.getByRole('button', { name: /join/i })
+      const submitButton = screen.getByRole('button', { name: /subscribe/i })
       expect(submitButton).toBeInTheDocument()
       expect(submitButton).toHaveAttribute('type', 'submit')
     })

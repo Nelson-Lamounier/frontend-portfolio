@@ -1,32 +1,59 @@
 /**
  * ImageRequest — Dual-mode image component for Bedrock-generated MDX
  *
- * In development: renders a yellow placeholder showing the AI instruction
- * and screenshot ID so content authors can see what image is expected.
- *
- * In production: renders the real S3-hosted image, falling back gracefully
- * if the screenshot hasn't been captured yet.
+ * Resolution order:
+ * 1. Production: S3 image at `assets/screenshots/{id}.png`
+ * 2. Development: local image at `/images/articles/{id}.png` (from public/)
+ * 3. Fallback: yellow placeholder showing the AI instruction
  *
  * Usage in MDX:
  *   <ImageRequest id="eks-dashboard-overview" instruction="Screenshot of the EKS dashboard showing running pods" />
  */
+
+'use client'
+
+import { useState } from 'react'
 
 interface ImageRequestProps {
   /** Unique screenshot identifier — maps to assets/screenshots/{id}.png in S3 */
   id: string
   /** AI-generated instruction describing the desired screenshot */
   instruction: string
+  /** Optional image type hint (e.g. 'hero', 'diagram') */
+  type?: string
+  /** Optional context string for the image */
+  context?: string
 }
 
+/**
+ * Renders article images with automatic source resolution.
+ *
+ * @param props - Image request properties
+ * @returns Image element, local image, or styled placeholder
+ */
 export function ImageRequest({ id, instruction }: ImageRequestProps) {
+  const [imgError, setImgError] = useState(false)
+  const [usePngFallback, setUsePngFallback] = useState(false)
+
   const bucketName = process.env.NEXT_PUBLIC_ASSETS_BUCKET_NAME
-  const region = process.env.AWS_REGION ?? 'eu-west-1'
-  const imageUrl = bucketName
+  const region = process.env.NEXT_PUBLIC_AWS_REGION ?? 'eu-west-1'
+  const isProduction = process.env.NODE_ENV === 'production'
+
+  // Production: S3 URL
+  const s3Url = bucketName
     ? `https://${bucketName}.s3.${region}.amazonaws.com/assets/screenshots/${id}.png`
     : ''
 
-  // Development mode — show a styled placeholder with the instruction
-  if (process.env.NODE_ENV === 'development' || !bucketName) {
+  // Development: local repo image in public/images/articles/
+  // Try .jpeg first, fall back to .png (screenshots are often PNG)
+  const localExt = usePngFallback ? 'png' : 'jpeg'
+  const localUrl = `/images/articles/${id}.${localExt}`
+
+  // Choose the image source
+  const imageUrl = isProduction && s3Url ? s3Url : localUrl
+
+  // If the image failed to load, show the placeholder
+  if (imgError && !isProduction) {
     return (
       <figure className="my-8">
         <div className="flex min-h-[200px] items-center justify-center rounded-xl border-2 border-dashed border-amber-300 bg-amber-50/60 p-6 dark:border-amber-600 dark:bg-amber-950/20">
@@ -64,32 +91,26 @@ export function ImageRequest({ id, instruction }: ImageRequestProps) {
     )
   }
 
-  // Production mode — render the real S3 image with lazy loading
+  // Render the image (S3 in prod, local in dev)
   return (
     <figure className="my-8">
       <div className="overflow-hidden rounded-xl border border-zinc-200 shadow-sm dark:border-zinc-700/50">
+        {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
+          key={imageUrl}
           src={imageUrl}
           alt={instruction}
           loading="lazy"
           className="h-auto w-full"
-          onError={(e) => {
-            // Hide broken image, show fallback
-            const target = e.target as HTMLImageElement
-            target.style.display = 'none'
-            const fallback = target.nextElementSibling as HTMLElement | null
-            if (fallback) fallback.style.display = 'flex'
+          onError={() => {
+            // In dev: try .png if .jpeg failed, then show placeholder
+            if (!isProduction && !usePngFallback) {
+              setUsePngFallback(true)
+            } else {
+              setImgError(true)
+            }
           }}
         />
-        {/* Fallback shown if image fails to load */}
-        <div
-          className="hidden min-h-[120px] items-center justify-center bg-zinc-50 p-4 dark:bg-zinc-800/50"
-          style={{ display: 'none' }}
-        >
-          <p className="text-sm text-zinc-400 dark:text-zinc-500">
-            Image not yet available
-          </p>
-        </div>
       </div>
       <figcaption className="mt-3 text-center text-sm text-zinc-500 dark:text-zinc-400">
         {instruction}
@@ -97,3 +118,4 @@ export function ImageRequest({ id, instruction }: ImageRequestProps) {
     </figure>
   )
 }
+

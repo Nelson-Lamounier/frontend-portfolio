@@ -86,9 +86,9 @@ function SocialLink({
 }
 
 export const metadata: Metadata = {
-  title: 'Nelson Lamounier | DevOps Engineer & Cloud Infrastructure',
+  title: 'Nelson Lamounier | Cloud & DevOps Engineer',
   description:
-    'AWS Certified DevOps Engineer based in Dublin. I build production infrastructure with CDK, run a self-hosted observability stack, and write about real-world cloud problems.',
+    'AWS Certified DevOps Engineer — Professional based in Dublin. I build production-grade infrastructure on self-managed Kubernetes with CDK (TypeScript), ArgoCD GitOps, and AI-powered self-healing.',
 }
 
 interface Role {
@@ -200,16 +200,16 @@ export default async function Home() {
         <div className="flex items-start justify-between gap-8">
           <div className="max-w-2xl">
             <h1 className="text-4xl font-bold tracking-tight text-zinc-800 sm:text-5xl dark:text-zinc-100">
-              AWS Certified DevOps Engineer &mdash; Professional
+              Cloud &amp; DevOps Engineer, AWS Certified Professional
             </h1>
             <p className="mt-6 text-base text-zinc-600 dark:text-zinc-400">
-              Hi, I&apos;m Nelson. I work at AWS in Dublin and build production
-              infrastructure on the side. My day job is debugging customer
-              workloads across EC2, ECS, IAM, and VPC. Outside of work, I&apos;ve
-              built a 6-stack CDK architecture, a self-hosted observability
-              platform (Prometheus, Grafana, Loki, Tempo), and the CI/CD
-              pipelines that keep them running. I write about the real problems
-              I solve along the way.
+              Hi, I&apos;m Nelson. I build and operate production AWS
+              infrastructure. Self-managed Kubernetes provisioned with
+              kubeadm, defined entirely in CDK (TypeScript), and delivered
+              through ArgoCD GitOps. The platform includes a full observability
+              stack, an AI-powered self-healing agent built on Bedrock
+              AgentCore, and end-to-end CI/CD from commit to deployment. I
+              write about the real problems I solve along the way.
             </p>
             <div className="mt-6 flex items-center gap-6">
               <TrackedSocialLinks>

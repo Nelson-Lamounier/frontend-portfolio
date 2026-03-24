@@ -11,11 +11,21 @@
  */
 
 import { MDXRemote } from 'next-mdx-remote/rsc'
+import remarkGfm from 'remark-gfm'
 
 import { Callout } from './Callout'
 import { CodeBlock } from './CodeBlock'
 import { ImageRequest } from './ImageRequest'
 import { Mermaid } from './Mermaid'
+import { VideoRequest } from './VideoRequest'
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeaderCell,
+  TableRow,
+} from './MDXTable'
 import { ProcessTimeline } from './ProcessTimeline'
 import { SmartImage } from './SmartImage'
 import { ScenarioKeywords } from './ScenarioKeywords'
@@ -47,12 +57,23 @@ const mdxComponents = {
   // Bedrock screenshot placeholders (prod image / dev placeholder)
   ImageRequest,
 
+  // Bedrock video requests (looping, muted, autoplay)
+  VideoRequest,
+
   // Quiz / interactive components
   ScenarioKeywords,
   EliminationList,
 
   // Legacy screenshot placeholder
   ScreenshotPlaceholder,
+
+  // HTML table element overrides — modern styled tables
+  table: Table,
+  thead: TableHead,
+  tbody: TableBody,
+  tr: TableRow,
+  th: TableHeaderCell,
+  td: TableCell,
 }
 
 // ========================================
@@ -86,6 +107,9 @@ export function MDXRenderer({ source }: MDXRendererProps) {
       components={mdxComponents}
       options={{
         parseFrontmatter: true,
+        mdxOptions: {
+          remarkPlugins: [remarkGfm],
+        },
       }}
     />
   )

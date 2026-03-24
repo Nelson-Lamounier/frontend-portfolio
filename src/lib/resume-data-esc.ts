@@ -1,18 +1,18 @@
 /**
- * Tailored resume data — AWS ESC Systems Engineer / DevOps Eng role.
+ * Tailored resume data for AWS ESC Systems Engineer / DevOps Eng role.
  *
  * Every bullet point maps to real experience already documented in
  * the main resume-data.ts. Content is reframed and keyword-aligned
  * for the Systems Engineer / DevOps Eng, ESC Managed Operations
- * position — nothing fabricated.
+ * position. Nothing fabricated.
  */
 
 import type { ResumeData } from './resume-data'
 
 export const resumeDataEsc: ResumeData = {
   profile: {
-    name: 'Nelson Lamounier',
-    title: 'AWS Certified Systems Engineer & DevOps Professional',
+    name: 'Nelson Lamounier Leao',
+    title: 'Cloud & DevOps Engineer | AWS Certified DevOps Professional',
     location: 'Dublin, Ireland',
     email: 'lamounierleao@outlook.com',
     linkedin: 'linkedin.com/in/nelson-lamounier-leao',
@@ -21,24 +21,24 @@ export const resumeDataEsc: ResumeData = {
   },
 
   summary:
-    'AWS Certified DevOps Engineer — Professional who has spent the last three years supporting AWS customers on high-availability workloads across EC2, ECS, VPC, IAM, S3, DynamoDB, Lambda, and CloudWatch. Day-to-day work involves incident root-cause analysis through CloudTrail API logs, log correlation across services, and debugging IAM permission boundaries. Built and operate a self-hosted monitoring platform (Prometheus, Grafana, Loki, Tempo) and multi-stack IaC architectures (AWS CDK, CloudFormation) outside of work. Comfortable in Linux (systemd, Bash, SSH, file permissions) and familiar with networking fundamentals (TCP/IP, DNS, TLS, VPC routing). Write and improve operational procedures regularly, and work closely with Support Engineers and service teams on escalations.',
+    'AWS Certified DevOps Engineer Professional supporting AWS customers on high-availability workloads across EC2, VPC, IAM, S3, DynamoDB, Lambda, and CloudWatch. Day-to-day work involves incident root-cause analysis through CloudTrail API logs, log correlation across services, and debugging IAM permission boundaries. Built and operate a self-managed Kubernetes cluster on AWS (kubeadm, Calico CNI, Traefik) with a full LGTM observability stack (Prometheus, Grafana, Loki, Tempo) deployed via custom Helm charts and ArgoCD GitOps. Multi-stack IaC platform (AWS CDK, TypeScript) with CI/CD pipelines, policy-as-code scanning (CDK-nag, Checkov), and infrastructure drift detection. Comfortable with Linux administration (systemd, Bash, SSH, file permissions) and networking fundamentals (TCP/IP, DNS, TLS, VPC routing, Calico NetworkPolicy). Author operational runbooks and architecture decision records.',
 
   keyAchievements: [
     {
       achievement:
-        'Deployed and operated a self-hosted observability platform (Prometheus, Grafana, Loki, Tempo) as a 7-container stack with DNS-based service discovery, automated health verification, and infrastructure rollback on failure',
+        'Built and operate a self-managed Kubernetes cluster on AWS (kubeadm, Calico CNI, Traefik ingress) with a custom Helm chart deploying 11 monitoring services (Prometheus, Grafana, Loki, Tempo, Alloy/Faro) via ArgoCD GitOps',
     },
     {
       achievement:
-        'Triaged security incidents at AWS involving compromised IAM access keys — analysing CloudTrail API activity, coordinating credential rotation procedures, and debugging permission boundaries and cross-account role assumptions',
+        'Triaged security incidents at AWS involving compromised IAM access keys, analysing CloudTrail API activity, coordinating credential rotation procedures, and debugging permission boundaries and cross-account role assumptions',
     },
     {
       achievement:
-        'Architected a 6-stack IaC platform (AWS CDK, TypeScript), consolidating 14+ legacy CloudFormation stacks into domain-aligned infrastructure with SSM-based cross-stack service discovery',
+        'Architected a multi-stack IaC platform (AWS CDK, TypeScript) with domain-aligned stacks, SSM-based cross-stack service discovery, and Step Functions orchestrating node bootstrap automation',
     },
     {
       achievement:
-        'Built CI/CD pipelines with automated rollback strategies, policy-as-code scanning (Checkov), infrastructure drift detection, and smoke tests validating container health, HTTP endpoints, and datasource connectivity',
+        'Built CI/CD pipelines (GitHub Actions, OIDC) with policy-as-code scanning (CDK-nag, Checkov), infrastructure drift detection, integration testing, and automated rollback on failure',
     },
   ],
 
@@ -57,13 +57,13 @@ export const resumeDataEsc: ResumeData = {
     },
     {
       company: 'Freelance',
-      title: 'Systems & DevOps Engineer',
+      title: 'Cloud & DevOps Engineer',
       period: '2022 – Present (Part-time)',
       highlights: [
-        'Designed multi-stack IaC architectures in AWS CDK (TypeScript) and CloudFormation. Separated stacks by operational domain and wired them together with SSM parameter discovery instead of tight CloudFormation exports across compute, networking, storage, and edge layers',
-        'Run a self-hosted monitoring platform (Prometheus, Grafana, Loki, Tempo) on EC2 with Docker Compose. Set up HTTP/TCP scrape endpoints, gRPC trace ingestion, DNS-based service discovery via Cloud Map, Linux file permissions (chmod/chown), and persistent volumes that survive instance replacements',
-        'Built CI/CD pipelines with operational safeguards: OIDC auth (no static credentials), Checkov policy-as-code scanning, CloudFormation validation, drift detection, automated smoke tests, and rollback-on-failure. Pipelines run across staging and production environments',
-        'Locked down ECS containers: non-root execution (UID 1001), dropped all Linux capabilities, tini init process, awsvpc network mode with per-task security groups, and sidecar containers for log forwarding (Promtail) and trace collection (Alloy via gRPC)',
+        'Built and operate a self-managed Kubernetes cluster on AWS using kubeadm, Calico CNI, and Traefik ingress controller. Nodes bootstrapped via Step Functions orchestrating SSM Automation documents with Golden AMI pipeline',
+        'Deployed a full LGTM observability stack (Prometheus, Grafana, Loki, Tempo, Alloy/Faro) via a custom Helm chart with ArgoCD GitOps. Configured Kubernetes service discovery, Tempo span-metric generation with remote write to Prometheus, and Grafana unified alerting to SNS',
+        'Designed multi-stack IaC architectures in AWS CDK (TypeScript). Separated stacks by operational domain (compute, networking, storage, edge, AI) with SSM parameter-based cross-stack discovery. Policy-as-code scanning with CDK-nag (AwsSolutions pack) and Checkov',
+        'Built CI/CD pipelines (GitHub Actions, OIDC auth) with infrastructure drift detection, integration testing against live AWS resources, and automated rollback on failure. ArgoCD Image Updater automates container deployments via Git writeback',
       ],
     },
     {
@@ -89,33 +89,43 @@ export const resumeDataEsc: ResumeData = {
 
   skills: [
     {
+      category: 'Kubernetes & GitOps',
+      skills: [
+        'Self-managed Kubernetes (kubeadm, kubelet, etcd)',
+        'ArgoCD (ApplicationSet, Image Updater, Git writeback)',
+        'Helm Chart Authoring (custom charts, values overrides)',
+        'Calico CNI, NetworkPolicy, Traefik IngressRoutes',
+        'Pod Security, ResourceQuota, PodDisruptionBudget',
+      ],
+    },
+    {
       category: 'Systems Engineering & Linux',
       skills: [
         'Linux Administration (Bash, systemd, chmod/chown, SSH, process management)',
         'TCP/IP, DNS, HTTP/HTTPS, gRPC, TLS',
         'VPC, Subnets, Security Groups, ENI, Route Tables',
-        'Container Runtime Operations (Docker, Docker Compose, ECS)',
+        'Container Runtime (Docker, containerd)',
         'EC2 Instance Management, Launch Templates, Auto Scaling',
       ],
     },
     {
       category: 'AWS Cloud Services',
       skills: [
-        'EC2, ECS, S3, DynamoDB, Lambda, VPC, IAM',
-        'CloudWatch, CloudTrail, Trusted Advisor, Security Hub',
+        'EC2, S3, DynamoDB, Lambda, VPC, IAM',
+        'CloudWatch, CloudTrail, Trusted Advisor, Security Hub, GuardDuty',
         'CloudFront, Route 53, ACM, WAF, KMS, SSM',
-        'Auto Scaling, Application Load Balancing (ALB)',
-        'API Gateway, SES, ECR',
+        'Step Functions, NLB, Auto Scaling Groups',
+        'API Gateway, SES, ECR, Cognito, Bedrock',
       ],
     },
     {
       category: 'Monitoring & Observability',
       skills: [
-        'Prometheus, Grafana, Loki, Tempo',
-        'AWS CloudWatch, X-Ray',
-        'OpenTelemetry (OTLP)',
-        'Log Aggregation, Distributed Tracing',
-        'DNS-based Service Discovery (Cloud Map)',
+        'Prometheus (native scrape_configs, Kubernetes SD)',
+        'Grafana (dashboards, unified alerting, federated datasources)',
+        'Loki (log aggregation), Tempo (distributed tracing)',
+        'Alloy/Faro (Real User Monitoring), OpenTelemetry (OTLP)',
+        'AWS CloudWatch, Steampipe (cloud inventory SQL)',
       ],
     },
     {
@@ -123,9 +133,9 @@ export const resumeDataEsc: ResumeData = {
       skills: [
         'AWS CDK (TypeScript), CloudFormation',
         'GitHub Actions (Reusable Workflows, OIDC Authentication)',
-        'Policy-as-Code (Checkov, CDK-Nag)',
-        'Infrastructure Drift Detection',
-        'Automated Smoke Testing, Rollback Strategies',
+        'Policy-as-Code (CDK-nag AwsSolutions, Checkov)',
+        'Step Functions Orchestration, SSM Automation',
+        'Infrastructure Drift Detection, Integration Testing',
       ],
     },
     {
@@ -134,17 +144,18 @@ export const resumeDataEsc: ResumeData = {
         'IAM Policies, Permission Boundaries, Trust Relationships',
         'Credential Rotation, MFA Enforcement',
         'CloudTrail API Activity Analysis',
-        'Container Hardening (Non-root, CAP_DROP, Init Process)',
+        'Kubernetes NetworkPolicy, Container Security Contexts',
         'WAF Rule Management (OWASP Top 10, Rate Limiting)',
       ],
     },
     {
       category: 'Languages & Scripting',
       skills: [
-        'Bash, Python, TypeScript, SQL',
+        'TypeScript, Python, Bash, SQL',
+        'YAML / Helm Templating',
         'AWS CLI & SDKs',
+        'Node.js (Next.js, CDK)',
         'Git, GitHub',
-        'Node.js',
       ],
     },
   ],
@@ -164,16 +175,16 @@ export const resumeDataEsc: ResumeData = {
 
   projects: [
     {
-      name: 'Monitoring & Observability Platform',
+      name: 'Self-Managed Kubernetes Platform with LGTM Observability',
       description:
-        'Architected and deployed a self-hosted observability platform addressing the lack of unified monitoring, log aggregation, and distributed tracing across containerised workloads. Designed a modular 3-stack IaC architecture (AWS CDK, TypeScript) separating Storage (encrypted block storage, automated backup lifecycle policies), Configuration Management (remote command execution, object storage provisioning), and Compute (auto scaling, launch templates, security groups) — deploying Prometheus, Grafana, Loki, and Tempo as a 7-container Docker Compose stack with persistent volume storage surviving instance replacements. Configured networking with HTTP/TCP scrape endpoints, gRPC (OTLP) trace ingestion across VPC subnets, and applied Linux file permissions (chmod/chown) to secure configuration files and persistent data directories on the host. Implemented DNS-based service discovery for automated scrape target registration, idempotent instance configuration via state management associations, and OpenTelemetry instrumentation for end-to-end request tracing. Built the GitHub Actions CI/CD pipeline with policy-as-code security scanning (Checkov), infrastructure drift detection, automated smoke tests validating container health, HTTP endpoints, datasource connectivity, and scrape targets — with automated infrastructure rollback on verification failure.',
-      github: 'github.com/Nelson-Lamounier/cdk-monitoring',
+        'Self-managed Kubernetes cluster on AWS (kubeadm, Calico CNI, Traefik) with a custom Helm chart deploying 11 monitoring services via ArgoCD GitOps. Full LGTM stack: Prometheus (native scrape_configs, 12 jobs), Grafana (13 dashboards, unified alerting to SNS), Loki (TSDB, 7d retention), Tempo (span-metric generation with Prometheus remote write), and Alloy/Faro for browser RUM. Dedicated monitoring node with ResourceQuota and NetworkPolicy enforcement. Step Functions orchestrating SSM-based node bootstrap with Golden AMI pipeline.',
+      github: 'github.com/Nelson-Lamounier/cdk-monitoring/tree/main/kubernetes-app',
     },
     {
-      name: 'Cloud-Native Application Platform',
+      name: 'Multi-Stack AWS CDK Infrastructure Platform',
       description:
-        'Designed and deployed a production-grade containerised application platform using a 6-stack IaC architecture (AWS CDK, TypeScript) organised by operational domains — Data, Compute, Networking, Application, API, and Edge — consolidated from 14+ legacy stacks. Hardened container security with non-root user execution (UID 1001), dropped all Linux capabilities (CAP_DROP ALL), init process (tini) for zombie process reaping, tmpfs mounts for ephemeral cache, and NOFILE ulimits (65536). Configured awsvpc networking with per-task ENI isolation, TCP/HTTP health checks on port 3000, and security group rules restricting ingress to load balancer and monitoring sources only. Built multi-origin CDN routing with TLS termination at the edge, origin verification headers, and cache policies differentiating immutable static assets from dynamically revalidated content. Implemented multi-tier WAF (OWASP Top 10, IP reputation, rate limiting) at both edge and regional layers, IAM least-privilege with three scoped roles (instance, task execution, task), and SSM-based cross-stack service discovery replacing tight CloudFormation export coupling. Deployed sidecar containers for log forwarding (Promtail → Loki) and trace collection (Alloy → Tempo via gRPC/OTLP), plus DynamoDB single-table design with GSI access patterns and serverless API (Lambda, API Gateway) with OIDC-authenticated CI/CD pipeline.',
-      github: 'github.com/Nelson-Lamounier/cdk-monitoring',
+        'Production-grade IaC platform (AWS CDK, TypeScript) with domain-aligned stacks across compute, networking, edge, AI, and observability layers. Multi-origin CloudFront CDN with WAF (OWASP Top 10, rate limiting), NLB with ACM TLS termination, and SSM-based cross-stack service discovery. CI/CD via GitHub Actions with OIDC auth, CDK-nag and Checkov policy-as-code scanning, integration testing against live resources, and automated rollback. Includes Bedrock AI agent for infrastructure self-healing and a serverless API (Lambda, API Gateway, DynamoDB).',
+      github: 'github.com/Nelson-Lamounier/cdk-monitoring/tree/main/infra',
     },
   ],
 }

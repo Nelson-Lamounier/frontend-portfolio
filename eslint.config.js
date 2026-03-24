@@ -1,12 +1,26 @@
 /** @format */
 
+import path from 'node:path'
+import { fileURLToPath } from 'node:url'
 import js from '@eslint/js'
 import tseslint from 'typescript-eslint'
+import { FlatCompat } from '@eslint/eslintrc'
+
+const __filename = fileURLToPath(import.meta.url)
+const __dirname = path.dirname(__filename)
+
+const compat = new FlatCompat({
+  baseDirectory: __dirname,
+  recommendedConfig: js.configs.recommended,
+})
 
 export default tseslint.config(
   // Base configurations
   js.configs.recommended,
   ...tseslint.configs.recommended,
+
+  // Next.js config (includes react-hooks & @next/next rules)
+  ...compat.extends('next'),
 
   // Global ignores
   {
@@ -93,6 +107,9 @@ export default tseslint.config(
       '@typescript-eslint/no-unused-vars': 'off',
       '@typescript-eslint/no-require-imports': 'off',
       'no-console': 'off',
+      // Test mocks legitimately use <img> elements (mocking next/image)
+      '@next/next/no-img-element': 'off',
+      'jsx-a11y/alt-text': 'off',
     },
   },
 

@@ -43,7 +43,7 @@ describe('Uses Page', () => {
       render(<Uses />)
 
       const devToolsHeading = screen.getByRole('heading', {
-        name: 'Development tools',
+        name: 'Development Tools',
       })
       expect(devToolsHeading).toBeInTheDocument()
     })

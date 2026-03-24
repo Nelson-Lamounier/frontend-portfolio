@@ -178,10 +178,10 @@ export function NewsletterForm() {
     >
       <h2 className="flex text-sm font-semibold text-zinc-900 dark:text-zinc-100">
         <MailIcon className="h-6 w-6 flex-none" />
-        <span className="ml-3">Stay up to date</span>
+        <span className="ml-3">Follow My Work</span>
       </h2>
       <p className="mt-2 text-sm text-zinc-600 dark:text-zinc-400">
-        Get notified when I publish something new, and unsubscribe at any time.
+        New articles on Kubernetes, CDK, and AI-powered infrastructure. Straight to your inbox.
       </p>
       <div className="mt-6 flex items-center">
         <span className="flex min-w-0 flex-auto p-px">
@@ -207,7 +207,7 @@ export function NewsletterForm() {
               Joining…
             </>
           ) : (
-            'Join'
+            'Subscribe'
           )}
         </Button>
       </div>

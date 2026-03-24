@@ -1,7 +1,7 @@
 import { render, screen } from '@testing-library/react'
 import ArticlesIndex from '@/app/articles/page'
 
-// Mock the article-service (DynamoDB-only)
+// Mock the article-service (current import path used by articles page)
 jest.mock('@/lib/article-service', () => ({
   getAllArticles: jest.fn(() =>
     Promise.resolve([
@@ -28,7 +28,7 @@ jest.mock('@/lib/article-service', () => ({
       },
     ]),
   ),
-  getDataSource: jest.fn(() => 'dynamodb-sdk'),
+  getDataSource: jest.fn(() => 'mock'),
 }))
 
 // Mock formatDate function
@@ -49,7 +49,7 @@ describe('Articles Page', () => {
       render(await ArticlesIndex())
 
       const heading = screen.getByRole('heading', {
-        name: /Writing on AWS infrastructure, DevOps practices, and cloud architecture decisions/i,
+        name: /Writing on Kubernetes, GitOps, AI-powered infrastructure/i,
       })
 
       expect(heading).toBeInTheDocument()
@@ -59,7 +59,7 @@ describe('Articles Page', () => {
       render(await ArticlesIndex())
 
       const intro = screen.getByText(
-        /Practical guides on CI\/CD pipelines, infrastructure-as-code/i,
+        /Practical guides on self-managed Kubernetes, CDK infrastructure-as-code/i,
       )
 
       expect(intro).toBeInTheDocument()
@@ -203,7 +203,7 @@ describe('Articles Page', () => {
       render(await ArticlesIndex())
 
       const mainHeading = screen.getByRole('heading', {
-        name: /Writing on AWS infrastructure/i,
+        name: /Writing on Kubernetes, GitOps/i,
       })
       expect(mainHeading.tagName).toBe('H1')
 
@@ -254,7 +254,7 @@ describe('Articles Page', () => {
       render(await ArticlesIndex())
 
       const heading = screen.getByRole('heading', {
-        name: /Writing on AWS infrastructure/i,
+        name: /Writing on Kubernetes, GitOps/i,
       })
       expect(heading).toBeInTheDocument()
 
@@ -268,9 +268,9 @@ describe('Articles Page', () => {
       const ArticlesModule = require('@/app/articles/page')
 
       expect(ArticlesModule.metadata).toBeDefined()
-      expect(ArticlesModule.metadata.title).toBe('Articles')
+      expect(ArticlesModule.metadata.title).toBe('Articles | Nelson Lamounier, Cloud & DevOps Engineer')
       expect(ArticlesModule.metadata.description).toContain(
-        'AWS infrastructure',
+        'Kubernetes',
       )
     })
   })
