@@ -46,15 +46,11 @@ export default function AdminDraftsPage() {
   const [activeTab, setActiveTab] = useState<ActiveTab>('drafts')
   const [error, setError] = useState<string | null>(null)
 
-  // Guard: dev-only + fetch on mount
+  // Fetch articles on mount (auth is handled by middleware)
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
-    if (process.env.NODE_ENV !== 'development') {
-      router.replace('/')
-      setState('blocked')
-      return
-    }
     fetchArticles()
-  }, [router])
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
   /**
    * Fetches all articles (drafts + published) from the admin API.

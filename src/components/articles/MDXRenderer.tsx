@@ -17,6 +17,7 @@ import { Callout } from './Callout'
 import { CodeBlock } from './CodeBlock'
 import { ImageRequest } from './ImageRequest'
 import { Mermaid } from './Mermaid'
+import { VideoRequest } from './VideoRequest'
 import {
   Table,
   TableBody,
@@ -55,6 +56,9 @@ const mdxComponents = {
 
   // Bedrock screenshot placeholders (prod image / dev placeholder)
   ImageRequest,
+
+  // Bedrock video requests (looping, muted, autoplay)
+  VideoRequest,
 
   // Quiz / interactive components
   ScenarioKeywords,

@@ -1,61 +1,91 @@
 /** @format */
 
-import { NextResponse } from 'next/server';
-import type { NextRequest } from 'next/server';
+import { auth } from '@/lib/auth'
+import { NextResponse } from 'next/server'
+import type { NextRequest } from 'next/server'
+
+// =============================================================================
+// Security Response Headers
+// =============================================================================
 
 /**
- * Middleware to track HTTP requests for Prometheus metrics
- * Runs on all routes except static files and internal Next.js routes
- *
- * Middleware always executes server-side in Next.js Edge Runtime,
- * so no `typeof window` guard is needed.
+ * Standard security headers applied to every response.
+ * These provide defence-in-depth alongside CloudFront/WAF edge protections.
  */
-export function middleware(request: NextRequest) {
-  const start = Date.now();
-  const response = NextResponse.next();
-  const duration = (Date.now() - start) / 1000;
+const SECURITY_HEADERS: Record<string, string> = {
+  'X-Content-Type-Options': 'nosniff',
+  'X-Frame-Options': 'DENY',
+  'X-XSS-Protection': '0',
+  'Referrer-Policy': 'strict-origin-when-cross-origin',
+  'Permissions-Policy': 'camera=(), microphone=(), geolocation=()',
+  'Strict-Transport-Security': 'max-age=63072000; includeSubDomains; preload',
+}
 
-  // Track metrics asynchronously (fire and forget)
+// =============================================================================
+// Middleware
+// =============================================================================
+
+/**
+ * Next.js middleware — runs on every matched request.
+ *
+ * Responsibilities:
+ * 1. Route protection: admin pages/APIs require an active NextAuth.js session
+ * 2. Security headers: applied to every response
+ * 3. Metrics tracking: request timing for Prometheus
+ *
+ * @param request - Incoming Next.js request
+ */
+export default auth(async function middleware(request: NextRequest) {
+  const start = Date.now()
+  const response = NextResponse.next()
+  const duration = (Date.now() - start) / 1000
+
+  // ── Apply security headers ────────────────────────────────────────────
+  for (const [header, value] of Object.entries(SECURITY_HEADERS)) {
+    response.headers.set(header, value)
+  }
+
+  // ── Track metrics asynchronously (fire and forget) ────────────────────
   Promise.all([
     import('@/lib/metrics'),
     import('@/lib/request-tracker'),
   ])
     .then(([{ trackRequestDuration, trackApiCall }, { trackRequestSize }]) => {
-      const status = response.status;
-      const method = request.method;
-      const path = request.nextUrl.pathname;
+      const status = response.status
+      const method = request.method
+      const path = request.nextUrl.pathname
 
       // Track request duration (Prometheus histogram)
-      trackRequestDuration(method, path, status, duration);
+      trackRequestDuration(method, path, status, duration)
 
       // Track request/response sizes (Prometheus histogram)
-      trackRequestSize(request, response);
+      trackRequestSize(request, response)
 
       // Track API calls specifically
       if (path.startsWith('/api/')) {
-        trackApiCall(path, method, status);
+        trackApiCall(path, method, status)
       }
     })
     .catch(() => {
-      // Silently fail - don't break the request
-    });
+      // Silently fail — don't break the request
+    })
 
-  return response;
-}
+  return response
+})
 
 /**
- * Configure which routes to run middleware on
- * Exclude static files, images, and Next.js internals
+ * Configure which routes to run middleware on.
+ * Exclude static files, images, and Next.js internals.
  */
 export const config = {
   matcher: [
     /*
      * Match all request paths except:
      * - _next/static (static files)
-     * - _next/image (image optimization)
+     * - _next/image (image optimisation)
      * - favicon.ico (favicon file)
      * - public folder files
      */
     '/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)',
   ],
-};
+}
