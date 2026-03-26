@@ -1,115 +1,91 @@
 /**
- * NextAuth.js v5 (Auth.js) Configuration
+ * NextAuth.js v5 (Auth.js) Configuration — Cognito Provider
  *
  * Provides admin authentication for the portfolio application using
- * the Credentials provider. Authenticates a single admin user against
- * environment variables — no external auth provider or database needed.
+ * AWS Cognito as the OAuth 2.0 / OIDC identity provider.
+ *
+ * Authentication flow:
+ *   1. User clicks "Sign in" on /admin/login
+ *   2. signIn('cognito') redirects to Cognito Hosted UI
+ *   3. User authenticates on Cognito (email + password)
+ *   4. Cognito redirects back to /api/auth/callback/cognito
+ *   5. NextAuth.js creates a JWT session cookie
  *
  * Session strategy: JWT (stateless, stored in HttpOnly cookie)
  *
- * Environment Variables:
- *   NEXTAUTH_SECRET   – required, used for JWT signing
- *   ADMIN_USERNAME    – required, admin login username
- *   ADMIN_PASSWORD    – required, admin login password
- *   NEXTAUTH_URL      – optional, base URL (auto-detected in production)
+ * Observability:
+ *   - Structured JSON logs for all auth events (AIOps-ready)
+ *   - sign-in success/failure, JWT minting, session access, errors
+ *   - Log output compatible with CloudWatch Logs Insights
  *
- * @see https://authjs.dev/getting-started
+ * Environment Variables:
+ *   NEXTAUTH_SECRET              – required, JWT signing secret
+ *   NEXTAUTH_URL                 – required, base URL for callbacks
+ *   AUTH_COGNITO_CLIENT_ID       – required, Cognito User Pool Client ID
+ *   AUTH_COGNITO_ISSUER_URL      – required, Cognito OIDC Issuer URL
+ *
+ * @see https://authjs.dev/getting-started/providers/cognito
  */
 
 import NextAuth from 'next-auth'
-import Credentials from 'next-auth/providers/credentials'
-import { skipCSRFCheck } from '@auth/core'
+import CognitoProvider from 'next-auth/providers/cognito'
+
+import type { Account, Profile, User } from 'next-auth'
+import type { JWT } from 'next-auth/jwt'
+
+// =============================================================================
+// Structured Logger — AIOps-ready JSON logging
+// =============================================================================
+
+/** Auth log entry for structured CloudWatch / Loki ingestion */
+interface AuthLogEntry {
+  service: 'auth'
+  event: string
+  email?: string | null
+  provider?: string | null
+  error?: string
+  level: 'info' | 'warn' | 'error'
+  timestamp: string
+  [key: string]: unknown
+}
 
 /**
- * Constant-time string comparison to prevent timing attacks.
+ * Emit a structured JSON log line compatible with CloudWatch Logs Insights.
+ * All auth events flow through this function for uniform observability.
  *
- * @param a - First string to compare
- * @param b - Second string to compare
- * @returns Whether the strings are equal
+ * @param entry - Structured log entry
  */
-function timingSafeEqual(a: string, b: string): boolean {
-  if (a.length !== b.length) return false
-  const encoder = new TextEncoder()
-  const bufA = encoder.encode(a)
-  const bufB = encoder.encode(b)
-
-  let result = 0
-  for (let i = 0; i < bufA.length; i++) {
-    result |= bufA[i] ^ bufB[i]
+function authLog(entry: Omit<AuthLogEntry, 'service' | 'timestamp'>): void {
+  const output: AuthLogEntry = {
+    service: 'auth',
+    timestamp: new Date().toISOString(),
+    ...entry,
   }
-  return result === 0
+
+  switch (entry.level) {
+    case 'error':
+      console.error(JSON.stringify(output))
+      break
+    case 'warn':
+      console.warn(JSON.stringify(output))
+      break
+    default:
+      console.log(JSON.stringify(output))
+  }
 }
+
+// =============================================================================
+// NextAuth Configuration
+// =============================================================================
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
   // Trust the forwarded Host header from reverse proxies (Traefik, CloudFront).
-  // Without this, Auth.js v5 rejects requests with UntrustedHost errors.
   trustHost: true,
 
-  // Disable CSRF token validation. The CloudFront → HTTP → Traefik proxy
-  // chain breaks Auth.js's cookie-based CSRF flow because CloudFront's
-  // Origin Request Policy strips/mismatches the CSRF cookie. This is safe
-  // for a Credentials-only provider (attacker must know the password) and
-  // the site is already behind CloudFront's own request validation.
-  skipCSRFCheck,
-
   providers: [
-    Credentials({
-      name: 'Admin',
-      credentials: {
-        username: { label: 'Username', type: 'text' },
-        password: { label: 'Password', type: 'password' },
-      },
-      /**
-       * Validates credentials against environment variables.
-       *
-       * @param credentials - Username and password from the login form
-       * @returns User object on success, null on failure
-       */
-      async authorize(credentials) {
-        // DEBUG: Trace what credentials arrive through CloudFront
-        console.log('[auth][debug] authorize called')
-        console.log('[auth][debug] credentials keys:', credentials ? Object.keys(credentials) : 'null')
-        console.log('[auth][debug] credentials types:', credentials ? Object.fromEntries(
-          Object.entries(credentials).map(([k, v]) => [k, `${typeof v}(${String(v).length})`])
-        ) : 'null')
-
-        const expectedUsername = process.env.ADMIN_USERNAME
-        const expectedPassword = process.env.ADMIN_PASSWORD
-
-        if (!expectedUsername || !expectedPassword) {
-          console.error('[auth] ADMIN_USERNAME or ADMIN_PASSWORD not configured')
-          return null
-        }
-
-        const username = credentials?.username
-        const password = credentials?.password
-
-        console.log('[auth][debug] username type:', typeof username, 'length:', typeof username === 'string' ? username.length : 'N/A')
-        console.log('[auth][debug] password type:', typeof password, 'length:', typeof password === 'string' ? password.length : 'N/A')
-        console.log('[auth][debug] expectedUsername length:', expectedUsername.length)
-        console.log('[auth][debug] expectedPassword length:', expectedPassword.length)
-
-        if (typeof username !== 'string' || typeof password !== 'string') {
-          console.error('[auth][debug] FAIL: credentials not strings')
-          return null
-        }
-
-        const usernameMatch = timingSafeEqual(username, expectedUsername)
-        const passwordMatch = timingSafeEqual(password, expectedPassword)
-
-        console.log('[auth][debug] usernameMatch:', usernameMatch, 'passwordMatch:', passwordMatch)
-
-        if (usernameMatch && passwordMatch) {
-          return {
-            id: 'admin',
-            name: 'Admin',
-            email: 'admin@portfolio.local',
-          }
-        }
-
-        console.error('[auth][debug] FAIL: credentials mismatch')
-        return null
-      },
+    CognitoProvider({
+      clientId: process.env.AUTH_COGNITO_CLIENT_ID!,
+      issuer: process.env.AUTH_COGNITO_ISSUER_URL!,
     }),
   ],
 
@@ -125,10 +101,85 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
 
   callbacks: {
     /**
+     * Called after a successful sign-in.
+     * Logs the event and allows the sign-in to proceed.
+     *
+     * @param params - Sign-in callback parameters
+     * @returns Whether to allow the sign-in
+     */
+    signIn({ user, account }: { user: User; account: Account | null }) {
+      authLog({
+        event: 'sign_in_success',
+        email: user.email,
+        provider: account?.provider,
+        level: 'info',
+      })
+      return true
+    },
+
+    /**
+     * Called whenever a JWT is created or updated.
+     * Enriches the token with Cognito user details on first sign-in.
+     *
+     * @param params - JWT callback parameters
+     * @returns Enriched JWT token
+     */
+    jwt({
+      token,
+      account,
+      profile,
+    }: {
+      token: JWT
+      account: Account | null
+      profile?: Profile
+    }) {
+      // First sign-in — enrich token with Cognito claims
+      if (account && profile) {
+        token.sub = profile.sub
+        token.email = profile.email as string
+
+        authLog({
+          event: 'jwt_created',
+          email: profile.email as string,
+          provider: account.provider,
+          level: 'info',
+          tokenExpiry: account.expires_at,
+        })
+      }
+
+      return token
+    },
+
+    /**
+     * Called whenever a session is checked.
+     * Copies enriched JWT fields into the session user object.
+     *
+     * @param params - Session callback parameters
+     * @returns Updated session
+     */
+    session({ session, token }: { session: unknown; token: JWT }) {
+      const sess = session as { user?: { id?: string; email?: string | null } }
+      if (sess.user && token.sub) {
+        sess.user.id = token.sub
+        sess.user.email = token.email as string
+      }
+      return session
+    },
+
+    /**
      * Controls whether a request is authorised.
      * Called by the middleware to protect admin routes.
+     *
+     * @param params - Auth callback parameters
+     * @returns Whether the request is authorised
      */
-    authorized({ auth: session, request }) {
+    authorized({
+      auth: session,
+      request,
+    }: {
+      auth: { user?: { email?: string | null } } | null
+      request: { nextUrl: { pathname: string } }
+    }) {
       const { pathname } = request.nextUrl
 
       // Protect admin pages and API routes
@@ -137,11 +188,69 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       const isAdminApi = pathname.startsWith('/api/admin')
 
       if (isAdminRoute || isAdminApi) {
-        return !!session?.user
+        const isAuthed = !!session?.user
+
+        if (!isAuthed) {
+          authLog({
+            event: 'access_denied',
+            level: 'warn',
+            pathname,
+          })
+        }
+
+        return isAuthed
       }
 
       // All other routes are public
       return true
+    },
+  },
+
+  events: {
+    /**
+     * Fired when a user signs out.
+     *
+     * @param message - Sign-out event message
+     */
+    signOut(message: unknown) {
+      const msg = message as { token?: { email?: string } }
+      authLog({
+        event: 'sign_out',
+        email: msg?.token?.email,
+        level: 'info',
+      })
+    },
+  },
+
+  /** Error logging for auth failures */
+  logger: {
+    /**
+     * Logs auth errors (e.g. OAuth callback failures, token errors).
+     *
+     * @param code - Error code
+     * @param metadata - Error metadata
+     */
+    error(code: string, metadata: unknown) {
+      const meta = metadata as Error | { error?: Error; message?: string }
+      authLog({
+        event: 'auth_error',
+        error: meta instanceof Error ? meta.message : String(meta),
+        level: 'error',
+        errorCode: code,
+      })
+    },
+
+    /**
+     * Logs auth warnings (e.g. deprecated features, configuration issues).
+     *
+     * @param code - Warning code
+     */
+    warn(code: string) {
+      authLog({
+        event: 'auth_warning',
+        level: 'warn',
+        warningCode: code,
+      })
     },
   },
 
