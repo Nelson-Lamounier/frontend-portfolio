@@ -56,8 +56,12 @@ function AdminLoginForm() {
           redirect: false,
         })
 
+        // DEBUG: Log the full signIn result
+        console.log('[login][debug] signIn result:', JSON.stringify(result))
+
         if (result?.error) {
-          setError('Invalid username or password.')
+          console.log('[login][debug] result.error:', result.error)
+          setError(`Invalid username or password. (${result.error})`)
           setState('error')
           return
         }
@@ -65,8 +69,11 @@ function AdminLoginForm() {
         // Successful login — redirect to the requested page
         router.push(callbackUrl)
         router.refresh()
-      } catch {
-        setError('An unexpected error occurred. Please try again.')
+      } catch (err) {
+        // DEBUG: Capture the actual thrown error
+        const message = err instanceof Error ? err.message : String(err)
+        console.error('[login][debug] signIn threw:', message, err)
+        setError(`Login error: ${message}`)
         setState('error')
       }
     },
