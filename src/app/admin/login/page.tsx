@@ -12,7 +12,6 @@
 'use client'
 
 import { Suspense, useCallback, useState, type FormEvent } from 'react'
-import { signIn } from 'next-auth/react'
 import { useRouter, useSearchParams } from 'next/navigation'
 
 // =============================================================================
@@ -50,27 +49,50 @@ function AdminLoginForm() {
       setError(null)
 
       try {
-        const result = await signIn('credentials', {
+        // Auth.js v5 beta's signIn() from next-auth/react has a
+        // ReadableStream parsing bug. Use a direct fetch instead.
+        const params = new URLSearchParams({
           username,
           password,
-          redirect: false,
+          csrfToken: '',
+          callbackUrl,
         })
 
-        // DEBUG: Log the full signIn result
-        console.log('[login][debug] signIn result:', JSON.stringify(result))
+        const res = await fetch('/api/auth/callback/credentials', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+          body: params.toString(),
+          redirect: 'follow',
+          credentials: 'include',
+        })
 
-        if (result?.error) {
-          console.log('[login][debug] result.error:', result.error)
-          setError(`Invalid username or password. (${result.error})`)
+        // DEBUG: Log response details
+        console.log('[login][debug] callback status:', res.status, 'url:', res.url)
+
+        // Auth.js redirects to ?error=CredentialsSignin on failure.
+        // If the final URL contains 'error=', credentials were rejected.
+        if (res.url.includes('error=')) {
+          setError('Invalid username or password.')
           setState('error')
           return
         }
 
-        // Successful login — redirect to the requested page
-        router.push(callbackUrl)
-        router.refresh()
+        // Verify session was actually created
+        const sessionRes = await fetch('/api/auth/session', {
+          credentials: 'include',
+        })
+        const session = await sessionRes.json()
+        console.log('[login][debug] session after login:', JSON.stringify(session))
+
+        if (!session?.user) {
+          setError('Login failed — session was not created.')
+          setState('error')
+          return
+        }
+
+        // Successful login — full page reload to pick up the session cookie
+        window.location.href = callbackUrl
       } catch (err) {
-        // DEBUG: Capture the actual thrown error
         const message = err instanceof Error ? err.message : String(err)
         console.error('[login][debug] signIn threw:', message, err)
         setError(`Login error: ${message}`)
