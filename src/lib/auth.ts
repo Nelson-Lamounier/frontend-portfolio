@@ -30,8 +30,7 @@
 import NextAuth from 'next-auth'
 import CognitoProvider from 'next-auth/providers/cognito'
 
-import type { Account, Profile, User } from 'next-auth'
-import type { JWT } from 'next-auth/jwt'
+
 
 // =============================================================================
 // Structured Logger — AIOps-ready JSON logging
@@ -107,7 +106,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
      * @param params - Sign-in callback parameters
      * @returns Whether to allow the sign-in
      */
-    signIn({ user, account }: { user: User; account: Account | null }) {
+    signIn({ user, account }) {
       authLog({
         event: 'sign_in_success',
         email: user.email,
@@ -124,26 +123,18 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
      * @param params - JWT callback parameters
      * @returns Enriched JWT token
      */
-    jwt({
-      token,
-      account,
-      profile,
-    }: {
-      token: JWT
-      account: Account | null
-      profile?: Profile
-    }) {
+    jwt({ token, account, profile }) {
       // First sign-in — enrich token with Cognito claims
       if (account && profile) {
-        token.sub = profile.sub
-        token.email = profile.email as string
+        token.sub = profile?.sub ?? undefined
+        token.email = profile?.email ?? undefined
 
         authLog({
           event: 'jwt_created',
-          email: profile.email as string,
+          email: profile?.email ?? undefined,
           provider: account.provider,
           level: 'info',
-          tokenExpiry: account.expires_at,
+          tokenExpiry: account?.expires_at,
         })
       }
 
@@ -157,11 +148,11 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
      * @param params - Session callback parameters
      * @returns Updated session
      */
-    session({ session, token }: { session: unknown; token: JWT }) {
-      const sess = session as { user?: { id?: string; email?: string | null } }
+    session({ session, token }) {
+      const sess = session as unknown as { user?: Record<string, unknown> }
       if (sess.user && token.sub) {
         sess.user.id = token.sub
-        sess.user.email = token.email as string
+        sess.user.email = token.email
       }
       return session
     },
@@ -173,13 +164,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
      * @param params - Auth callback parameters
      * @returns Whether the request is authorised
      */
-    authorized({
-      auth: session,
-      request,
-    }: {
-      auth: { user?: { email?: string | null } } | null
-      request: { nextUrl: { pathname: string } }
-    }) {
+    authorized({ auth: session, request }) {
       const { pathname } = request.nextUrl
 
       // Protect admin pages and API routes
@@ -212,7 +197,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
      *
      * @param message - Sign-out event message
      */
-    signOut(message: unknown) {
+    signOut(message) {
       const msg = message as { token?: { email?: string } }
       authLog({
         event: 'sign_out',
@@ -230,13 +215,12 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
      * @param code - Error code
      * @param metadata - Error metadata
      */
-    error(code: string, metadata: unknown) {
-      const meta = metadata as Error | { error?: Error; message?: string }
+    error(error: Error) {
       authLog({
         event: 'auth_error',
-        error: meta instanceof Error ? meta.message : String(meta),
+        error: error.message,
         level: 'error',
-        errorCode: code,
+        errorCode: error.name,
       })
     },
 
@@ -245,7 +229,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
      *
      * @param code - Warning code
      */
-    warn(code: string) {
+    warn(code) {
       authLog({
         event: 'auth_warning',
         level: 'warn',
