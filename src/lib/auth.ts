@@ -44,22 +44,11 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
   // Without this, Auth.js v5 rejects requests with UntrustedHost errors.
   trustHost: true,
 
-  // Use __Secure- cookie prefix instead of the default __Host- prefix.
-  // __Host- cookies require exact host matching and no Domain attribute,
-  // which breaks behind the CloudFront → Traefik → Pod proxy chain.
-  // __Secure- only requires the Secure flag — compatible with proxied setups.
+  // Force __Host-/__Secure- cookie prefixes even though the pod receives
+  // HTTP requests (CloudFront → Traefik on port 80). Without this, Auth.js
+  // auto-detects HTTP and uses plain cookie names, causing a mismatch with
+  // the browser which holds __Host- cookies from the HTTPS CloudFront edge.
   useSecureCookies: true,
-  cookies: {
-    csrfToken: {
-      name: '__Secure-authjs.csrf-token',
-      options: {
-        httpOnly: true,
-        sameSite: 'lax',
-        path: '/',
-        secure: true,
-      },
-    },
-  },
 
   providers: [
     Credentials({
