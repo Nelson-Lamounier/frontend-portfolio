@@ -66,6 +66,13 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
        * @returns User object on success, null on failure
        */
       async authorize(credentials) {
+        // DEBUG: Trace what credentials arrive through CloudFront
+        console.log('[auth][debug] authorize called')
+        console.log('[auth][debug] credentials keys:', credentials ? Object.keys(credentials) : 'null')
+        console.log('[auth][debug] credentials types:', credentials ? Object.fromEntries(
+          Object.entries(credentials).map(([k, v]) => [k, `${typeof v}(${String(v).length})`])
+        ) : 'null')
+
         const expectedUsername = process.env.ADMIN_USERNAME
         const expectedPassword = process.env.ADMIN_PASSWORD
 
@@ -77,12 +84,20 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         const username = credentials?.username
         const password = credentials?.password
 
+        console.log('[auth][debug] username type:', typeof username, 'length:', typeof username === 'string' ? username.length : 'N/A')
+        console.log('[auth][debug] password type:', typeof password, 'length:', typeof password === 'string' ? password.length : 'N/A')
+        console.log('[auth][debug] expectedUsername length:', expectedUsername.length)
+        console.log('[auth][debug] expectedPassword length:', expectedPassword.length)
+
         if (typeof username !== 'string' || typeof password !== 'string') {
+          console.error('[auth][debug] FAIL: credentials not strings')
           return null
         }
 
         const usernameMatch = timingSafeEqual(username, expectedUsername)
         const passwordMatch = timingSafeEqual(password, expectedPassword)
+
+        console.log('[auth][debug] usernameMatch:', usernameMatch, 'passwordMatch:', passwordMatch)
 
         if (usernameMatch && passwordMatch) {
           return {
@@ -92,6 +107,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           }
         }
 
+        console.error('[auth][debug] FAIL: credentials mismatch')
         return null
       },
     }),
