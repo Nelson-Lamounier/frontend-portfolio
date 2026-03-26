@@ -18,6 +18,7 @@
 
 import NextAuth from 'next-auth'
 import Credentials from 'next-auth/providers/credentials'
+import { skipCSRFCheck } from '@auth/core'
 
 /**
  * Constant-time string comparison to prevent timing attacks.
@@ -44,11 +45,12 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
   // Without this, Auth.js v5 rejects requests with UntrustedHost errors.
   trustHost: true,
 
-  // Force __Host-/__Secure- cookie prefixes even though the pod receives
-  // HTTP requests (CloudFront → Traefik on port 80). Without this, Auth.js
-  // auto-detects HTTP and uses plain cookie names, causing a mismatch with
-  // the browser which holds __Host- cookies from the HTTPS CloudFront edge.
-  useSecureCookies: true,
+  // Disable CSRF token validation. The CloudFront → HTTP → Traefik proxy
+  // chain breaks Auth.js's cookie-based CSRF flow because CloudFront's
+  // Origin Request Policy strips/mismatches the CSRF cookie. This is safe
+  // for a Credentials-only provider (attacker must know the password) and
+  // the site is already behind CloudFront's own request validation.
+  skipCSRFCheck,
 
   providers: [
     Credentials({

@@ -1,9 +1,9 @@
 /**
  * Admin Login Page
  *
- * Client-rendered login form for the admin panel.
- * Uses a Server Action to authenticate via Auth.js, bypassing the
- * client-side CSRF token flow that fails behind CloudFront's HTTP proxy.
+ * Server-rendered login form for the admin panel.
+ * Authenticates via NextAuth.js Credentials provider against
+ * environment-variable-backed admin credentials.
  *
  * Route: /admin/login
  * Access: Public (unauthenticated users are redirected here)
@@ -11,10 +11,15 @@
 
 'use client'
 
-import { Suspense, useActionState, useEffect, useState } from 'react'
+import { Suspense, useCallback, useState, type FormEvent } from 'react'
+import { signIn } from 'next-auth/react'
 import { useRouter, useSearchParams } from 'next/navigation'
-import { authenticate } from './actions'
-import type { AuthResult } from './actions'
+
+// =============================================================================
+// TYPES
+// =============================================================================
+
+type LoginState = 'idle' | 'loading' | 'error'
 
 // =============================================================================
 // INNER COMPONENT (uses useSearchParams)
@@ -30,22 +35,43 @@ function AdminLoginForm() {
   const searchParams = useSearchParams()
   const callbackUrl = searchParams.get('callbackUrl') || '/admin/drafts'
 
-  const [result, formAction, isPending] = useActionState<AuthResult | null, FormData>(
-    authenticate,
-    null,
+  const [state, setState] = useState<LoginState>('idle')
+  const [error, setError] = useState<string | null>(null)
+  const [username, setUsername] = useState('')
+  const [password, setPassword] = useState('')
+
+  /**
+   * Handles form submission — signs in via NextAuth.js Credentials provider.
+   */
+  const handleSubmit = useCallback(
+    async (e: FormEvent<HTMLFormElement>) => {
+      e.preventDefault()
+      setState('loading')
+      setError(null)
+
+      try {
+        const result = await signIn('credentials', {
+          username,
+          password,
+          redirect: false,
+        })
+
+        if (result?.error) {
+          setError('Invalid username or password.')
+          setState('error')
+          return
+        }
+
+        // Successful login — redirect to the requested page
+        router.push(callbackUrl)
+        router.refresh()
+      } catch {
+        setError('An unexpected error occurred. Please try again.')
+        setState('error')
+      }
+    },
+    [username, password, callbackUrl, router],
   )
-
-  // Track whether we've already attempted a redirect to prevent loops
-  const [hasRedirected, setHasRedirected] = useState(false)
-
-  // Redirect on successful authentication
-  useEffect(() => {
-    if (result?.success && !hasRedirected) {
-      setHasRedirected(true)
-      router.push(callbackUrl)
-      router.refresh()
-    }
-  }, [result, callbackUrl, router, hasRedirected])
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-zinc-50 px-4 dark:bg-zinc-950">
@@ -76,11 +102,11 @@ function AdminLoginForm() {
         </div>
 
         {/* Login Form */}
-        <form action={formAction} className="space-y-4">
+        <form onSubmit={handleSubmit} className="space-y-4">
           {/* Error Message */}
-          {result?.error && (
+          {state === 'error' && error && (
             <div className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700 dark:border-red-800 dark:bg-red-900/20 dark:text-red-400">
-              {result.error}
+              {error}
             </div>
           )}
 
@@ -98,6 +124,8 @@ function AdminLoginForm() {
               type="text"
               required
               autoComplete="username"
+              value={username}
+              onChange={(e) => setUsername(e.target.value)}
               className="w-full rounded-lg border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-900 outline-none transition-colors placeholder:text-zinc-400 focus:border-teal-500 focus:ring-2 focus:ring-teal-500/20 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-100 dark:placeholder:text-zinc-500 dark:focus:border-teal-400 dark:focus:ring-teal-400/20"
               placeholder="Enter your username"
             />
@@ -117,6 +145,8 @@ function AdminLoginForm() {
               type="password"
               required
               autoComplete="current-password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
               className="w-full rounded-lg border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-900 outline-none transition-colors placeholder:text-zinc-400 focus:border-teal-500 focus:ring-2 focus:ring-teal-500/20 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-100 dark:placeholder:text-zinc-500 dark:focus:border-teal-400 dark:focus:ring-teal-400/20"
               placeholder="Enter your password"
             />
@@ -125,10 +155,10 @@ function AdminLoginForm() {
           {/* Submit */}
           <button
             type="submit"
-            disabled={isPending}
+            disabled={state === 'loading'}
             className="w-full rounded-lg bg-teal-600 px-4 py-2.5 text-sm font-medium text-white transition-colors hover:bg-teal-500 focus:outline-none focus:ring-2 focus:ring-teal-500/50 disabled:cursor-not-allowed disabled:bg-zinc-300 dark:disabled:bg-zinc-700"
           >
-            {isPending ? 'Signing in…' : 'Sign In'}
+            {state === 'loading' ? 'Signing in…' : 'Sign In'}
           </button>
         </form>
 
