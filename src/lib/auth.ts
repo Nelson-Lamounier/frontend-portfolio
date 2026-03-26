@@ -56,8 +56,8 @@ interface AuthLogEntry {
  * @param entry - Structured log entry
  */
 function authLog(entry: Omit<AuthLogEntry, 'service' | 'timestamp'>): void {
-  const output: AuthLogEntry = {
-    service: 'auth',
+  const output = {
+    service: 'auth' as const,
     timestamp: new Date().toISOString(),
     ...entry,
   }
