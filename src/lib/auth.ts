@@ -40,6 +40,10 @@ function timingSafeEqual(a: string, b: string): boolean {
 }
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
+  // Trust the forwarded Host header from reverse proxies (Traefik, CloudFront).
+  // Without this, Auth.js v5 rejects requests with UntrustedHost errors.
+  trustHost: true,
+
   providers: [
     Credentials({
       name: 'Admin',

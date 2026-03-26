@@ -94,7 +94,11 @@ export async function POST(request: NextRequest): Promise<NextResponse<ChatRespo
       upstreamBody.sessionId = body.sessionId
     }
 
-    const upstream = await fetch(AGENT_API_URL, {
+    // Build the full invoke URL — SSM stores the stage root (e.g. .../v1/)
+    // and the API Gateway route is POST /invoke.
+    const invokeUrl = new URL('invoke', AGENT_API_URL).href
+
+    const upstream = await fetch(invokeUrl, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
