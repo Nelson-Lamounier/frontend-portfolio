@@ -1,6 +1,6 @@
 'use client'
 
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState, isValidElement } from 'react'
 
 interface MermaidProps {
   chart?: string
@@ -8,12 +8,29 @@ interface MermaidProps {
   caption?: string
 }
 
+function extractText(node: React.ReactNode): string {
+  if (typeof node === 'string') return node
+  if (typeof node === 'number') return String(node)
+  if (!node) return ''
+  
+  if (Array.isArray(node)) {
+    return node.map(extractText).join('')
+  }
+  
+  if (isValidElement(node)) {
+    // Check if it's MDX mapping it to a pre/code block and bypass it
+    return extractText((node.props as { children?: React.ReactNode }).children)
+  }
+
+  return ''
+}
+
 export function Mermaid({ chart, children, caption }: MermaidProps) {
   const containerRef = useRef<HTMLDivElement>(null)
   const svgWrapperRef = useRef<HTMLDivElement>(null)
   
-  // Resolve chart from either the explicit prop or the MDX children text node
-  const resolvedChart = (chart || (typeof children === 'string' ? children : '')).trim()
+  // Resolve chart from explicit prop, or recursively extract raw text from AST children
+  const resolvedChart = (chart || extractText(children)).trim()
   
   const [svg, setSvg] = useState<string>('')
   const [error, setError] = useState<string | null>(null)
@@ -103,7 +120,7 @@ export function Mermaid({ chart, children, caption }: MermaidProps) {
     return () => {
       cancelled = true
     }
-  }, [chart])
+  }, [resolvedChart])
 
   const handleMouseMove = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
     const wrapper = svgWrapperRef.current
