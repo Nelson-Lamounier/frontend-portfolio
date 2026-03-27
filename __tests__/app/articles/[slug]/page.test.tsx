@@ -1,6 +1,6 @@
 import { render, screen } from '@testing-library/react'
 import { ArticleLayout } from '@/components/articles'
-import { type ArticleWithSlug } from '@/lib/articles'
+import { type ArticleWithSlug } from '@/lib/types/article.types'
 
 // Mock remark-gfm ESM module (imported transitively via @/components/articles barrel)
 jest.mock('remark-gfm', () => ({
