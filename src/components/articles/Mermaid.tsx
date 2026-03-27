@@ -71,6 +71,11 @@ export function Mermaid({ chart, caption }: MermaidProps) {
         })
 
         const id = `mermaid-${Math.random().toString(36).slice(2, 9)}`
+        
+        if (!chart) {
+          throw new Error('Mermaid component requires a "chart" prop containing valid mermaid syntax.')
+        }
+
         const { svg: renderedSvg } = await mermaid.render(id, chart.trim())
 
         if (!cancelled) {
