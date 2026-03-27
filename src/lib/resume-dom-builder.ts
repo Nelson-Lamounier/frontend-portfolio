@@ -2,25 +2,25 @@
  * resume-dom-builder.ts
  *
  * Shared DOM builder for PDF capture. Builds a vanilla DOM element
- * with inline styles that mirrors the ResumeDocument.tsx Tailwind layout.
+ * with inline styles that mirrors the ResumeDocument.tsx layout.
  *
- * Used by both ResumeDownloadButton and ResumePreview for PDF generation.
+ * Used by ResumeDownloadButton and ResumePreview for PDF generation.
  * html2canvas cannot capture Tailwind classes, so inline styles are required.
  *
  * Layout: Two explicit A4 pages with proper margins.
- *   Page 1 — Header, Summary, Technical Skills, Certification, Key Projects
- *   Page 2 — Professional Experience, Education
+ *   Page 1 — Header, Summary, Professional Experience
+ *   Page 2 — Achievements, Technical Skills, Education, Certification, Key Projects
  */
 
 import type { ResumeData } from '@/lib/resume-data'
 
-/* ─── colour tokens (slate two-tone) ─── */
-const HEADING = '#1e293b'
-const BODY = '#334155'
-const MUTED = '#64748b'
-const DIVIDER = '#cbd5e1'
+/* ─── colour tokens (zinc styling to match ResumeDocument) ─── */
+const HEADING = '#18181b'     // zinc-900
+const BODY = '#27272a'        // zinc-800
+const MUTED = '#52525b'       // zinc-600
+const DIVIDER = '#e4e4e7'     // zinc-200
 const BG = '#ffffff'
-const BODY_LIGHT = '#475569'
+const BODY_LIGHT = '#3f3f46'  // zinc-700
 
 /* ─── A4 dimensions at 96 DPI ─── */
 export const A4_WIDTH = 794
@@ -28,20 +28,20 @@ export const A4_HEIGHT = 1123
 export const PDF_BG = BG
 
 /* ─── Page margins (px) ─── */
-export const PAGE_PADDING_TOP = 32
-export const PAGE_PADDING_BOTTOM = 32
+export const PAGE_PADDING_TOP = 40
+export const PAGE_PADDING_BOTTOM = 40
 export const PAGE_PADDING_X = 40
 
 /* ─── inline style helpers ─── */
 const sectionHeadingCSS = `
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 1.5px;
   color: ${HEADING};
-  margin: 0 0 8px 0;
-  padding-bottom: 4px;
-  border-bottom: 1px solid ${DIVIDER};
+  margin: 0 0 10px 0;
+  padding-bottom: 6px;
+  border-bottom: 1.5px solid ${DIVIDER};
 `
 
 /**
@@ -54,10 +54,11 @@ function createPageContainer(): HTMLDivElement {
     height: ${A4_HEIGHT}px;
     background: ${BG};
     color: ${BODY};
-    font-family: 'Inter', 'Segoe UI', Roboto, sans-serif;
-    line-height: 1.4;
+    font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+    line-height: 1.5;
     box-sizing: border-box;
     overflow: hidden;
+    position: relative;
   `
   return page
 }
@@ -80,22 +81,22 @@ export function buildResumeDomForPdf(data: ResumeData): HTMLDivElement {
 
   // ──── HEADER ────
   page1.innerHTML = `
-    <header style="padding: ${PAGE_PADDING_TOP}px ${PAGE_PADDING_X}px 20px ${PAGE_PADDING_X}px; border-bottom: 2px solid ${HEADING};">
-      <h1 style="font-size: 22px; font-weight: 700; letter-spacing: -0.3px; color: ${HEADING}; margin: 0;">
+    <header style="padding: ${PAGE_PADDING_TOP}px ${PAGE_PADDING_X}px 24px ${PAGE_PADDING_X}px; border-bottom: 1.5px solid #27272a;">
+      <h1 style="font-size: 24px; font-weight: 700; letter-spacing: -0.3px; color: ${HEADING}; margin: 0;">
         ${data.profile.name}
       </h1>
-      <p style="margin: 2px 0 0 0; font-size: 12px; font-weight: 600; color: ${MUTED}; text-transform: uppercase; letter-spacing: 0.8px;">
+      <p style="margin: 4px 0 0 0; font-size: 13px; font-weight: 500; color: ${MUTED}; text-transform: uppercase; letter-spacing: 0.8px;">
         ${data.profile.title}
       </p>
-      <div style="margin-top: 10px; font-size: 9px; color: ${MUTED}; display: flex; flex-wrap: wrap; align-items: center; gap: 4px;">
+      <div style="margin-top: 12px; font-size: 10px; color: ${MUTED}; display: flex; flex-wrap: wrap; align-items: center; gap: 8px;">
         <span>${data.profile.location}</span>
-        <span style="color: ${DIVIDER};">|</span>
+        <span style="color: #d4d4d8;">|</span>
         <span>${data.profile.email}</span>
-        <span style="color: ${DIVIDER};">|</span>
+        <span style="color: #d4d4d8;">|</span>
         <span>${data.profile.linkedin}</span>
-        <span style="color: ${DIVIDER};">|</span>
+        <span style="color: #d4d4d8;">|</span>
         <span>${data.profile.github}</span>
-        <span style="color: ${DIVIDER};">|</span>
+        <span style="color: #d4d4d8;">|</span>
         <span>${data.profile.website}</span>
       </div>
     </header>
@@ -103,32 +104,78 @@ export function buildResumeDomForPdf(data: ResumeData): HTMLDivElement {
 
   // ──── PAGE 1 BODY ────
   const body1 = document.createElement('div')
-  body1.style.cssText = `padding: 20px ${PAGE_PADDING_X}px ${PAGE_PADDING_BOTTOM}px ${PAGE_PADDING_X}px; box-sizing: border-box;`
+  body1.style.cssText = `padding: 24px ${PAGE_PADDING_X}px ${PAGE_PADDING_BOTTOM}px ${PAGE_PADDING_X}px; box-sizing: border-box;`
 
   // ──── PROFESSIONAL SUMMARY ────
   body1.innerHTML += `
-    <section style="margin-bottom: 20px;">
+    <section style="margin-bottom: 24px;">
       <h2 style="${sectionHeadingCSS}">Professional Summary</h2>
-      <p style="font-size: 10px; line-height: 1.65; color: ${BODY}; margin: 0;">
+      <p style="font-size: 10.5px; line-height: 1.6; color: ${BODY}; margin: 0;">
         ${data.summary}
       </p>
     </section>
   `
+
+  // ──── PROFESSIONAL EXPERIENCE (Moved to Page 1) ────
+  const experienceHtml = data.experience
+    .map(
+      (exp) => `
+    <div style="margin-bottom: 16px;">
+      <div style="display: flex; align-items: baseline; justify-content: space-between;">
+        <div>
+          <span style="font-size: 11px; font-weight: 700; color: ${HEADING};">${exp.title}</span>
+          <span style="font-size: 10px; font-weight: 500; color: ${MUTED};"> — ${exp.company}</span>
+        </div>
+        <span style="font-size: 9.5px; font-weight: 500; color: ${MUTED}; flex-shrink: 0; margin-left: 16px;">${exp.period}</span>
+      </div>
+      <ul style="margin: 6px 0 0 0; padding-left: 16px; list-style-type: disc;">
+        ${exp.highlights.map((h) => `<li style="font-size: 9.5px; line-height: 1.5; color: ${BODY_LIGHT}; margin-bottom: 4px;">${h}</li>`).join('')}
+      </ul>
+    </div>
+  `
+    )
+    .join('')
+
+  body1.innerHTML += `
+    <section style="margin-bottom: 24px;">
+      <h2 style="${sectionHeadingCSS}">Professional Experience</h2>
+      ${experienceHtml}
+    </section>
+  `
+
+  page1.appendChild(body1)
+
+  // Page 1 indicator
+  page1.innerHTML += `
+    <div style="position: absolute; bottom: 16px; width: 100%; text-align: center; font-size: 8px; color: #a1a1aa;">
+      Page 1 of 2
+    </div>
+  `
+
+  root.appendChild(page1)
+
+  // ═══════════════════════════════════════
+  //  PAGE 2
+  // ═══════════════════════════════════════
+  const page2 = createPageContainer()
+
+  const body2 = document.createElement('div')
+  body2.style.cssText = `padding: ${PAGE_PADDING_TOP}px ${PAGE_PADDING_X}px ${PAGE_PADDING_BOTTOM}px ${PAGE_PADDING_X}px; box-sizing: border-box;`
 
   // ──── KEY ACHIEVEMENTS ────
   if (data.keyAchievements && data.keyAchievements.length > 0) {
     const achievementsHtml = data.keyAchievements
       .map(
         (item) => `
-      <li style="font-size: 9px; line-height: 1.6; color: ${BODY_LIGHT}; margin-bottom: 4px;">${item.achievement}</li>
+      <li style="font-size: 10px; line-height: 1.6; color: ${BODY}; margin-bottom: 6px;">${item.achievement}</li>
     `
       )
       .join('')
 
-    body1.innerHTML += `
-      <section style="margin-bottom: 20px;">
+    body2.innerHTML += `
+      <section style="margin-bottom: 24px;">
         <h2 style="${sectionHeadingCSS}">Key Achievements</h2>
-        <ul style="margin: 0; padding-left: 14px; list-style-type: disc;">
+        <ul style="margin: 0; padding-left: 16px; list-style-type: disc;">
           ${achievementsHtml}
         </ul>
       </section>
@@ -141,10 +188,10 @@ export function buildResumeDomForPdf(data: ResumeData): HTMLDivElement {
       .map(
         (group) => `
       <div style="break-inside: avoid;">
-        <h3 style="font-size: 9.5px; font-weight: 700; color: ${HEADING}; margin: 0 0 2px 0;">
+        <h3 style="font-size: 10px; font-weight: 700; color: ${HEADING}; margin: 0 0 4px 0;">
           ${group.category}
         </h3>
-        <p style="font-size: 9px; line-height: 1.6; color: ${BODY_LIGHT}; margin: 0;">
+        <p style="font-size: 9.5px; line-height: 1.6; color: ${BODY_LIGHT}; margin: 0;">
           ${group.skills.join(' · ')}
         </p>
       </div>
@@ -152,33 +199,12 @@ export function buildResumeDomForPdf(data: ResumeData): HTMLDivElement {
       )
       .join('')
 
-    body1.innerHTML += `
-      <section style="margin-bottom: 20px;">
+    body2.innerHTML += `
+      <section style="margin-bottom: 24px;">
         <h2 style="${sectionHeadingCSS}">Technical Skills</h2>
-        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px 24px;">
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px 32px;">
           ${skillsHtml}
         </div>
-      </section>
-    `
-  }
-
-  // ──── CERTIFICATION ────
-  if (data.certifications && data.certifications.length > 0) {
-    const certsHtml = data.certifications
-      .map(
-        (cert) => `
-      <div style="display: flex; align-items: baseline; justify-content: space-between;">
-        <span style="font-size: 9.5px; font-weight: 600; color: ${HEADING};">${cert.name}</span>
-        <span style="font-size: 8.5px; color: ${MUTED};">${cert.issuer} · ${cert.year}</span>
-      </div>
-    `
-      )
-      .join('')
-
-    body1.innerHTML += `
-      <section style="margin-bottom: 20px;">
-        <h2 style="${sectionHeadingCSS}">Certification</h2>
-        ${certsHtml}
       </section>
     `
   }
@@ -188,22 +214,43 @@ export function buildResumeDomForPdf(data: ResumeData): HTMLDivElement {
     const eduHtml = data.education
       .map(
         (edu) => `
-      <div style="margin-bottom: 8px;">
+      <div style="margin-bottom: 12px;">
         <div style="display: flex; align-items: baseline; justify-content: space-between;">
-          <span style="font-size: 9.5px; font-weight: 600; color: ${HEADING};">${edu.degree}</span>
-          <span style="font-size: 8.5px; color: ${MUTED}; flex-shrink: 0; margin-left: 16px;">${edu.period}</span>
+          <span style="font-size: 10.5px; font-weight: 700; color: ${HEADING};">${edu.degree}</span>
+          <span style="font-size: 9.5px; font-weight: 500; color: ${MUTED}; flex-shrink: 0; margin-left: 16px;">${edu.period}</span>
         </div>
-        <p style="font-size: 8.5px; color: ${MUTED}; margin: 0;">${edu.institution}</p>
-        ${edu.details ? `<p style="font-size: 8.5px; color: ${BODY_LIGHT}; margin: 2px 0 0 0;">${edu.details}</p>` : ''}
+        <p style="font-size: 9.5px; color: ${BODY_LIGHT}; margin: 2px 0 0 0;">${edu.institution}</p>
+        ${edu.details ? `<p style="font-size: 9px; color: ${MUTED}; margin: 2px 0 0 0;">${edu.details}</p>` : ''}
       </div>
     `
       )
       .join('')
 
-    body1.innerHTML += `
-      <section style="margin-bottom: 20px;">
+    body2.innerHTML += `
+      <section style="margin-bottom: 24px;">
         <h2 style="${sectionHeadingCSS}">Education</h2>
         ${eduHtml}
+      </section>
+    `
+  }
+
+  // ──── CERTIFICATIONS ────
+  if (data.certifications && data.certifications.length > 0) {
+    const certsHtml = data.certifications
+      .map(
+        (cert) => `
+      <div style="display: flex; align-items: baseline; justify-content: space-between; margin-bottom: 8px;">
+        <span style="font-size: 10px; font-weight: 700; color: ${HEADING};">${cert.name}</span>
+        <span style="font-size: 9.5px; color: ${MUTED};">${cert.issuer} · ${cert.year}</span>
+      </div>
+    `
+      )
+      .join('')
+
+    body2.innerHTML += `
+      <section style="margin-bottom: 24px;">
+        <h2 style="${sectionHeadingCSS}">Certifications</h2>
+        ${certsHtml}
       </section>
     `
   }
@@ -213,66 +260,34 @@ export function buildResumeDomForPdf(data: ResumeData): HTMLDivElement {
     const projectsHtml = data.projects
       .map(
         (proj) => `
-      <div style="margin-bottom: 12px;">
+      <div style="margin-bottom: 16px;">
         <div style="display: flex; align-items: baseline; justify-content: space-between;">
-          <h3 style="font-size: 10px; font-weight: 700; color: ${HEADING}; margin: 0;">${proj.name}</h3>
-          <span style="font-size: 8px; color: ${MUTED}; flex-shrink: 0; margin-left: 16px;">${proj.github}</span>
+          <h3 style="font-size: 10.5px; font-weight: 700; color: ${HEADING}; margin: 0;">${proj.name}</h3>
+          <span style="font-size: 9px; color: #71717a; flex-shrink: 0; margin-left: 16px;">${proj.github}</span>
         </div>
-        <p style="font-size: 8.5px; line-height: 1.6; color: ${BODY_LIGHT}; margin: 2px 0 0 0;">${proj.description}</p>
+        <p style="font-size: 9.5px; line-height: 1.6; color: ${BODY_LIGHT}; margin: 4px 0 0 0;">${proj.description}</p>
       </div>
     `
       )
       .join('')
 
-    body1.innerHTML += `
-      <section style="margin-bottom: 20px;">
+    body2.innerHTML += `
+      <section style="margin-bottom: 24px;">
         <h2 style="${sectionHeadingCSS}">Key Projects</h2>
         ${projectsHtml}
       </section>
     `
   }
 
-  page1.appendChild(body1)
-  root.appendChild(page1)
+  page2.appendChild(body2)
 
-  // ═══════════════════════════════════════
-  //  PAGE 2
-  // ═══════════════════════════════════════
-  const page2 = createPageContainer()
-
-  const body2 = document.createElement('div')
-  body2.style.cssText = `padding: ${PAGE_PADDING_TOP}px ${PAGE_PADDING_X}px ${PAGE_PADDING_BOTTOM}px ${PAGE_PADDING_X}px; box-sizing: border-box;`
-
-  // ──── PROFESSIONAL EXPERIENCE ────
-  const experienceHtml = data.experience
-    .map(
-      (exp) => `
-    <div style="margin-bottom: 12px;">
-      <div style="display: flex; align-items: baseline; justify-content: space-between;">
-        <div>
-          <span style="font-size: 10px; font-weight: 700; color: ${HEADING};">${exp.title}</span>
-          <span style="font-size: 9.5px; color: ${MUTED};"> — ${exp.company}</span>
-        </div>
-        <span style="font-size: 8.5px; color: ${MUTED}; flex-shrink: 0; margin-left: 16px;">${exp.period}</span>
-      </div>
-      <ul style="margin: 4px 0 0 0; padding-left: 14px; list-style-type: disc;">
-        ${exp.highlights.map((h) => `<li style="font-size: 8.5px; line-height: 1.6; color: ${BODY_LIGHT}; margin-bottom: 2px;">${h}</li>`).join('')}
-      </ul>
+  // Page 2 indicator
+  page2.innerHTML += `
+    <div style="position: absolute; bottom: 16px; width: 100%; text-align: center; font-size: 8px; color: #a1a1aa;">
+      Page 2 of 2
     </div>
   `
-    )
-    .join('')
 
-  body2.innerHTML += `
-    <section style="margin-bottom: 20px;">
-      <h2 style="${sectionHeadingCSS}">Professional Experience</h2>
-      ${experienceHtml}
-    </section>
-  `
-
-
-
-  page2.appendChild(body2)
   root.appendChild(page2)
 
   return root
