@@ -34,6 +34,7 @@ function AdminLoginContent() {
     fetch('/api/auth/csrf')
       .then((res) => res.json())
       .then((data) => setCsrfToken(data.csrfToken))
+      // eslint-disable-next-line no-console
       .catch((err) => console.error('Failed to fetch CSRF token:', err))
   }, [])
 
