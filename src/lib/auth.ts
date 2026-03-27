@@ -82,6 +82,8 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
   // Trust the forwarded Host header from reverse proxies (Traefik, CloudFront).
   trustHost: true,
 
+  secret: process.env.AUTH_SECRET || process.env.NEXTAUTH_SECRET,
+
   providers: [
     CognitoProvider({
       clientId: process.env.AUTH_COGNITO_ID!,
