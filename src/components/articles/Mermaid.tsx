@@ -3,13 +3,18 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 
 interface MermaidProps {
-  chart: string
+  chart?: string
+  children?: React.ReactNode
   caption?: string
 }
 
-export function Mermaid({ chart, caption }: MermaidProps) {
+export function Mermaid({ chart, children, caption }: MermaidProps) {
   const containerRef = useRef<HTMLDivElement>(null)
   const svgWrapperRef = useRef<HTMLDivElement>(null)
+  
+  // Resolve chart from either the explicit prop or the MDX children text node
+  const resolvedChart = (chart || (typeof children === 'string' ? children : '')).trim()
+  
   const [svg, setSvg] = useState<string>('')
   const [error, setError] = useState<string | null>(null)
   const [isHovering, setIsHovering] = useState(false)
@@ -72,11 +77,11 @@ export function Mermaid({ chart, caption }: MermaidProps) {
 
         const id = `mermaid-${Math.random().toString(36).slice(2, 9)}`
         
-        if (!chart) {
-          throw new Error('Mermaid component requires a "chart" prop containing valid mermaid syntax.')
+        if (!resolvedChart) {
+          throw new Error('Mermaid component requires a "chart" prop or children containing valid mermaid syntax.')
         }
 
-        const { svg: renderedSvg } = await mermaid.render(id, chart.trim())
+        const { svg: renderedSvg } = await mermaid.render(id, resolvedChart)
 
         if (!cancelled) {
           setSvg(renderedSvg)
