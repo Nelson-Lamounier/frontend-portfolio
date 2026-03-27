@@ -53,9 +53,13 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
 
     const buffer = Buffer.from(await file.arrayBuffer())
     
+    // Determine file type category (image vs video) for S3 prefix partitioning
+    const isVideo = file.type.startsWith('video/')
+    const folderPrefix = isVideo ? 'videos/uploads' : 'images/uploads'
+
     // Sanitize filename and create a unique S3 object key
     const safeName = file.name.replace(/[^a-zA-Z0-9.-]/g, '_')
-    const uniqueKey = `images/uploads/${Date.now()}-${safeName}`
+    const uniqueKey = `${folderPrefix}/${Date.now()}-${safeName}`
 
     const s3Client = getS3Client()
     
