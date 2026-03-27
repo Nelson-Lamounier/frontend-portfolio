@@ -7,6 +7,16 @@ const nextConfig = {
   pageExtensions: ['js', 'jsx', 'ts', 'tsx', 'mdx'],
   // Standalone output for ECS container deployments
   output: 'standalone',
+
+  images: {
+    remotePatterns: [
+      {
+        protocol: 'https',
+        hostname: 'nelsonlamounier.com',
+      },
+    ],
+  },
+
   // instrumentationHook is built-in since Next.js 15.5 — no longer needed
 
   // Prevent Next.js from bundling gRPC native modules (used by OTLP exporter)
