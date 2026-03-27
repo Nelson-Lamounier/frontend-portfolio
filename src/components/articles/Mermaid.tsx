@@ -25,7 +25,7 @@ function extractText(node: React.ReactNode): string {
   return ''
 }
 
-export function Mermaid({ chart, children, caption }: MermaidProps) {
+export function Mermaid({ chart, children, caption, ...rest }: any) {
   const containerRef = useRef<HTMLDivElement>(null)
   const svgWrapperRef = useRef<HTMLDivElement>(null)
   
@@ -42,7 +42,8 @@ export function Mermaid({ chart, children, caption }: MermaidProps) {
     async function renderDiagram() {
       try {
         const mermaid = (await import('mermaid')).default
-
+        // ...
+        
         const isDark = document.documentElement.classList.contains('dark')
 
         mermaid.initialize({
