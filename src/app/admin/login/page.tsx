@@ -68,7 +68,7 @@ function AdminLoginContent() {
         {/* Native Form Sign In */}
         <form action="/api/auth/signin/cognito" method="POST">
           {/* Required by NextAuth to accept the POST request */}
-          <input type="hidden" name="csrfToken" value={csrfToken} />
+          <input type="hidden" name="csrfToken" value={csrfToken || ''} />
           
           {/* Where to send the user after successful login */}
           <input type="hidden" name="callbackUrl" value={callbackUrl} />
