@@ -21,8 +21,9 @@
  * Environment Variables:
  *   NEXTAUTH_SECRET              – required, JWT signing secret
  *   NEXTAUTH_URL                 – required, base URL for callbacks
- *   AUTH_COGNITO_CLIENT_ID       – required, Cognito User Pool Client ID
- *   AUTH_COGNITO_ISSUER_URL      – required, Cognito OIDC Issuer URL
+ *   AUTH_COGNITO_USER_POOL_ID    – required, Cognito User Pool ID
+ *   AUTH_COGNITO_ID              – required, Cognito User Pool Client ID
+ *   AUTH_COGNITO_ISSUER          – required, Cognito OIDC Issuer URL
  *
  * @see https://authjs.dev/getting-started/providers/cognito
  */
@@ -83,9 +84,9 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
 
   providers: [
     CognitoProvider({
-      clientId: process.env.AUTH_COGNITO_CLIENT_ID!,
+      clientId: process.env.AUTH_COGNITO_ID!,
       clientSecret: 'public-client-no-secret',
-      issuer: process.env.AUTH_COGNITO_ISSUER_URL!,
+      issuer: process.env.AUTH_COGNITO_ISSUER!,
       client: {
         token_endpoint_auth_method: 'none',
       },
