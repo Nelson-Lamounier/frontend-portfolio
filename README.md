@@ -9,10 +9,10 @@ Beyond a standard portfolio, this repository serves as the frontend for a robust
 ## ⚡ Key Features
 
 - **Blazing Fast Frontend**: Server-Side Rendered (SSR) & Statically Generated (SSG) pages using Next.js 15 App Router.
-- **Dynamic MDX Blog**: Articles written in MDX are fetched from AWS S3, while metadata and engagement metrics (likes, views) are synced in real-time with Amazon DynamoDB.
-- **Generative AI Chatbot**: Integrated with Amazon Bedrock Agents to allow visitors to chat directly with my AI replica.
+- **Dynamic MDX Blog**: Articles written in MDX are fetched from AWS S3, while metadata and engagement metrics (likes, views) are synchronised in real-time with Amazon DynamoDB.
+- **Generative AI Chatbot**: Integrated with Amazon Bedrock Agents to allow visitors to chat directly with my personalised AI replica.
 - **Enterprise Authentication**: Admin dashboard secured with AWS Cognito (OAuth 2.0 / PKCE) and NextAuth v5.
-- **Complete In-Browser Observability**: Client-side Real User Monitoring (RUM) handled by Grafana Faro SDK, seamlessly sending telemetry back to an Alloy collector.
+- **Complete In-Browser Observability**: Client-side Real User Monitoring (RUM) handled by Grafana Faro SDK, seamlessly sending telemetry back to an Alloy collector to monitor behaviour.
 - **Rich Animations**: Smooth layout transitions and micro-interactions powered by Framer Motion.
 
 ---
@@ -42,7 +42,7 @@ Beyond a standard portfolio, this repository serves as the frontend for a robust
 
 ## 🏗 Infrastructure & CI/CD Pipeline
 
-This application doesn't just run locally; it is built to handle production-grade traffic patterns.
+This application doesn't just run locally; it is built to handle production-grade traffic patterns and is heavily optimised.
 
 1. **Continuous Integration (GitHub Actions)**:
    - **Quality**: ESLint, Prettier, and TypeScript compiler checks (`tsc --noEmit`).
@@ -50,7 +50,7 @@ This application doesn't just run locally; it is built to handle production-grad
    - **Security (SAST)**: Automated code and dependency scanning via **SonarCloud**.
    - **Smoke Tests**: Isolated Docker build tests ensuring `/api/health` and `/api/metrics` are functional before merging.
 2. **Continuous Deployment (GitOps)**:
-   - Containerized into a multi-stage distroless Docker image.
+   - Containerised into a multi-stage distroless Docker image.
    - Deployed to a self-managed, highly-available Kubernetes (K3s) cluster running on AWS EC2.
    - Traffic routing handled by CloudFront (CDN) → Traefik (Ingress) → Next.js Pods.
 
@@ -66,7 +66,7 @@ yarn install --immutable
 ```
 
 ### 2. Environment Variables
-Create a `.env.local` file in the root directory. You will need authorized AWS IAM credentials and the correct SSM parameters to bridge local development to the AWS cloud resources.
+Create a `.env.local` file in the root directory. You will need authorised AWS IAM credentials and the correct SSM parameters to bridge local development to the AWS cloud resources.
 ```env
 # AWS Context
 AWS_REGION=eu-west-1
