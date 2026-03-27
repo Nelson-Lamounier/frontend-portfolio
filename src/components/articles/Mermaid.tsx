@@ -25,7 +25,7 @@ function extractText(node: React.ReactNode): string {
   return ''
 }
 
-export function Mermaid({ chart, children, caption, ...rest }: any) {
+export function Mermaid({ chart, children, caption }: MermaidProps) {
   const containerRef = useRef<HTMLDivElement>(null)
   const svgWrapperRef = useRef<HTMLDivElement>(null)
   
