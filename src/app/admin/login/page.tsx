@@ -30,11 +30,19 @@ function AdminLoginContent() {
 
   /**
    * Initiates the Cognito OAuth sign-in flow.
-   * Redirects the user to the Cognito Hosted UI.
+   * Forces a JSON response (redirect: false) to prevent CORS issues with the 302 redirect,
+   * then manually navigates to the Cognito Hosted UI URL.
    */
-  const handleSignIn = useCallback(() => {
+  const handleSignIn = useCallback(async () => {
     setIsLoading(true)
-    signIn('cognito', { callbackUrl })
+    const response = await signIn('cognito', { callbackUrl, redirect: false })
+    
+    // Top-level navigation circumvents the AJAX CORS block!
+    if (response?.url) {
+      window.location.href = response.url
+    } else {
+      setIsLoading(false)
+    }
   }, [callbackUrl])
 
   return (
