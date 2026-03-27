@@ -61,51 +61,6 @@ export function ResumeDocument({ data }: ResumeDocumentProps) {
             </p>
           </section>
 
-          {/* ──── PROFESSIONAL EXPERIENCE (Moved to Page 1) ──── */}
-          <section>
-            <SectionHeading>Professional Experience</SectionHeading>
-            <div className="space-y-4">
-              {experience.map((exp) => (
-                <div key={`${exp.company}-${exp.period}`}>
-                  <div className="flex items-baseline justify-between">
-                    <div>
-                      <span className="text-[11px] font-bold text-zinc-900">
-                        {exp.title}
-                      </span>
-                      <span className="text-[10px] font-medium text-zinc-600">
-                        {' '}
-                        — {exp.company}
-                      </span>
-                    </div>
-                    <span className="text-[9.5px] font-medium text-zinc-600 shrink-0 ml-4">
-                      {exp.period}
-                    </span>
-                  </div>
-                  <ul className="mt-1.5 space-y-1 list-disc pl-4">
-                    {exp.highlights.map((h, i) => (
-                      <li
-                        key={i}
-                        className="text-[9.5px] leading-[1.5] text-zinc-700"
-                      >
-                        {h}
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              ))}
-            </div>
-          </section>
-        </div>
-        
-        {/* Page 1 Bottom Margin Indicator (Optional safety) */}
-        <div className="absolute bottom-4 w-full text-center text-[8px] text-zinc-400">
-          Page 1 of 2
-        </div>
-      </div>
-
-      {/* ═══════ PAGE 2 ═══════ */}
-      <div className="w-[794px] h-[1123px] bg-white text-zinc-900 overflow-hidden relative">
-        <div className="px-10 pt-10 pb-10 space-y-6">
           {/* ──── KEY ACHIEVEMENTS ──── */}
           {keyAchievements && keyAchievements.length > 0 && (
             <section>
@@ -123,19 +78,22 @@ export function ResumeDocument({ data }: ResumeDocumentProps) {
             </section>
           )}
 
-          {/* ──── TECHNICAL SKILLS ──── */}
-          {skills && skills.length > 0 && (
+          {/* ──── CERTIFICATIONS ──── */}
+          {certifications && certifications.length > 0 && (
             <section>
-              <SectionHeading>Technical Skills</SectionHeading>
-              <div className="grid grid-cols-2 gap-x-8 gap-y-4">
-                {skills.map((group) => (
-                  <div key={group.category}>
-                    <h3 className="text-[10px] font-bold text-zinc-900 mb-1">
-                      {group.category}
-                    </h3>
-                    <p className="text-[9.5px] leading-[1.6] text-zinc-700">
-                      {group.skills.join(' · ')}
-                    </p>
+              <SectionHeading>Certifications</SectionHeading>
+              <div className="space-y-2">
+                {certifications.map((cert) => (
+                  <div
+                    key={cert.name}
+                    className="flex items-baseline justify-between"
+                  >
+                    <span className="text-[10px] font-bold text-zinc-900">
+                      {cert.name}
+                    </span>
+                    <span className="text-[9.5px] text-zinc-600">
+                      {cert.issuer} · {cert.year}
+                    </span>
                   </div>
                 ))}
               </div>
@@ -171,28 +129,6 @@ export function ResumeDocument({ data }: ResumeDocumentProps) {
             </section>
           )}
 
-          {/* ──── CERTIFICATIONS ──── */}
-          {certifications && certifications.length > 0 && (
-            <section>
-              <SectionHeading>Certifications</SectionHeading>
-              <div className="space-y-2">
-                {certifications.map((cert) => (
-                  <div
-                    key={cert.name}
-                    className="flex items-baseline justify-between"
-                  >
-                    <span className="text-[10px] font-bold text-zinc-900">
-                      {cert.name}
-                    </span>
-                    <span className="text-[9.5px] text-zinc-600">
-                      {cert.issuer} · {cert.year}
-                    </span>
-                  </div>
-                ))}
-              </div>
-            </section>
-          )}
-
           {/* ──── KEY PROJECTS ──── */}
           {projects && projects.length > 0 && (
             <section>
@@ -210,6 +146,70 @@ export function ResumeDocument({ data }: ResumeDocumentProps) {
                     </div>
                     <p className="mt-1 text-[9.5px] leading-[1.6] text-zinc-700">
                       {proj.description}
+                    </p>
+                  </div>
+                ))}
+              </div>
+            </section>
+          )}
+        </div>
+        
+        {/* Page 1 Bottom Margin Indicator */}
+        <div className="absolute bottom-4 w-full text-center text-[8px] text-zinc-400">
+          Page 1 of 2
+        </div>
+      </div>
+
+      {/* ═══════ PAGE 2 ═══════ */}
+      <div className="w-[794px] h-[1123px] bg-white text-zinc-900 overflow-hidden relative">
+        <div className="px-10 pt-10 pb-10 space-y-6">
+          {/* ──── PROFESSIONAL EXPERIENCE ──── */}
+          <section>
+            <SectionHeading>Professional Experience</SectionHeading>
+            <div className="space-y-4">
+              {experience.map((exp) => (
+                <div key={`${exp.company}-${exp.period}`}>
+                  <div className="flex items-baseline justify-between">
+                    <div>
+                      <span className="text-[11px] font-bold text-zinc-900">
+                        {exp.title}
+                      </span>
+                      <span className="text-[10px] font-medium text-zinc-600">
+                        {' '}
+                        — {exp.company}
+                      </span>
+                    </div>
+                    <span className="text-[9.5px] font-medium text-zinc-600 shrink-0 ml-4">
+                      {exp.period}
+                    </span>
+                  </div>
+                  <ul className="mt-1.5 space-y-1 list-disc pl-4">
+                    {exp.highlights.map((h, i) => (
+                      <li
+                        key={i}
+                        className="text-[9.5px] leading-[1.5] text-zinc-700"
+                      >
+                        {h}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              ))}
+            </div>
+          </section>
+
+          {/* ──── TECHNICAL SKILLS ──── */}
+          {skills && skills.length > 0 && (
+            <section>
+              <SectionHeading>Technical Skills</SectionHeading>
+              <div className="grid grid-cols-2 gap-x-8 gap-y-4">
+                {skills.map((group) => (
+                  <div key={group.category}>
+                    <h3 className="text-[10px] font-bold text-zinc-900 mb-1">
+                      {group.category}
+                    </h3>
+                    <p className="text-[9.5px] leading-[1.6] text-zinc-700">
+                      {group.skills.join(' · ')}
                     </p>
                   </div>
                 ))}
