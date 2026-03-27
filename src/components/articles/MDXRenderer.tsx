@@ -101,9 +101,18 @@ interface MDXRendererProps {
  * ```
  */
 export function MDXRenderer({ source }: MDXRendererProps) {
+  // AWS Bedrock occasionally injects diagrams via <MermaidChart chart={`...`} />
+  // The next-mdx-remote Acorn parser notoriously silently drops multi-line template literals
+  // in JSX props, causing Mermaid props to evaluate to `{}`. We intercept and rewrite these 
+  // custom formats directly to conventional MDX codeblocks prior to AST compilation.
+  const sanitizedSource = source.replace(
+    /<MermaidChart\s+chart=\{\s*`([\s\S]*?)`\s*\}\s*\/>/g,
+    '```mermaid\n$1\n```'
+  )
+
   return (
     <MDXRemote
-      source={source}
+      source={sanitizedSource}
       components={mdxComponents}
       options={{
         parseFrontmatter: true,
