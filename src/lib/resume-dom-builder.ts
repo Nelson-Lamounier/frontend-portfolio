@@ -8,8 +8,8 @@
  * html2canvas cannot capture Tailwind classes, so inline styles are required.
  *
  * Layout: Two explicit A4 pages with proper margins.
- *   Page 1 — Header, Summary, Professional Experience
- *   Page 2 — Achievements, Technical Skills, Education, Certification, Key Projects
+ *   Page 1 — Header, Summary, Achievements, Certifications, Education, Key Projects
+ *   Page 2 — Professional Experience, Technical Skills
  */
 
 import type { ResumeData } from '@/lib/resume-data'
@@ -116,32 +116,95 @@ export function buildResumeDomForPdf(data: ResumeData): HTMLDivElement {
     </section>
   `
 
-  // ──── PROFESSIONAL EXPERIENCE (Moved to Page 1) ────
-  const experienceHtml = data.experience
-    .map(
-      (exp) => `
-    <div style="margin-bottom: 16px;">
-      <div style="display: flex; align-items: baseline; justify-content: space-between;">
-        <div>
-          <span style="font-size: 11px; font-weight: 700; color: ${HEADING};">${exp.title}</span>
-          <span style="font-size: 10px; font-weight: 500; color: ${MUTED};"> — ${exp.company}</span>
-        </div>
-        <span style="font-size: 9.5px; font-weight: 500; color: ${MUTED}; flex-shrink: 0; margin-left: 16px;">${exp.period}</span>
-      </div>
-      <ul style="margin: 6px 0 0 0; padding-left: 16px; list-style-type: disc;">
-        ${exp.highlights.map((h) => `<li style="font-size: 9.5px; line-height: 1.5; color: ${BODY_LIGHT}; margin-bottom: 4px;">${h}</li>`).join('')}
-      </ul>
-    </div>
-  `
-    )
-    .join('')
+  // ──── KEY ACHIEVEMENTS ────
+  if (data.keyAchievements && data.keyAchievements.length > 0) {
+    const achievementsHtml = data.keyAchievements
+      .map(
+        (item) => `
+      <li style="font-size: 10px; line-height: 1.6; color: ${BODY}; margin-bottom: 6px;">${item.achievement}</li>
+    `
+      )
+      .join('')
 
-  body1.innerHTML += `
-    <section style="margin-bottom: 24px;">
-      <h2 style="${sectionHeadingCSS}">Professional Experience</h2>
-      ${experienceHtml}
-    </section>
-  `
+    body1.innerHTML += `
+      <section style="margin-bottom: 24px;">
+        <h2 style="${sectionHeadingCSS}">Key Achievements</h2>
+        <ul style="margin: 0; padding-left: 16px; list-style-type: disc;">
+          ${achievementsHtml}
+        </ul>
+      </section>
+    `
+  }
+
+  // ──── CERTIFICATIONS ────
+  if (data.certifications && data.certifications.length > 0) {
+    const certsHtml = data.certifications
+      .map(
+        (cert) => `
+      <div style="display: flex; align-items: baseline; justify-content: space-between; margin-bottom: 8px;">
+        <span style="font-size: 10px; font-weight: 700; color: ${HEADING};">${cert.name}</span>
+        <span style="font-size: 9.5px; color: ${MUTED};">${cert.issuer} · ${cert.year}</span>
+      </div>
+    `
+      )
+      .join('')
+
+    body1.innerHTML += `
+      <section style="margin-bottom: 24px;">
+        <h2 style="${sectionHeadingCSS}">Certifications</h2>
+        ${certsHtml}
+      </section>
+    `
+  }
+
+  // ──── EDUCATION ────
+  if (data.education && data.education.length > 0) {
+    const eduHtml = data.education
+      .map(
+        (edu) => `
+      <div style="margin-bottom: 12px;">
+        <div style="display: flex; align-items: baseline; justify-content: space-between;">
+          <span style="font-size: 10.5px; font-weight: 700; color: ${HEADING};">${edu.degree}</span>
+          <span style="font-size: 9.5px; font-weight: 500; color: ${MUTED}; flex-shrink: 0; margin-left: 16px;">${edu.period}</span>
+        </div>
+        <p style="font-size: 9.5px; color: ${BODY_LIGHT}; margin: 2px 0 0 0;">${edu.institution}</p>
+        ${edu.details ? `<p style="font-size: 9px; color: ${MUTED}; margin: 2px 0 0 0;">${edu.details}</p>` : ''}
+      </div>
+    `
+      )
+      .join('')
+
+    body1.innerHTML += `
+      <section style="margin-bottom: 24px;">
+        <h2 style="${sectionHeadingCSS}">Education</h2>
+        ${eduHtml}
+      </section>
+    `
+  }
+
+  // ──── KEY PROJECTS ────
+  if (data.projects && data.projects.length > 0) {
+    const projectsHtml = data.projects
+      .map(
+        (proj) => `
+      <div style="margin-bottom: 16px;">
+        <div style="display: flex; align-items: baseline; justify-content: space-between;">
+          <h3 style="font-size: 10.5px; font-weight: 700; color: ${HEADING}; margin: 0;">${proj.name}</h3>
+          <span style="font-size: 9px; color: #71717a; flex-shrink: 0; margin-left: 16px;">${proj.github}</span>
+        </div>
+        <p style="font-size: 9.5px; line-height: 1.6; color: ${BODY_LIGHT}; margin: 4px 0 0 0;">${proj.description}</p>
+      </div>
+    `
+      )
+      .join('')
+
+    body1.innerHTML += `
+      <section style="margin-bottom: 24px;">
+        <h2 style="${sectionHeadingCSS}">Key Projects</h2>
+        ${projectsHtml}
+      </section>
+    `
+  }
 
   page1.appendChild(body1)
 
@@ -162,27 +225,34 @@ export function buildResumeDomForPdf(data: ResumeData): HTMLDivElement {
   const body2 = document.createElement('div')
   body2.style.cssText = `padding: ${PAGE_PADDING_TOP}px ${PAGE_PADDING_X}px ${PAGE_PADDING_BOTTOM}px ${PAGE_PADDING_X}px; box-sizing: border-box;`
 
-  // ──── KEY ACHIEVEMENTS ────
-  if (data.keyAchievements && data.keyAchievements.length > 0) {
-    const achievementsHtml = data.keyAchievements
-      .map(
-        (item) => `
-      <li style="font-size: 10px; line-height: 1.6; color: ${BODY}; margin-bottom: 6px;">${item.achievement}</li>
-    `
-      )
-      .join('')
+  // ──── PROFESSIONAL EXPERIENCE ────
+  const experienceHtml = data.experience
+    .map(
+      (exp) => `
+    <div style="margin-bottom: 16px;">
+      <div style="display: flex; align-items: baseline; justify-content: space-between;">
+        <div>
+          <span style="font-size: 11px; font-weight: 700; color: ${HEADING};">${exp.title}</span>
+          <span style="font-size: 10px; font-weight: 500; color: ${MUTED};"> — ${exp.company}</span>
+        </div>
+        <span style="font-size: 9.5px; font-weight: 500; color: ${MUTED}; flex-shrink: 0; margin-left: 16px;">${exp.period}</span>
+      </div>
+      <ul style="margin: 6px 0 0 0; padding-left: 16px; list-style-type: disc;">
+        ${exp.highlights.map((h) => `<li style="font-size: 9.5px; line-height: 1.5; color: ${BODY_LIGHT}; margin-bottom: 4px;">${h}</li>`).join('')}
+      </ul>
+    </div>
+  `
+    )
+    .join('')
 
-    body2.innerHTML += `
-      <section style="margin-bottom: 24px;">
-        <h2 style="${sectionHeadingCSS}">Key Achievements</h2>
-        <ul style="margin: 0; padding-left: 16px; list-style-type: disc;">
-          ${achievementsHtml}
-        </ul>
-      </section>
-    `
-  }
+  body2.innerHTML += `
+    <section style="margin-bottom: 24px;">
+      <h2 style="${sectionHeadingCSS}">Professional Experience</h2>
+      ${experienceHtml}
+    </section>
+  `
 
-  // ──── TECHNICAL SKILLS (2-column grid) ────
+  // ──── TECHNICAL SKILLS ────
   if (data.skills && data.skills.length > 0) {
     const skillsHtml = data.skills
       .map(
@@ -205,76 +275,6 @@ export function buildResumeDomForPdf(data: ResumeData): HTMLDivElement {
         <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px 32px;">
           ${skillsHtml}
         </div>
-      </section>
-    `
-  }
-
-  // ──── EDUCATION ────
-  if (data.education && data.education.length > 0) {
-    const eduHtml = data.education
-      .map(
-        (edu) => `
-      <div style="margin-bottom: 12px;">
-        <div style="display: flex; align-items: baseline; justify-content: space-between;">
-          <span style="font-size: 10.5px; font-weight: 700; color: ${HEADING};">${edu.degree}</span>
-          <span style="font-size: 9.5px; font-weight: 500; color: ${MUTED}; flex-shrink: 0; margin-left: 16px;">${edu.period}</span>
-        </div>
-        <p style="font-size: 9.5px; color: ${BODY_LIGHT}; margin: 2px 0 0 0;">${edu.institution}</p>
-        ${edu.details ? `<p style="font-size: 9px; color: ${MUTED}; margin: 2px 0 0 0;">${edu.details}</p>` : ''}
-      </div>
-    `
-      )
-      .join('')
-
-    body2.innerHTML += `
-      <section style="margin-bottom: 24px;">
-        <h2 style="${sectionHeadingCSS}">Education</h2>
-        ${eduHtml}
-      </section>
-    `
-  }
-
-  // ──── CERTIFICATIONS ────
-  if (data.certifications && data.certifications.length > 0) {
-    const certsHtml = data.certifications
-      .map(
-        (cert) => `
-      <div style="display: flex; align-items: baseline; justify-content: space-between; margin-bottom: 8px;">
-        <span style="font-size: 10px; font-weight: 700; color: ${HEADING};">${cert.name}</span>
-        <span style="font-size: 9.5px; color: ${MUTED};">${cert.issuer} · ${cert.year}</span>
-      </div>
-    `
-      )
-      .join('')
-
-    body2.innerHTML += `
-      <section style="margin-bottom: 24px;">
-        <h2 style="${sectionHeadingCSS}">Certifications</h2>
-        ${certsHtml}
-      </section>
-    `
-  }
-
-  // ──── KEY PROJECTS ────
-  if (data.projects && data.projects.length > 0) {
-    const projectsHtml = data.projects
-      .map(
-        (proj) => `
-      <div style="margin-bottom: 16px;">
-        <div style="display: flex; align-items: baseline; justify-content: space-between;">
-          <h3 style="font-size: 10.5px; font-weight: 700; color: ${HEADING}; margin: 0;">${proj.name}</h3>
-          <span style="font-size: 9px; color: #71717a; flex-shrink: 0; margin-left: 16px;">${proj.github}</span>
-        </div>
-        <p style="font-size: 9.5px; line-height: 1.6; color: ${BODY_LIGHT}; margin: 4px 0 0 0;">${proj.description}</p>
-      </div>
-    `
-      )
-      .join('')
-
-    body2.innerHTML += `
-      <section style="margin-bottom: 24px;">
-        <h2 style="${sectionHeadingCSS}">Key Projects</h2>
-        ${projectsHtml}
       </section>
     `
   }
