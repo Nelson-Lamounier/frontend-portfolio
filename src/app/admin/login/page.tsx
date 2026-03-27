@@ -10,8 +10,7 @@
 
 'use client'
 
-import { signIn } from 'next-auth/react'
-import { Suspense, useCallback, useState } from 'react'
+import { Suspense, useEffect, useState } from 'react'
 import { useSearchParams } from 'next/navigation'
 
 // =============================================================================
@@ -26,24 +25,17 @@ import { useSearchParams } from 'next/navigation'
 function AdminLoginContent() {
   const searchParams = useSearchParams()
   const callbackUrl = searchParams.get('callbackUrl') || '/admin/drafts'
-  const [isLoading, setIsLoading] = useState(false)
+  const [csrfToken, setCsrfToken] = useState('')
 
   /**
-   * Initiates the Cognito OAuth sign-in flow.
-   * Forces a JSON response (redirect: false) to prevent CORS issues with the 302 redirect,
-   * then manually navigates to the Cognito Hosted UI URL.
+   * Fetch the NextAuth CSRF token on mount so the form submission is authorized.
    */
-  const handleSignIn = useCallback(async () => {
-    setIsLoading(true)
-    const response = await signIn('cognito', { callbackUrl, redirect: false })
-    
-    // Top-level navigation circumvents the AJAX CORS block!
-    if (response?.url) {
-      window.location.href = response.url
-    } else {
-      setIsLoading(false)
-    }
-  }, [callbackUrl])
+  useEffect(() => {
+    fetch('/api/auth/csrf')
+      .then((res) => res.json())
+      .then((data) => setCsrfToken(data.csrfToken))
+      .catch((err) => console.error('Failed to fetch CSRF token:', err))
+  }, [])
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-zinc-50 px-4 dark:bg-zinc-950">
@@ -73,41 +65,40 @@ function AdminLoginContent() {
           </p>
         </div>
 
-        {/* Sign In Button */}
-        <button
-          onClick={handleSignIn}
-          disabled={isLoading}
-          className="group relative w-full overflow-hidden rounded-xl bg-gradient-to-r from-teal-600 to-emerald-600 px-4 py-3 text-sm font-semibold text-white shadow-lg shadow-teal-500/25 transition-all hover:shadow-xl hover:shadow-teal-500/30 focus:outline-none focus:ring-2 focus:ring-teal-500/50 focus:ring-offset-2 focus:ring-offset-zinc-50 disabled:cursor-not-allowed disabled:opacity-60 dark:focus:ring-offset-zinc-950"
-        >
-          {/* Hover shine effect */}
-          <span className="absolute inset-0 -translate-x-full bg-gradient-to-r from-transparent via-white/20 to-transparent transition-transform duration-500 group-hover:translate-x-full" />
+        {/* Native Form Sign In */}
+        <form action="/api/auth/signin/cognito" method="POST">
+          {/* Required by NextAuth to accept the POST request */}
+          <input type="hidden" name="csrfToken" value={csrfToken} />
+          
+          {/* Where to send the user after successful login */}
+          <input type="hidden" name="callbackUrl" value={callbackUrl} />
 
-          <span className="relative flex items-center justify-center gap-2">
-            {isLoading ? (
-              <>
-                <span className="h-4 w-4 animate-spin rounded-full border-2 border-white/30 border-t-white" />
-                Redirecting…
-              </>
-            ) : (
-              <>
-                <svg
-                  className="h-4 w-4"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  strokeWidth={2}
-                  stroke="currentColor"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    d="M15.75 9V5.25A2.25 2.25 0 0013.5 3h-6a2.25 2.25 0 00-2.25 2.25v13.5A2.25 2.25 0 007.5 21h6a2.25 2.25 0 002.25-2.25V15m3 0l3-3m0 0l-3-3m3 3H9"
-                  />
-                </svg>
-                Sign In with AWS
-              </>
-            )}
-          </span>
-        </button>
+          <button
+            type="submit"
+            disabled={!csrfToken}
+            className="group relative w-full overflow-hidden rounded-xl bg-gradient-to-r from-teal-600 to-emerald-600 px-4 py-3 text-sm font-semibold text-white shadow-lg shadow-teal-500/25 transition-all hover:shadow-xl hover:shadow-teal-500/30 focus:outline-none focus:ring-2 focus:ring-teal-500/50 focus:ring-offset-2 focus:ring-offset-zinc-50 disabled:cursor-not-allowed disabled:opacity-60 dark:focus:ring-offset-zinc-950"
+          >
+            {/* Hover shine effect */}
+            <span className="absolute inset-0 -translate-x-full bg-gradient-to-r from-transparent via-white/20 to-transparent transition-transform duration-500 group-hover:translate-x-full" />
+
+            <span className="relative flex items-center justify-center gap-2">
+              <svg
+                className="h-4 w-4"
+                fill="none"
+                viewBox="0 0 24 24"
+                strokeWidth={2}
+                stroke="currentColor"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  d="M15.75 9V5.25A2.25 2.25 0 0013.5 3h-6a2.25 2.25 0 00-2.25 2.25v13.5A2.25 2.25 0 007.5 21h6a2.25 2.25 0 002.25-2.25V15m3 0l3-3m0 0l-3-3m3 3H9"
+                />
+              </svg>
+              Sign In with AWS
+            </span>
+          </button>
+        </form>
 
         {/* Security badge */}
         <div className="mt-6 flex items-center justify-center gap-1.5 text-xs text-zinc-400 dark:text-zinc-500">
