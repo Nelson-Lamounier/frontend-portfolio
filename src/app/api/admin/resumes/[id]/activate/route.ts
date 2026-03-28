@@ -13,7 +13,7 @@ import { auth } from '@/lib/auth'
 import {
   isResumeDBConfigured,
   setActiveResume,
-} from '@/lib/dynamodb-resumes'
+} from '@/lib/resumes/dynamodb-resumes'
 
 interface RouteParams {
   params: Promise<{ id: string }>

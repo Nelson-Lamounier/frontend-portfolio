@@ -9,7 +9,7 @@ import { Prose } from '@/components/ui'
 import { LikeButton } from '@/components/articles/LikeButton'
 import { CommentSection } from '@/components/articles/CommentSection'
 import { formatDate } from '@/lib/formatDate'
-import { trackArticleView } from '@/lib/analytics'
+import { trackArticleView } from '@/lib/observability/analytics'
 
 // Support both old and new article types during migration
 import type { ArticleWithSlug } from '@/lib/types/article.types'

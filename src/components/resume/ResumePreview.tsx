@@ -10,9 +10,9 @@
 
 import { useState, useCallback, useEffect, useRef } from 'react'
 import { ResumeDocument } from './ResumeDocument'
-import { resumeDataEsc as fallbackData } from '@/lib/resume-data-esc'
-import { trackResumeDownload } from '@/lib/analytics'
-import type { ResumeData } from '@/lib/resume-data'
+import { resumeDataEsc as fallbackData } from '@/lib/resumes/resume-data-esc'
+import { trackResumeDownload } from '@/lib/observability/analytics'
+import type { ResumeData } from '@/lib/resumes/resume-data'
 
 export function ResumePreview() {
   const [open, setOpen] = useState(false)
@@ -84,7 +84,7 @@ export function ResumePreview() {
 
       // Build resume DOM off-screen with inline styles (same as ResumeDownloadButton)
       const { buildResumeDomForPdf } = await import(
-        '@/lib/resume-dom-builder'
+        '@/lib/resumes/resume-dom-builder'
       )
       const container = document.createElement('div')
       container.style.position = 'fixed'

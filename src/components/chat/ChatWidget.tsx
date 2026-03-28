@@ -11,7 +11,7 @@
 
 import { useCallback, useState } from 'react'
 
-import { sendChatMessage } from '@/lib/chat-service'
+import { sendChatMessage } from '@/lib/chat/chat-service'
 import type { ChatMessage, ChatWidgetState } from '@/lib/types/chat.types'
 
 import { ChatInput } from './ChatInput'

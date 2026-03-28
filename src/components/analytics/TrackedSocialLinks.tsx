@@ -3,7 +3,7 @@
 'use client'
 
 import { useEffect, useCallback } from 'react'
-import { trackSocialClick } from '@/lib/analytics'
+import { trackSocialClick } from '@/lib/observability/analytics'
 
 /**
  * Detects the social platform from a URL or aria-label

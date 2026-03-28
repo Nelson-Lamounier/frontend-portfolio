@@ -1,7 +1,7 @@
 /** @format */
 
 import { NextResponse } from 'next/server';
-import { register } from '@/lib/metrics';
+import { register } from '@/lib/observability/metrics';
 
 // ========================================
 // Bearer Token Authentication (SSM-backed)

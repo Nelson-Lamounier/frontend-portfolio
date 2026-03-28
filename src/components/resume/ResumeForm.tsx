@@ -22,7 +22,7 @@ import type {
   ResumeSkillGroup,
   ResumeProject,
   ResumeAchievement,
-} from '@/lib/resume-data'
+} from '@/lib/resumes/resume-data'
 
 // =============================================================================
 // TYPES

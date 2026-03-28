@@ -2,7 +2,7 @@
 
 import { useState, type FormEvent } from 'react'
 import { Button } from '@/components/ui'
-import { trackFormSubmission } from '@/lib/analytics'
+import { trackFormSubmission } from '@/lib/observability/analytics'
 
 // ========================================
 // Types

@@ -2,7 +2,7 @@
 
 'use client'
 
-import { trackResumeDownload } from '@/lib/analytics'
+import { trackResumeDownload } from '@/lib/observability/analytics'
 
 /**
  * Client component that wraps the resume download button

@@ -3,7 +3,7 @@
 import { createContext, useEffect, useRef } from 'react'
 import { usePathname } from 'next/navigation'
 import { ThemeProvider, useTheme } from 'next-themes'
-import { initialiseFaro } from '@/lib/faro'
+import { initialiseFaro } from '@/lib/observability/faro'
 
 function usePrevious<T>(value: T) {
   const ref = useRef<T | undefined>(undefined)

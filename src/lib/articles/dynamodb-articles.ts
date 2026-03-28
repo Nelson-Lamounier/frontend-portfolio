@@ -31,9 +31,9 @@ import type {
   ArticleWithSlug,
   ArticleDetailResponse,
   ArticleMetadataEntity,
-} from './types/article.types'
-import { entityToArticle } from './types/article.types'
-import { trackDynamoDBCache, trackDynamoDB } from './metrics'
+} from '../types/article.types'
+import { entityToArticle } from '../types/article.types'
+import { trackDynamoDBCache, trackDynamoDB } from '../observability/metrics'
 import { fetchArticleContent } from './s3-content'
 
 // ========================================
@@ -556,4 +556,98 @@ export async function deleteArticle(slug: string): Promise<void> {
   cache.invalidate('draft-articles')
   cache.invalidate('published-articles')
   cache.invalidate(`metadata:${slug}`)
+}
+
+/**
+ * Updatable article metadata fields.
+ *
+ * Only these fields can be patched via the admin metadata API.
+ * All fields are optional — only provided fields are written.
+ */
+export interface UpdatableArticleMetadata {
+  /** Optional GitHub repository URL for the article */
+  readonly githubUrl?: string | null
+}
+
+/** Fields allowed in partial metadata updates */
+const ALLOWED_UPDATE_FIELDS: ReadonlySet<keyof UpdatableArticleMetadata> = new Set([
+  'githubUrl',
+])
+
+/**
+ * Update article metadata — partial patch of specific fields.
+ *
+ * Supports setting a field (string value) or clearing it (null).
+ * Only fields listed in ALLOWED_UPDATE_FIELDS are accepted.
+ *
+ * @param slug - URL-friendly article identifier
+ * @param updates - Partial metadata to merge
+ * @returns Updated article metadata
+ * @throws Error if article not found or update fails
+ */
+export async function updateArticleMetadata(
+  slug: string,
+  updates: UpdatableArticleMetadata,
+): Promise<ArticleWithSlug> {
+  const docClient = getDocClient()
+  const now = new Date().toISOString()
+  const start = Date.now()
+
+  // Build dynamic UpdateExpression from provided fields
+  const setParts: string[] = ['updatedAt = :updatedAt']
+  const removeParts: string[] = []
+  const expressionValues: Record<string, unknown> = { ':updatedAt': now }
+  const expressionNames: Record<string, string> = {}
+
+  for (const [key, value] of Object.entries(updates)) {
+    if (!ALLOWED_UPDATE_FIELDS.has(key as keyof UpdatableArticleMetadata)) {
+      continue
+    }
+
+    if (value === null) {
+      // null → remove the attribute entirely from DynamoDB
+      removeParts.push(`#${key}`)
+      expressionNames[`#${key}`] = key
+    } else if (value !== undefined) {
+      setParts.push(`#${key} = :${key}`)
+      expressionNames[`#${key}`] = key
+      expressionValues[`:${key}`] = value
+    }
+  }
+
+  // Combine SET and REMOVE expressions
+  let updateExpression = `SET ${setParts.join(', ')}`
+  if (removeParts.length > 0) {
+    updateExpression += ` REMOVE ${removeParts.join(', ')}`
+  }
+
+  const result = await docClient.send(
+    new UpdateCommand({
+      TableName: TABLE_NAME,
+      Key: {
+        pk: `ARTICLE#${slug}`,
+        sk: 'METADATA',
+      },
+      UpdateExpression: updateExpression,
+      ExpressionAttributeNames: Object.keys(expressionNames).length > 0
+        ? expressionNames
+        : undefined,
+      ExpressionAttributeValues: expressionValues,
+      ConditionExpression: 'attribute_exists(pk)',
+      ReturnValues: 'ALL_NEW',
+    }),
+  )
+
+  trackDynamoDB('UpdateItem', 'primary', (Date.now() - start) / 1000)
+
+  if (!result.Attributes) {
+    throw new Error(`Article not found: ${slug}`)
+  }
+
+  // Invalidate caches so listings and detail pages reflect changes
+  cache.invalidate('draft-articles')
+  cache.invalidate('published-articles')
+  cache.invalidate(`metadata:${slug}`)
+
+  return entityToArticle(result.Attributes as ArticleMetadataEntity)
 }

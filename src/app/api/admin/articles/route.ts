@@ -15,7 +15,7 @@ import {
   isDynamoDBConfigured,
   queryDraftArticles,
   queryPublishedArticles,
-} from '@/lib/dynamodb-articles'
+} from '@/lib/articles/dynamodb-articles'
 
 /**
  * Returns articles for the admin page filtered by status.

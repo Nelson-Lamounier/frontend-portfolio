@@ -8,12 +8,13 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server'
+import { revalidatePath } from 'next/cache'
 
 import { auth } from '@/lib/auth'
 import {
   isDynamoDBConfigured,
   deleteArticle,
-} from '@/lib/dynamodb-articles'
+} from '@/lib/articles/dynamodb-articles'
 
 /** Request body shape */
 interface DeleteRequestBody {
@@ -66,6 +67,12 @@ export async function DELETE(request: NextRequest): Promise<NextResponse> {
   try {
     await deleteArticle(slug)
     console.log(`[admin/articles] Deleted article: ${slug}`)
+
+    // Bust Next.js ISR page caches so the deleted article disappears immediately
+    revalidatePath('/')
+    revalidatePath('/articles')
+    revalidatePath(`/articles/${slug}`)
+
     return NextResponse.json({ deleted: true, slug })
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error)

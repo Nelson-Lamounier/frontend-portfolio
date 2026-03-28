@@ -47,8 +47,8 @@ export default auth(async function middleware(request: NextRequest) {
 
   // ── Track metrics asynchronously (fire and forget) ────────────────────
   Promise.all([
-    import('@/lib/metrics'),
-    import('@/lib/request-tracker'),
+    import('@/lib/observability/metrics'),
+    import('@/lib/observability/request-tracker'),
   ])
     .then(([{ trackRequestDuration, trackApiCall }, { trackRequestSize }]) => {
       const status = response.status
