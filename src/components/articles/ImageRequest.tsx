@@ -1,10 +1,17 @@
 /**
- * ImageRequest — Dual-mode image component for Bedrock-generated MDX
+ * ImageRequest — Multi-format image component for Bedrock-generated MDX
  *
- * Resolution order:
- * 1. Production: S3 image at `assets/screenshots/{id}.png`
- * 2. Development: local image at `/images/articles/{id}.png` (from public/)
- * 3. Fallback: yellow placeholder showing the AI instruction
+ * Resolves article images via CloudFront with extension fallback:
+ *   1. `/images/articles/{id}.jpeg` — most common for photographs
+ *   2. `/images/articles/{id}.png` — screenshots and diagrams with transparency
+ *   3. `/images/articles/{id}.webp` — modern format for optimised delivery
+ *   4. Fallback: amber placeholder showing the AI instruction
+ *
+ * In both development and production, images are served via CloudFront
+ * paths (`/images/*`) which route to the S3 assets bucket. This works
+ * because:
+ *   - Dev: `next dev` serves from `public/images/articles/`
+ *   - Prod: CloudFront routes `/images/*` to S3 origin
  *
  * Usage in MDX:
  *   <ImageRequest id="eks-dashboard-overview" instruction="Screenshot of the EKS dashboard showing running pods" />
@@ -14,8 +21,11 @@
 
 import { useState } from 'react'
 
+/** Supported image extensions, tried in priority order */
+const IMAGE_EXTENSIONS = ['jpeg', 'png', 'webp'] as const
+
 interface ImageRequestProps {
-  /** Unique screenshot identifier — maps to assets/screenshots/{id}.png in S3 */
+  /** Unique image identifier — maps to `/images/articles/{id}.{ext}` */
   id: string
   /** AI-generated instruction describing the desired screenshot */
   instruction: string
@@ -26,34 +36,35 @@ interface ImageRequestProps {
 }
 
 /**
- * Renders article images with automatic source resolution.
+ * Renders article images with automatic multi-format source resolution.
+ *
+ * Tries each extension in order and falls back to a styled placeholder
+ * if no image is found at any supported path.
  *
  * @param props - Image request properties
- * @returns Image element, local image, or styled placeholder
+ * @returns Image element or styled placeholder
  */
 export function ImageRequest({ id, instruction }: ImageRequestProps) {
+  const [extIndex, setExtIndex] = useState(0)
   const [imgError, setImgError] = useState(false)
-  const [usePngFallback, setUsePngFallback] = useState(false)
 
-  const bucketName = process.env.NEXT_PUBLIC_ASSETS_BUCKET_NAME
-  const region = process.env.NEXT_PUBLIC_AWS_REGION ?? 'eu-west-1'
-  const isProduction = process.env.NODE_ENV === 'production'
+  // Build the CloudFront-routed URL using the current extension candidate
+  const imageUrl = `/images/articles/${id}.${IMAGE_EXTENSIONS[extIndex]}`
 
-  // Production: S3 URL
-  const s3Url = bucketName
-    ? `https://${bucketName}.s3.${region}.amazonaws.com/assets/screenshots/${id}.png`
-    : ''
+  /**
+   * Handle image load failure — try the next extension in the
+   * fallback chain, or show the placeholder if all formats exhausted.
+   */
+  const handleError = () => {
+    if (extIndex < IMAGE_EXTENSIONS.length - 1) {
+      setExtIndex((prev) => prev + 1)
+    } else {
+      setImgError(true)
+    }
+  }
 
-  // Development: local repo image in public/images/articles/
-  // Try .jpeg first, fall back to .png (screenshots are often PNG)
-  const localExt = usePngFallback ? 'png' : 'jpeg'
-  const localUrl = `/images/articles/${id}.${localExt}`
-
-  // Choose the image source
-  const imageUrl = isProduction && s3Url ? s3Url : localUrl
-
-  // If the image failed to load, show the placeholder
-  if (imgError && !isProduction) {
+  // All extensions exhausted — render the placeholder
+  if (imgError) {
     return (
       <figure className="my-8">
         <div className="flex min-h-[200px] items-center justify-center rounded-xl border-2 border-dashed border-amber-300 bg-amber-50/60 p-6 dark:border-amber-600 dark:bg-amber-950/20">
@@ -91,7 +102,7 @@ export function ImageRequest({ id, instruction }: ImageRequestProps) {
     )
   }
 
-  // Render the image (S3 in prod, local in dev)
+  // Render the image via CloudFront path (works in both dev and prod)
   return (
     <figure className="my-8">
       <div className="overflow-hidden rounded-xl border border-zinc-200 shadow-sm dark:border-zinc-700/50">
@@ -102,14 +113,7 @@ export function ImageRequest({ id, instruction }: ImageRequestProps) {
           alt={instruction}
           loading="lazy"
           className="h-auto w-full"
-          onError={() => {
-            // In dev: try .png if .jpeg failed, then show placeholder
-            if (!isProduction && !usePngFallback) {
-              setUsePngFallback(true)
-            } else {
-              setImgError(true)
-            }
-          }}
+          onError={handleError}
         />
       </div>
       <figcaption className="mt-3 text-center text-sm text-zinc-500 dark:text-zinc-400">
@@ -118,4 +122,3 @@ export function ImageRequest({ id, instruction }: ImageRequestProps) {
     </figure>
   )
 }
-

@@ -14,8 +14,8 @@ import {
   isResumeDBConfigured,
   listResumes,
   createResume,
-} from '@/lib/dynamodb-resumes'
-import type { ResumeData } from '@/lib/resume-data'
+} from '@/lib/resumes/dynamodb-resumes'
+import type { ResumeData } from '@/lib/resumes/resume-data'
 
 /**
  * List all resume versions for the admin dashboard.

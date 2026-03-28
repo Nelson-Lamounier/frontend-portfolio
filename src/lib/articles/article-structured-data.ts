@@ -15,7 +15,7 @@
 
 import type { Metadata } from 'next'
 
-import type { ValidatedArticleMetadata } from './types/content-schemas'
+import type { ValidatedArticleMetadata } from '../types/content-schemas'
 
 // ========================================
 // JSON-LD Generation

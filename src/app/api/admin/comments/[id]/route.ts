@@ -17,7 +17,7 @@ import {
   isEngagementDBConfigured,
   moderateComment,
   deleteComment,
-} from '@/lib/dynamodb-engagement'
+} from '@/lib/articles/dynamodb-engagement'
 
 interface RouteParams {
   params: Promise<{ id: string }>

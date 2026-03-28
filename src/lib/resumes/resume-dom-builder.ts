@@ -12,7 +12,7 @@
  *   Page 2 — Professional Experience, Technical Skills
  */
 
-import type { ResumeData } from '@/lib/resume-data'
+import type { ResumeData } from './resume-data'
 
 /* ─── colour tokens (zinc styling to match ResumeDocument) ─── */
 const HEADING = '#18181b'     // zinc-900

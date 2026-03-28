@@ -10,12 +10,13 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server'
+import { revalidatePath } from 'next/cache'
 
 import { auth } from '@/lib/auth'
 import {
   isDynamoDBConfigured,
   publishArticle,
-} from '@/lib/dynamodb-articles'
+} from '@/lib/articles/dynamodb-articles'
 
 /** Request body schema */
 interface PublishRequestBody {
@@ -74,6 +75,12 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
   try {
     const article = await publishArticle(slug)
     console.log(`[admin/articles] Published article: ${slug}`)
+
+    // Bust Next.js ISR page caches so the published article appears immediately
+    revalidatePath('/')
+    revalidatePath('/articles')
+    revalidatePath(`/articles/${slug}`)
+
     return NextResponse.json({ article, published: true })
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error)

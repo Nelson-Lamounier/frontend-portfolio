@@ -9,12 +9,13 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server'
+import { revalidatePath } from 'next/cache'
 
 import { auth } from '@/lib/auth'
 import {
   isDynamoDBConfigured,
   unpublishArticle,
-} from '@/lib/dynamodb-articles'
+} from '@/lib/articles/dynamodb-articles'
 
 /** Request body schema */
 interface UnpublishRequestBody {
@@ -66,6 +67,12 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
   try {
     const article = await unpublishArticle(slug)
     console.log(`[admin/articles] Unpublished article: ${slug}`)
+
+    // Bust Next.js ISR page caches so the unpublished article is removed immediately
+    revalidatePath('/')
+    revalidatePath('/articles')
+    revalidatePath(`/articles/${slug}`)
+
     return NextResponse.json({ article, unpublished: true })
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error)

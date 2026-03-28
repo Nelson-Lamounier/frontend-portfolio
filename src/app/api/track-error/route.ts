@@ -9,7 +9,7 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server'
-import { trackError } from '@/lib/metrics'
+import { trackError } from '@/lib/observability/metrics'
 import { createRateLimiter } from '@/lib/rate-limiter'
 
 // =============================================================================

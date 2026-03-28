@@ -13,8 +13,8 @@ import { auth } from '@/lib/auth'
 import {
   isDynamoDBConfigured,
   getArticleMetadataBySlug,
-} from '@/lib/dynamodb-articles'
-import { fetchArticleContent, putArticleContent } from '@/lib/s3-content'
+} from '@/lib/articles/dynamodb-articles'
+import { fetchArticleContent, putArticleContent } from '@/lib/articles/s3-content'
 
 // ========================================
 // Guards

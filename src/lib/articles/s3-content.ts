@@ -13,12 +13,12 @@
 
 import { S3Client, GetObjectCommand, PutObjectCommand } from '@aws-sdk/client-s3'
 
-import type { ArticleContent } from './types/article.types'
-import type { ImageSidecar } from './types/content-blocks'
-import { safeValidateSidecar } from './types/content-schemas'
+import type { ArticleContent } from '../types/article.types'
+import type { ImageSidecar } from '../types/content-blocks'
+import { safeValidateSidecar } from '../types/content-schemas'
 
 // Re-export for convenience
-export type { ImageSidecar } from './types/content-blocks'
+export type { ImageSidecar } from '../types/content-blocks'
 
 // ========================================
 // Configuration

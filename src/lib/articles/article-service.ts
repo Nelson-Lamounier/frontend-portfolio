@@ -28,7 +28,7 @@ import type {
   ArticleContent,
   ArticlesListResponse,
   ArticleDetailResponse,
-} from './types/article.types'
+} from '../types/article.types'
 
 // Import DynamoDB data layer
 import {
@@ -43,13 +43,13 @@ import {
 import { fetchArticleContent, buildContentRef } from './s3-content'
 
 // Import Zod validation for runtime SEO safety
-import { safeValidateMetadata, type ValidatedArticleMetadata } from './types/content-schemas'
+import { safeValidateMetadata, type ValidatedArticleMetadata } from '../types/content-schemas'
 
 // Re-export for consumers
 export { isS3Article } from './s3-content'
 
 // Import Prometheus metrics helpers
-import { trackArticleRequest } from './metrics'
+import { trackArticleRequest } from '../observability/metrics'
 
 // ========================================
 // OpenTelemetry Tracer (business-level spans)

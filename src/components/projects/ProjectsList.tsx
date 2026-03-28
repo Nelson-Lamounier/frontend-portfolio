@@ -11,7 +11,7 @@ import { useState } from 'react'
 import Image, { StaticImageData } from 'next/image'
 import { Card } from '@/components/ui'
 import { FilterTabs } from './FilterTabs'
-import { trackProjectView } from '@/lib/analytics'
+import { trackProjectView } from '@/lib/observability/analytics'
 
 // =============================================================================
 // TYPES

@@ -12,7 +12,7 @@ import { auth } from '@/lib/auth'
 import {
   isEngagementDBConfigured,
   getPendingComments,
-} from '@/lib/dynamodb-engagement'
+} from '@/lib/articles/dynamodb-engagement'
 
 /**
  * List pending comments awaiting moderation.

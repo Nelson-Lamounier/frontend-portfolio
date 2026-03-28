@@ -15,7 +15,7 @@ import { NextResponse } from 'next/server'
 import {
   isResumeDBConfigured,
   getActiveResume,
-} from '@/lib/dynamodb-resumes'
+} from '@/lib/resumes/dynamodb-resumes'
 
 /**
  * Fetch the publicly displayed resume.

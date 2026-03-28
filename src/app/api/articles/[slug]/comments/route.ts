@@ -14,7 +14,7 @@ import {
   isEngagementDBConfigured,
   getApprovedComments,
   createComment,
-} from '@/lib/dynamodb-engagement'
+} from '@/lib/articles/dynamodb-engagement'
 
 interface RouteParams {
   params: Promise<{ slug: string }>
