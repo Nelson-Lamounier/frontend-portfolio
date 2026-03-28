@@ -16,6 +16,7 @@ YARN_MIGRATION.md
 
 # Frontend-specific documentation
 docs/*
+!docs/admin-state-management/
 node_modules/
 
 .env.*
@@ -26,3 +27,7 @@ tsconfig.test.tsbuildinfo
 
 # Test coverage
 coverage/
+
+
+IDE
+.agents/

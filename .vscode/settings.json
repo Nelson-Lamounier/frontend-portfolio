@@ -1,1 +1,6 @@
-{}
+{
+    "sonarlint.connectedMode.project": {
+        "connectionId": "nelson-lamounier",
+        "projectKey": "nelson-lamounier_frontend-portfolio"
+    }
+}
