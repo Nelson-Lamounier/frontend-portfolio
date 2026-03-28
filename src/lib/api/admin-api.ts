@@ -1,0 +1,338 @@
+/**
+ * Admin API Fetchers
+ *
+ * Centralised, typed fetch functions for all admin API endpoints.
+ * Each function is a plain `async` function (not a hook) usable as
+ * a TanStack Query `queryFn` or called directly in mutations.
+ *
+ * All functions use the shared `adminFetch()` helper which handles:
+ * - 401 → throws `UnauthorisedError` (redirects handled by the caller)
+ * - Non-ok responses → throws `ApiError` with the server message
+ * - JSON parsing with proper return typing
+ */
+
+import type { ArticleWithSlug } from '@/lib/types/article.types'
+import type { ResumeData } from '@/lib/resumes/resume-data'
+
+// =============================================================================
+// ERROR TYPES
+// =============================================================================
+
+/** Thrown when the API returns 401 (session expired) */
+export class UnauthorisedError extends Error {
+  constructor() {
+    super('Session expired. Please sign in again.')
+    this.name = 'UnauthorisedError'
+  }
+}
+
+/** Thrown when the API returns an error response */
+export class ApiError extends Error {
+  readonly status: number
+  constructor(message: string, status: number) {
+    super(message)
+    this.name = 'ApiError'
+    this.status = status
+  }
+}
+
+// =============================================================================
+// RESPONSE INTERFACES
+// =============================================================================
+
+/** Shape of the admin articles listing response */
+export interface AdminArticlesResponse {
+  readonly drafts: ArticleWithSlug[]
+  readonly published: ArticleWithSlug[]
+  readonly draftCount: number
+  readonly publishedCount: number
+}
+
+/** Shape of a pending comment from the admin API */
+export interface AdminComment {
+  readonly commentId: string
+  readonly articleSlug: string
+  readonly name: string
+  readonly email: string
+  readonly body: string
+  readonly status: string
+  readonly createdAt: string
+}
+
+/** Shape of a resume summary from the admin API (list endpoint) */
+export interface AdminResume {
+  readonly resumeId: string
+  readonly label: string
+  readonly isActive: boolean
+  readonly createdAt: string
+  readonly updatedAt: string
+}
+
+/** Shape of a full resume with data payload (detail endpoint) */
+export interface AdminResumeWithData extends AdminResume {
+  readonly data: ResumeData
+}
+
+/** Shape of the publish-draft API response */
+export interface PublishDraftResponse {
+  readonly success: boolean
+  readonly slug: string
+  readonly message: string
+  readonly error?: string
+  readonly details?: {
+    readonly s3Published: boolean
+    readonly dynamoMetadata: boolean
+  }
+}
+
+// =============================================================================
+// SHARED FETCH HELPER
+// =============================================================================
+
+/**
+ * Shared admin fetch wrapper with error handling.
+ *
+ * @param url - API endpoint URL (relative)
+ * @param options - Standard RequestInit options
+ * @returns Parsed JSON response
+ * @throws UnauthorisedError if the server responds with 401
+ * @throws ApiError for all other non-ok responses
+ */
+async function adminFetch<T>(url: string, options?: RequestInit): Promise<T> {
+  const response = await fetch(url, {
+    credentials: 'same-origin',
+    ...options,
+  })
+
+  if (response.status === 401) {
+    throw new UnauthorisedError()
+  }
+
+  if (!response.ok) {
+    const body = await response.json().catch(() => ({ error: 'Unknown error' })) as {
+      error?: string
+    }
+    throw new ApiError(body.error ?? `HTTP ${response.status}`, response.status)
+  }
+
+  // Handle 204 No Content
+  if (response.status === 204) {
+    return undefined as T
+  }
+
+  return response.json() as Promise<T>
+}
+
+// =============================================================================
+// QUERY FETCHERS (used as queryFn)
+// =============================================================================
+
+/**
+ * Fetches all admin articles (drafts + published).
+ *
+ * @returns Articles listing with counts
+ */
+export async function fetchAdminArticles(): Promise<AdminArticlesResponse> {
+  return adminFetch<AdminArticlesResponse>('/api/admin/articles?status=all')
+}
+
+/**
+ * Fetches pending comments awaiting moderation.
+ *
+ * @returns Array of pending comments
+ */
+export async function fetchAdminComments(): Promise<AdminComment[]> {
+  return adminFetch<AdminComment[]>('/api/admin/comments')
+}
+
+/**
+ * Fetches all resume versions.
+ *
+ * @returns Array of resume entries
+ */
+export async function fetchAdminResumes(): Promise<AdminResume[]> {
+  return adminFetch<AdminResume[]>('/api/admin/resumes')
+}
+
+/**
+ * Fetches a single resume with full data payload for PDF preview.
+ *
+ * @param resumeId - UUID of the resume to fetch
+ * @returns Full resume including ResumeData
+ */
+export async function fetchResumeById(resumeId: string): Promise<AdminResumeWithData> {
+  return adminFetch<AdminResumeWithData>(
+    `/api/admin/resumes/${encodeURIComponent(resumeId)}`,
+  )
+}
+
+/**
+ * Shape of the GET /api/admin/articles/content response.
+ */
+export interface ArticleContentResponse {
+  readonly slug: string
+  readonly contentRef: string
+  readonly content: string
+  readonly title: string
+  readonly description: string
+  readonly status: string
+}
+
+/**
+ * Fetches article content (MDX) and metadata for the editor.
+ *
+ * @param slug - Article slug to fetch content for
+ * @returns Full content response with title, description, status
+ */
+export async function fetchArticleContent(
+  slug: string,
+): Promise<ArticleContentResponse> {
+  return adminFetch<ArticleContentResponse>(
+    `/api/admin/articles/content?slug=${encodeURIComponent(slug)}`,
+  )
+}
+
+// =============================================================================
+// MUTATION FETCHERS (used in useMutation)
+// =============================================================================
+
+/**
+ * Publishes a draft article (moves to published).
+ *
+ * @param slug - Article slug to publish
+ */
+export async function publishArticle(slug: string): Promise<void> {
+  await adminFetch('/api/admin/articles/publish', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ slug }),
+  })
+}
+
+/**
+ * Unpublishes an article (moves back to draft).
+ *
+ * @param slug - Article slug to unpublish
+ */
+export async function unpublishArticle(slug: string): Promise<void> {
+  await adminFetch('/api/admin/articles/unpublish', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ slug }),
+  })
+}
+
+/**
+ * Deletes an article from DynamoDB.
+ *
+ * @param slug - Article slug to delete
+ */
+export async function deleteArticle(slug: string): Promise<void> {
+  await adminFetch('/api/admin/articles/delete', {
+    method: 'DELETE',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ slug }),
+  })
+}
+
+/**
+ * Updates article metadata (e.g., githubUrl).
+ *
+ * @param slug - Article slug
+ * @param updates - Partial metadata fields to update
+ */
+export async function updateArticleMetadata(
+  slug: string,
+  updates: Record<string, unknown>,
+): Promise<void> {
+  await adminFetch('/api/admin/articles/metadata', {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ slug, updates }),
+  })
+}
+
+/**
+ * Saves article content in the editor.
+ *
+ * @param slug - Article slug
+ * @param content - Raw MDX content string
+ */
+export async function saveArticleContent(
+  slug: string,
+  content: string,
+): Promise<void> {
+  await adminFetch('/api/admin/articles/content', {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ slug, content }),
+  })
+}
+
+/**
+ * Publishes a draft file via the AI Agent / Publish page.
+ *
+ * @param fileName - Draft file name
+ * @param content - File content
+ * @returns Publish response with S3 key
+ */
+export async function publishDraft(
+  fileName: string,
+  content: string,
+): Promise<PublishDraftResponse> {
+  return adminFetch<PublishDraftResponse>('/api/admin/publish-draft', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ fileName, content }),
+  })
+}
+
+/**
+ * Moderates a comment (approve or reject).
+ *
+ * @param compositeId - Composite comment ID (slug__COMMENT#timestamp#uuid)
+ * @param action - Moderation action
+ */
+export async function moderateComment(
+  compositeId: string,
+  action: 'approve' | 'reject',
+): Promise<void> {
+  await adminFetch(`/api/admin/comments/${encodeURIComponent(compositeId)}`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ action }),
+  })
+}
+
+/**
+ * Permanently deletes a comment.
+ *
+ * @param compositeId - Composite comment ID
+ */
+export async function deleteComment(compositeId: string): Promise<void> {
+  await adminFetch(`/api/admin/comments/${encodeURIComponent(compositeId)}`, {
+    method: 'DELETE',
+  })
+}
+
+/**
+ * Activates a resume version (makes it the live CV).
+ *
+ * @param id - Resume ID to activate
+ */
+export async function activateResume(id: string): Promise<void> {
+  await adminFetch(`/api/admin/resumes/${encodeURIComponent(id)}/activate`, {
+    method: 'POST',
+  })
+}
+
+/**
+ * Deletes a resume version.
+ *
+ * @param id - Resume ID to delete
+ */
+export async function deleteResume(id: string): Promise<void> {
+  await adminFetch(`/api/admin/resumes/${encodeURIComponent(id)}`, {
+    method: 'DELETE',
+  })
+}
