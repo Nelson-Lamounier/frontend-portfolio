@@ -189,6 +189,17 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
             level: 'warn',
             pathname,
           })
+
+          // API routes must return JSON errors, not HTML redirects.
+          // Returning false would trigger Auth.js middleware to redirect
+          // to the login page, which breaks client-side fetch() calls
+          // expecting JSON responses.
+          if (isAdminApi) {
+            return Response.json(
+              { error: 'Unauthorised — admin session required' },
+              { status: 401 },
+            )
+          }
         }
 
         return isAuthed
