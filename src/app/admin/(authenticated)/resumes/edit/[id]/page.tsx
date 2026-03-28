@@ -13,7 +13,7 @@
 import { useEffect, useState, use } from 'react'
 import { useRouter } from 'next/navigation'
 import { ResumeForm } from '@/components/resume/ResumeForm'
-import type { ResumeWithData } from '@/lib/dynamodb-resumes'
+import type { ResumeWithData } from '@/lib/resumes/dynamodb-resumes'
 
 interface EditResumePageProps {
   params: Promise<{ id: string }>

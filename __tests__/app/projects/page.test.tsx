@@ -1,6 +1,6 @@
 import { render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import Projects from '@/app/projects/page'
+import Projects from '@/app/(site)/projects/page'
 
 // Mock Next.js Image component
 jest.mock('next/image', () => ({

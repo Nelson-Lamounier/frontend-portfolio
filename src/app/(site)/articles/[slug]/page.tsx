@@ -20,12 +20,12 @@ import { MDXRenderer } from '@/components/articles'
 import {
   generateArticleJsonLd,
   generateArticleMetadata,
-} from '@/lib/article-structured-data'
-import { fetchArticleContent } from '@/lib/s3-content'
+} from '@/lib/articles/article-structured-data'
+import { fetchArticleContent } from '@/lib/articles/s3-content'
 import {
   getArticleMetadataBySlug,
   isDynamoDBConfigured,
-} from '@/lib/dynamodb-articles'
+} from '@/lib/articles/dynamodb-articles'
 import {
   safeValidateMetadata,
   type ValidatedArticleMetadata,
@@ -51,7 +51,7 @@ export async function generateStaticParams() {
   }
 
   // Import here to avoid circular dependency at build time
-  const { queryPublishedArticles } = await import('@/lib/dynamodb-articles')
+  const { queryPublishedArticles } = await import('@/lib/articles/dynamodb-articles')
 
   try {
     const articles = await queryPublishedArticles()

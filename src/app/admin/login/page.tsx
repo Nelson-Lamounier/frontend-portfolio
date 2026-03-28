@@ -24,7 +24,7 @@ import { useSearchParams } from 'next/navigation'
  */
 function AdminLoginContent() {
   const searchParams = useSearchParams()
-  const callbackUrl = searchParams.get('callbackUrl') || '/admin/drafts'
+  const callbackUrl = searchParams.get('callbackUrl') || '/admin'
   const [csrfToken, setCsrfToken] = useState('')
 
   /**
@@ -39,7 +39,7 @@ function AdminLoginContent() {
   }, [])
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-zinc-50 px-4 dark:bg-zinc-950">
+    <div className="flex min-h-screen w-full flex-1 items-center justify-center bg-zinc-50 px-4 dark:bg-zinc-950">
       <div className="w-full max-w-sm">
         {/* Header */}
         <div className="mb-8 text-center">

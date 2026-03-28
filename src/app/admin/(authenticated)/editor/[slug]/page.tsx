@@ -2,8 +2,8 @@
  * Admin Article Editor Page
  *
  * Full-page MDX editor for Bedrock-generated articles.
- * Fetches raw MDX from S3, displays in a monospace textarea,
- * and saves changes back to S3 without regenerating.
+ * Fetches raw MDX from S3 via `useArticleContent`, displays in a
+ * monospace textarea, and saves changes back to S3 via `useSaveContent`.
  *
  * Route: /admin/editor/[slug]
  * Access: NODE_ENV === 'development' only
@@ -12,36 +12,12 @@
 'use client'
 
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { useParams, useRouter } from 'next/navigation'
-
-// =============================================================================
-// TYPES
-// =============================================================================
-
-/** Shape of the GET /api/admin/articles/content response */
-interface ContentApiResponse {
-  slug: string
-  contentRef: string
-  content: string
-  title: string
-  description: string
-  status: string
-}
-
-/** Shape of the PUT /api/admin/articles/content response */
-interface SaveApiResponse {
-  saved: boolean
-  slug: string
-  bytes: number
-}
-
-type PageState = 'loading' | 'ready' | 'error' | 'saving' | 'blocked'
-type ToastType = 'success' | 'error'
-
-interface Toast {
-  message: string
-  type: ToastType
-}
+import { useParams } from 'next/navigation'
+import {
+  useArticleContent,
+  useSaveContent,
+} from '@/lib/hooks/use-admin-articles'
+import { useToastStore } from '@/lib/stores/toast-store'
 
 // =============================================================================
 // PAGE COMPONENT
@@ -49,45 +25,62 @@ interface Toast {
 
 /**
  * Admin editor page for editing raw MDX article content.
+ * Data fetching and saving are driven by TanStack Query hooks.
  *
  * @returns Editor page JSX
  */
 export default function AdminEditorPage() {
   const params = useParams<{ slug: string }>()
-  const router = useRouter()
+  const { addToast } = useToastStore()
   const slug = params.slug
 
-  const [state, setState] = useState<PageState>('loading')
+  // ── TanStack Query hooks ──────────────────────────────────────────────────
+  const {
+    data: articleData,
+    isLoading,
+    error: queryError,
+    refetch,
+  } = useArticleContent(slug)
+
+  const saveMutation = useSaveContent()
+
+  // ── Local editor state ────────────────────────────────────────────────────
   const [content, setContent] = useState('')
   const [originalContent, setOriginalContent] = useState('')
-  const [title, setTitle] = useState('')
-  const [description, setDescription] = useState('')
-  const [status, setStatus] = useState('')
-  const [error, setError] = useState<string | null>(null)
-  const [toast, setToast] = useState<Toast | null>(null)
+  const [isInitialised, setIsInitialised] = useState(false)
   const textareaRef = useRef<HTMLTextAreaElement>(null)
 
+  // Derived values
+  const title = articleData?.title ?? slug
+  const description = articleData?.description ?? ''
+  const status = articleData?.status ?? ''
   const hasUnsavedChanges = content !== originalContent
+  const error = queryError?.message ?? null
 
-  // Fetch content on mount (auth is handled by middleware)
+  // ── Sync fetched data into local state (only on initial load) ─────────────
   useEffect(() => {
-    fetchContent()
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [slug])
+    if (articleData && !isInitialised) {
+      setContent(articleData.content)
+      setOriginalContent(articleData.content)
+      setIsInitialised(true)
+    }
+  }, [articleData, isInitialised])
 
-  // ── Auto-dismiss toasts ──
+  // ── Handle "new" slug ─────────────────────────────────────────────────────
   useEffect(() => {
-    if (!toast) return
-    const timer = setTimeout(() => setToast(null), 4000)
-    return () => clearTimeout(timer)
-  }, [toast])
+    if (slug === 'new' && !isInitialised) {
+      setContent('')
+      setOriginalContent('')
+      setIsInitialised(true)
+    }
+  }, [slug, isInitialised])
 
-  // ── Keyboard shortcut: Cmd/Ctrl + S ──
+  // ── Keyboard shortcut: Cmd/Ctrl + S ───────────────────────────────────────
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
       if ((e.metaKey || e.ctrlKey) && e.key === 's') {
         e.preventDefault()
-        if (hasUnsavedChanges && state === 'ready') {
+        if (hasUnsavedChanges && !saveMutation.isPending) {
           handleSave()
         }
       }
@@ -95,80 +88,28 @@ export default function AdminEditorPage() {
     window.addEventListener('keydown', handler)
     return () => window.removeEventListener('keydown', handler)
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [hasUnsavedChanges, state, content])
+  }, [hasUnsavedChanges, saveMutation.isPending, content])
 
   /**
-   * Fetches article content from the admin API.
+   * Saves updated content back to S3 via the save mutation.
    */
-  const fetchContent = useCallback(async () => {
-    setState('loading')
-    setError(null)
+  const handleSave = useCallback(() => {
+    saveMutation.mutate(
+      { slug, content },
+      {
+        onSuccess: () => {
+          setOriginalContent(content)
+          addToast('success', 'Content saved to S3.')
+        },
+        onError: (err) => {
+          addToast('error', err.message)
+        },
+      },
+    )
+  }, [slug, content, saveMutation, addToast])
 
-    try {
-      const response = await fetch(
-        `/api/admin/articles/content?slug=${encodeURIComponent(slug)}`,
-      )
-
-      if (response.status === 403) {
-        setState('blocked')
-        router.replace('/')
-        return
-      }
-
-      if (!response.ok) {
-        const data = (await response.json()) as { error?: string }
-        throw new Error(data.error || `Failed with status ${response.status}`)
-      }
-
-      const data = (await response.json()) as ContentApiResponse
-      setContent(data.content)
-      setOriginalContent(data.content)
-      setTitle(data.title)
-      setDescription(data.description)
-      setStatus(data.status)
-      setState('ready')
-    } catch (err) {
-      const message =
-        err instanceof Error ? err.message : 'Failed to load content'
-      setError(message)
-      setState('error')
-    }
-  }, [slug, router])
-
-  /**
-   * Saves updated content back to S3 via the admin API.
-   */
-  const handleSave = useCallback(async () => {
-    setState('saving')
-
-    try {
-      const response = await fetch('/api/admin/articles/content', {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ slug, content }),
-      })
-
-      if (!response.ok) {
-        const data = (await response.json()) as { error?: string }
-        throw new Error(data.error || `Failed with status ${response.status}`)
-      }
-
-      const data = (await response.json()) as SaveApiResponse
-      setOriginalContent(content)
-      setState('ready')
-      setToast({
-        message: `Saved ${data.bytes.toLocaleString()} bytes to S3`,
-        type: 'success',
-      })
-    } catch (err) {
-      const message =
-        err instanceof Error ? err.message : 'Failed to save'
-      setState('ready')
-      setToast({ message, type: 'error' })
-    }
-  }, [slug, content])
-
-  if (state === 'blocked') return null
+  // ── Ready state (content loaded or new article) ───────────────────────────
+  const isReady = isInitialised && !isLoading
 
   return (
     <div className="flex min-h-screen flex-col bg-zinc-50 dark:bg-zinc-950">
@@ -185,7 +126,7 @@ export default function AdminEditorPage() {
             </a>
             <div className="min-w-0">
               <h1 className="truncate text-sm font-semibold text-zinc-900 dark:text-zinc-100">
-                {title || slug}
+                {title}
               </h1>
               {description && (
                 <p className="truncate text-xs text-zinc-500 dark:text-zinc-400">
@@ -229,10 +170,10 @@ export default function AdminEditorPage() {
             {/* Save */}
             <button
               onClick={handleSave}
-              disabled={!hasUnsavedChanges || state === 'saving'}
+              disabled={!hasUnsavedChanges || saveMutation.isPending}
               className="rounded-lg bg-teal-600 px-4 py-1.5 text-sm font-medium text-white transition-colors hover:bg-teal-500 disabled:cursor-not-allowed disabled:bg-zinc-300 dark:disabled:bg-zinc-700"
             >
-              {state === 'saving' ? 'Saving…' : 'Save'}
+              {saveMutation.isPending ? 'Saving…' : 'Save'}
             </button>
           </div>
         </div>
@@ -241,7 +182,7 @@ export default function AdminEditorPage() {
       {/* ── Main Content ── */}
       <main className="flex-1">
         {/* Loading */}
-        {state === 'loading' && (
+        {isLoading && (
           <div className="flex items-center justify-center py-20">
             <div className="flex items-center gap-3 text-zinc-500 dark:text-zinc-400">
               <svg
@@ -269,14 +210,14 @@ export default function AdminEditorPage() {
         )}
 
         {/* Error */}
-        {state === 'error' && (
+        {!isLoading && error && (
           <div className="mx-auto max-w-2xl px-4 py-20">
             <div className="rounded-2xl border border-red-200 bg-red-50 p-6 text-center dark:border-red-800 dark:bg-red-900/20">
               <p className="text-sm text-red-600 dark:text-red-400">
                 {error}
               </p>
               <button
-                onClick={fetchContent}
+                onClick={() => void refetch()}
                 className="mt-4 rounded-lg bg-red-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-red-500"
               >
                 Retry
@@ -286,7 +227,7 @@ export default function AdminEditorPage() {
         )}
 
         {/* Editor */}
-        {(state === 'ready' || state === 'saving') && (
+        {isReady && !error && (
           <div className="mx-auto max-w-7xl px-4 py-4 sm:px-6">
             {/* Info bar */}
             <div className="mb-3 flex items-center justify-between text-xs text-zinc-500 dark:text-zinc-400">
@@ -309,19 +250,6 @@ export default function AdminEditorPage() {
           </div>
         )}
       </main>
-
-      {/* ── Toast ── */}
-      {toast && (
-        <div
-          className={`fixed bottom-6 right-6 z-50 rounded-xl px-4 py-3 shadow-lg transition-all ${
-            toast.type === 'success'
-              ? 'border border-teal-200 bg-teal-50 text-teal-800 dark:border-teal-800 dark:bg-teal-900/80 dark:text-teal-200'
-              : 'border border-red-200 bg-red-50 text-red-800 dark:border-red-800 dark:bg-red-900/80 dark:text-red-200'
-          }`}
-        >
-          <p className="text-sm font-medium">{toast.message}</p>
-        </div>
-      )}
     </div>
   )
 }

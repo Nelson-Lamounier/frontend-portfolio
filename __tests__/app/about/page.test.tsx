@@ -1,5 +1,5 @@
 import { render, screen } from '@testing-library/react'
-import About from '@/app/about/page'
+import About from '@/app/(site)/about/page'
 
 // Mock Next.js Image component
 jest.mock('next/image', () => ({

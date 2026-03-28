@@ -2,7 +2,7 @@
  * Admin Comments Moderation Page
  *
  * Queue of pending comments awaiting approval or rejection.
- * Shows commenter name, email, article, body, and timestamp.
+ * Uses TanStack Query hooks for data fetching and mutations.
  *
  * Route: /admin/comments
  * Access: Authenticated admin session (NextAuth.js)
@@ -10,144 +10,81 @@
 
 'use client'
 
-import { useCallback, useEffect, useState } from 'react'
-import { useRouter } from 'next/navigation'
+import { useAdminComments, useDeleteComment, useModerateComment } from '@/lib/hooks/use-admin-comments'
+import { useToastStore } from '@/lib/stores/toast-store'
+import type { AdminComment } from '@/lib/api/admin-api'
 
 // ========================================
-// Types
+// HELPERS
 // ========================================
 
-interface AdminComment {
-  commentId: string
-  articleSlug: string
-  name: string
-  email: string
-  body: string
-  status: string
-  createdAt: string
+/**
+ * Builds the composite ID for the moderation API.
+ * Format: slug__COMMENT#timestamp#uuid
+ *
+ * @param comment - Comment to build the composite ID for
+ * @returns Composite ID string
+ */
+function buildCompositeId(comment: AdminComment): string {
+  return `${comment.articleSlug}__COMMENT#${comment.createdAt}#${comment.commentId}`
 }
 
-type PageState = 'loading' | 'ready' | 'error'
-
 // ========================================
-// Page Component
+// PAGE COMPONENT
 // ========================================
 
 /**
  * Admin page for moderating pending comments.
+ * Data is fetched via TanStack Query — mutations automatically
+ * invalidate the cache and update badge counts.
  *
  * @returns Comment moderation page JSX
  */
 export default function AdminCommentsPage() {
-  const router = useRouter()
-  const [state, setState] = useState<PageState>('loading')
-  const [comments, setComments] = useState<AdminComment[]>([])
-  const [error, setError] = useState<string | null>(null)
-  const [processing, setProcessing] = useState<string | null>(null)
+  // TanStack Query state
+  const { data: comments, isLoading, error: queryError, refetch } = useAdminComments()
+  const moderateMutation = useModerateComment()
+  const deleteMutation = useDeleteComment()
+  const { addToast } = useToastStore()
 
-  useEffect(() => {
-    fetchComments()
-  }, []) // eslint-disable-line react-hooks/exhaustive-deps
-
-  /**
-   * Fetches pending comments from the admin API.
-   */
-  const fetchComments = useCallback(async () => {
-    setState('loading')
-    setError(null)
-
-    try {
-      const res = await fetch('/api/admin/comments')
-
-      if (res.status === 401) {
-        router.push('/admin/login')
-        return
-      }
-
-      if (!res.ok) {
-        const body = await res.json().catch(() => ({ error: 'Unknown error' }))
-        throw new Error(body.error || `HTTP ${res.status}`)
-      }
-
-      const data = await res.json() as AdminComment[]
-      setComments(data)
-      setState('ready')
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to fetch comments')
-      setState('error')
-    }
-  }, [router])
-
-  /**
-   * Builds the composite ID for the moderation API.
-   * Format: slug__COMMENT#timestamp#uuid
-   */
-  const buildCompositeId = (comment: AdminComment): string => {
-    return `${comment.articleSlug}__COMMENT#${comment.createdAt}#${comment.commentId}`
-  }
+  // Derived state
+  const error = queryError?.message ?? null
+  const isProcessing = moderateMutation.isPending || deleteMutation.isPending
 
   /**
    * Approve or reject a comment.
+   *
+   * @param comment - Comment to moderate
+   * @param action - Moderation action
    */
-  const handleModerate = useCallback(async (
-    comment: AdminComment,
-    action: 'approve' | 'reject',
-  ) => {
-    if (processing) return
-    setProcessing(comment.commentId)
-
-    try {
-      const compositeId = buildCompositeId(comment)
-      const res = await fetch(`/api/admin/comments/${encodeURIComponent(compositeId)}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action }),
-      })
-
-      if (!res.ok) {
-        const body = await res.json().catch(() => ({ error: 'Unknown error' }))
-        throw new Error(body.error || `HTTP ${res.status}`)
-      }
-
-      await fetchComments()
-    } catch (err) {
-      setError(err instanceof Error ? err.message : `Failed to ${action} comment`)
-    } finally {
-      setProcessing(null)
-    }
-  }, [processing, fetchComments])
+  function handleModerate(comment: AdminComment, action: 'approve' | 'reject'): void {
+    const compositeId = buildCompositeId(comment)
+    moderateMutation.mutate(
+      { compositeId, action },
+      {
+        onSuccess: () => addToast('success', `Comment ${action}d successfully.`),
+        onError: (err) => addToast('error', err.message),
+      },
+    )
+  }
 
   /**
-   * Permanently delete a comment.
+   * Permanently delete a comment after confirmation.
+   *
+   * @param comment - Comment to delete
    */
-  const handleDelete = useCallback(async (comment: AdminComment) => {
-    if (processing) return
-
-    const confirmed = window.confirm(
+  function handleDelete(comment: AdminComment): void {
+    const confirmed = globalThis.window.confirm(
       `Delete this comment from "${comment.name}"?\n\nThis action cannot be undone.`,
     )
     if (!confirmed) return
 
-    setProcessing(comment.commentId)
-
-    try {
-      const compositeId = buildCompositeId(comment)
-      const res = await fetch(`/api/admin/comments/${encodeURIComponent(compositeId)}`, {
-        method: 'DELETE',
-      })
-
-      if (!res.ok && res.status !== 204) {
-        const body = await res.json().catch(() => ({ error: 'Unknown error' }))
-        throw new Error(body.error || `HTTP ${res.status}`)
-      }
-
-      await fetchComments()
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to delete comment')
-    } finally {
-      setProcessing(null)
-    }
-  }, [processing, fetchComments])
+    const compositeId = buildCompositeId(comment)
+    deleteMutation.mutate(compositeId, {
+      onSuccess: () => addToast('success', 'Comment deleted.'),
+      onError: (err) => addToast('error', err.message),
+    })
+  }
 
   // =========================================================================
   // Render
@@ -169,21 +106,25 @@ export default function AdminCommentsPage() {
       {error && (
         <div className="mt-4 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800 dark:border-red-800 dark:bg-red-950/50 dark:text-red-300">
           {error}
-          <button type="button" onClick={() => setError(null)} className="ml-2 font-medium underline">
-            Dismiss
+          <button
+            type="button"
+            onClick={() => void refetch()}
+            className="ml-2 font-medium underline"
+          >
+            Retry
           </button>
         </div>
       )}
 
       {/* Loading */}
-      {state === 'loading' && (
+      {isLoading && (
         <div className="mt-12 flex justify-center">
           <div className="h-8 w-8 animate-spin rounded-full border-2 border-zinc-300 border-t-teal-600" />
         </div>
       )}
 
       {/* Empty State */}
-      {state === 'ready' && comments.length === 0 && (
+      {!isLoading && !error && comments?.length === 0 && (
         <div className="mt-12 rounded-xl border-2 border-dashed border-zinc-300 p-12 text-center dark:border-zinc-700">
           <svg className="mx-auto h-12 w-12 text-zinc-400" fill="none" viewBox="0 0 24 24" strokeWidth={1} stroke="currentColor">
             <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75 11.25 15 15 9.75M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
@@ -198,7 +139,7 @@ export default function AdminCommentsPage() {
       )}
 
       {/* Comment Cards */}
-      {state === 'ready' && comments.length > 0 && (
+      {!isLoading && !error && comments && comments.length > 0 && (
         <div className="mt-6 space-y-4">
           {comments.map((comment) => (
             <div
@@ -240,15 +181,15 @@ export default function AdminCommentsPage() {
                 <button
                   type="button"
                   onClick={() => handleModerate(comment, 'approve')}
-                  disabled={!!processing}
+                  disabled={isProcessing}
                   className="rounded-lg bg-teal-600 px-3 py-1.5 text-xs font-medium text-white transition hover:bg-teal-500 disabled:opacity-50"
                 >
-                  {processing === comment.commentId ? 'Processing…' : '✓ Approve'}
+                  {moderateMutation.isPending ? 'Processing…' : '✓ Approve'}
                 </button>
                 <button
                   type="button"
                   onClick={() => handleModerate(comment, 'reject')}
-                  disabled={!!processing}
+                  disabled={isProcessing}
                   className="rounded-lg border border-amber-300 px-3 py-1.5 text-xs font-medium text-amber-700 transition hover:bg-amber-50 disabled:opacity-50 dark:border-amber-700 dark:text-amber-400 dark:hover:bg-amber-950/30"
                 >
                   ✗ Reject
@@ -256,7 +197,7 @@ export default function AdminCommentsPage() {
                 <button
                   type="button"
                   onClick={() => handleDelete(comment)}
-                  disabled={!!processing}
+                  disabled={isProcessing}
                   className="rounded-lg border border-red-300 px-3 py-1.5 text-xs font-medium text-red-700 transition hover:bg-red-50 disabled:opacity-50 dark:border-red-700 dark:text-red-400 dark:hover:bg-red-950/30"
                 >
                   Delete
@@ -267,23 +208,7 @@ export default function AdminCommentsPage() {
         </div>
       )}
 
-      {/* Navigation */}
-      <div className="mt-8 flex gap-4">
-        <button
-          type="button"
-          onClick={() => router.push('/admin/resumes')}
-          className="text-sm text-zinc-500 transition hover:text-zinc-700 dark:text-zinc-400 dark:hover:text-zinc-300"
-        >
-          ← Resumes
-        </button>
-        <button
-          type="button"
-          onClick={() => router.push('/admin/drafts')}
-          className="text-sm text-zinc-500 transition hover:text-zinc-700 dark:text-zinc-400 dark:hover:text-zinc-300"
-        >
-          ← Articles
-        </button>
-      </div>
     </div>
   )
 }
+

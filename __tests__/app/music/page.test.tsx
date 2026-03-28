@@ -1,5 +1,5 @@
 import { render, screen } from '@testing-library/react'
-import Music from '@/app/music/page'
+import Music from '@/app/(site)/music/page'
 
 describe('Music Page', () => {
   describe('Page Structure', () => {

@@ -1,5 +1,5 @@
 import { render, screen } from '@testing-library/react'
-import Home from '@/app/page'
+import Home from '@/app/(site)/page'
 
 // Mock the article-service (DynamoDB-only)
 jest.mock('@/lib/article-service', () => ({

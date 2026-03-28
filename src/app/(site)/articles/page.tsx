@@ -5,7 +5,7 @@ import { SimpleLayout } from '@/components/layout'
 import { formatDate } from '@/lib/formatDate'
 
 // Use hybrid article service with fallback to file-based articles
-import { getAllArticles, getDataSource } from '@/lib/article-service'
+import { getAllArticles, getDataSource } from '@/lib/articles/article-service'
 import type { ArticleWithSlug } from '@/lib/types/article.types'
 
 // ISR: revalidate every hour so runtime env vars (DYNAMODB_TABLE_NAME)

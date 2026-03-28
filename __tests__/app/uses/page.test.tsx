@@ -1,5 +1,5 @@
 import { render, screen, within } from '@testing-library/react'
-import Uses from '@/app/uses/page'
+import Uses from '@/app/(site)/uses/page'
 
 describe('Uses Page', () => {
   describe('Page Structure', () => {

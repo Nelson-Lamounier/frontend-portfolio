@@ -1,5 +1,5 @@
 import { render, screen } from '@testing-library/react'
-import ArticlesIndex from '@/app/articles/page'
+import ArticlesIndex from '@/app/(site)/articles/page'
 
 // Mock the article-service (current import path used by articles page)
 jest.mock('@/lib/article-service', () => ({
