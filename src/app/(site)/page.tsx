@@ -17,7 +17,7 @@ import logoPlanetaria from '@/images/logos/planetaria.svg'
 import logoaws from '@/images/logos/aws.png'
 import awsDevOpsBadge from '@/images/logos/aws-certified-devops-engineer-professional.png'
 import logsedwick from '@/images/logos/sedwick.png'
-import { getAllArticles } from '@/lib/article-service'
+import { getAllArticles } from '@/lib/articles/article-service'
 import type { ArticleWithSlug } from '@/lib/types/article.types'
 import { formatDate } from '@/lib/formatDate'
 

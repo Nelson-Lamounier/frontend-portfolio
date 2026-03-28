@@ -1,9 +1,9 @@
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import Home from '@/app/page'
-import About from '@/app/about/page'
-import Projects from '@/app/projects/page'
-import Uses from '@/app/uses/page'
+import Home from '@/app/(site)/page'
+import About from '@/app/(site)/about/page'
+import Projects from '@/app/(site)/projects/page'
+import Uses from '@/app/(site)/uses/page'
 
 // Mock Next.js Image
 jest.mock('next/image', () => ({

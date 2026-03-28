@@ -13,7 +13,7 @@ import { type ReactNode } from 'react'
 
 import { SimpleLayout } from '@/components/layout'
 import { ProjectsList } from '@/components/projects'
-import { getAllArticles } from '@/lib/article-service'
+import { getAllArticles } from '@/lib/articles/article-service'
 import logoAws from '@/images/logos/aws.png'
 
 import {
