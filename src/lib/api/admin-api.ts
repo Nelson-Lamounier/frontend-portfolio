@@ -73,16 +73,41 @@ export interface AdminResumeWithData extends AdminResume {
   readonly data: ResumeData
 }
 
-/** Shape of the publish-draft API response */
+/** Shape of the publish-draft API response (upload-only, non-blocking) */
 export interface PublishDraftResponse {
   readonly success: boolean
   readonly slug: string
   readonly message: string
   readonly error?: string
-  readonly details?: {
-    readonly s3Published: boolean
-    readonly dynamoMetadata: boolean
-  }
+}
+
+/** Pipeline state enumeration — matches pipeline-status API route */
+export type PipelineState =
+  | 'pending'
+  | 'processing'
+  | 'review'
+  | 'published'
+  | 'rejected'
+  | 'failed'
+
+/** Shape of the pipeline-status API response */
+export interface PipelineStatusResponse {
+  readonly slug: string
+  readonly pipelineState: PipelineState
+  readonly s3ReviewExists: boolean
+  readonly dynamoMetadata: boolean
+  readonly title?: string
+  readonly updatedAt?: string
+  readonly statusRaw?: string
+}
+
+/** Shape of the pipeline-action API response */
+export interface PipelineActionResponse {
+  readonly success: boolean
+  readonly slug: string
+  readonly action?: 'approve' | 'reject'
+  readonly message: string
+  readonly error?: string
 }
 
 // =============================================================================
@@ -284,6 +309,42 @@ export async function publishDraft(
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ fileName, content }),
+  })
+}
+
+// =============================================================================
+// PIPELINE FETCHERS
+// =============================================================================
+
+/**
+ * Polls the Bedrock pipeline status for a given article slug.
+ *
+ * @param slug - Article slug to check pipeline status for
+ * @returns Pipeline status response with current state
+ */
+export async function fetchPipelineStatus(
+  slug: string,
+): Promise<PipelineStatusResponse> {
+  return adminFetch<PipelineStatusResponse>(
+    `/api/admin/pipeline-status?slug=${encodeURIComponent(slug)}`,
+  )
+}
+
+/**
+ * Submits an approve or reject action to the Publish Lambda.
+ *
+ * @param slug - Article slug to act on
+ * @param action - Editorial action: 'approve' or 'reject'
+ * @returns Action response with success/failure
+ */
+export async function submitPipelineAction(
+  slug: string,
+  action: 'approve' | 'reject',
+): Promise<PipelineActionResponse> {
+  return adminFetch<PipelineActionResponse>('/api/admin/pipeline-action', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ slug, action }),
   })
 }
 
