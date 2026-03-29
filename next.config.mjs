@@ -17,6 +17,16 @@ const nextConfig = {
     ],
   },
 
+  // Proxy Faro telemetry locally to bypass CORS
+  async rewrites() {
+    return [
+      {
+        source: '/log-proxy',
+        destination: 'https://ops.nelsonlamounier.com/faro/collect',
+      },
+    ]
+  },
+
   // instrumentationHook is built-in since Next.js 15.5 — no longer needed
 
   // Prevent Next.js from bundling gRPC native modules (used by OTLP exporter)
