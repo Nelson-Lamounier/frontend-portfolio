@@ -11,6 +11,10 @@
 import { type Metadata } from 'next'
 import { type ReactNode } from 'react'
 
+// ISR: revalidate every hour so runtime env vars (DYNAMODB_TABLE_NAME)
+// are picked up after the Docker build, which has no DynamoDB access.
+export const revalidate = 3600
+
 import { SimpleLayout } from '@/components/layout'
 import { ProjectsList } from '@/components/projects'
 import { getAllArticles } from '@/lib/articles/article-service'
@@ -87,7 +91,7 @@ export default async function Projects() {
   // Derive categories dynamically from article data
   const uniqueCategories = [
     ...new Set(articles.map((a) => a.category || 'Infrastructure')),
-  ].sort()
+  ].sort((a, b) => a.localeCompare(b))
   const categories = ['All', ...uniqueCategories]
 
   return (
