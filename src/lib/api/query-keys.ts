@@ -52,4 +52,12 @@ export const adminKeys = {
     /** Individual resume detail */
     detail: (id: string) => ['admin', 'resumes', id] as const,
   },
+
+  /** Pipeline-related query keys (Bedrock multi-agent pipeline) */
+  pipeline: {
+    /** All pipeline queries */
+    all: ['admin', 'pipeline'] as const,
+    /** Individual pipeline status by slug */
+    status: (slug: string) => ['admin', 'pipeline', 'status', slug] as const,
+  },
 } as const

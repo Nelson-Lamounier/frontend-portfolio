@@ -37,7 +37,13 @@ export interface ArticleWithSlug extends Article {
   aiSummary?: string
 }
 
-export type ArticleStatus = 'draft' | 'published' | 'archived'
+export type ArticleStatus =
+  | 'draft'
+  | 'processing'
+  | 'review'
+  | 'published'
+  | 'rejected'
+  | 'archived'
 
 // ========================================
 // Article Content Types (from S3)

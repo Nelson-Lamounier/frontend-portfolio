@@ -30,6 +30,7 @@ export function usePublishDraft() {
       publishDraft(fileName, content),
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: adminKeys.articles.all })
+      void queryClient.invalidateQueries({ queryKey: adminKeys.pipeline.all })
     },
   })
 }
