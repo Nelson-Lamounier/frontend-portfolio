@@ -167,45 +167,34 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
 
     /**
      * Controls whether a request is authorised.
-     * Called by the middleware to protect admin routes.
+     *
+     * IMPORTANT: When a custom middleware function is passed to `auth()`,
+     * Auth.js v5 delegates control entirely to that function and does NOT
+     * use the return value of `authorized` for redirect decisions. Route
+     * protection (redirects + 401 responses) is therefore enforced in
+     * `middleware.ts`, not here.
+     *
+     * This callback is retained solely for observability — it logs
+     * unauthenticated access attempts to admin routes.
      *
      * @param params - Auth callback parameters
-     * @returns Whether the request is authorised
+     * @returns Always `true` — enforcement is in middleware.ts
      */
     authorized({ auth: session, request }) {
       const { pathname } = request.nextUrl
-
-      // Protect admin pages and API routes
       const isAdminRoute =
         pathname.startsWith('/admin') && !pathname.startsWith('/admin/login')
       const isAdminApi = pathname.startsWith('/api/admin')
 
-      if (isAdminRoute || isAdminApi) {
-        const isAuthed = !!session?.user
-
-        if (!isAuthed) {
-          authLog({
-            event: 'access_denied',
-            level: 'warn',
-            pathname,
-          })
-
-          // API routes must return JSON errors, not HTML redirects.
-          // Returning false would trigger Auth.js middleware to redirect
-          // to the login page, which breaks client-side fetch() calls
-          // expecting JSON responses.
-          if (isAdminApi) {
-            return Response.json(
-              { error: 'Unauthorised — admin session required' },
-              { status: 401 },
-            )
-          }
-        }
-
-        return isAuthed
+      if ((isAdminRoute || isAdminApi) && !session?.user) {
+        authLog({
+          event: 'access_denied',
+          level: 'warn',
+          pathname,
+        })
       }
 
-      // All other routes are public
+      // Always return true — actual enforcement is in middleware.ts
       return true
     },
   },
