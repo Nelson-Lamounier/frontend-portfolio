@@ -19,7 +19,9 @@
     "migrate:articles:force": "tsx scripts/dynamodb/migrate-articles-to-dynamodb.ts --force-update",
     "migrate:verify-data": "tsx scripts/dynamodb/verify-migration.ts",
     "migrate:add-tag-index": "tsx scripts/dynamodb/add-tag-index.ts",
-    "migrate:add-tag-index:dry-run": "DRY_RUN=true tsx scripts/dynamodb/add-tag-index.ts"
+    "migrate:add-tag-index:dry-run": "DRY_RUN=true tsx scripts/dynamodb/add-tag-index.ts",
+    "seed:resume": "tsx scripts/dynamodb/seed-resume-to-strategist.ts",
+    "seed:resume:dry-run": "tsx scripts/dynamodb/seed-resume-to-strategist.ts --dry-run"
   },
   "browserslist": "defaults, not ie <= 11",
   "dependencies": {

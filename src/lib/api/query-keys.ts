@@ -60,4 +60,16 @@ export const adminKeys = {
     /** Individual pipeline status by slug */
     status: (slug: string) => ['admin', 'pipeline', 'status', slug] as const,
   },
+
+  /** Job Strategist query keys */
+  strategist: {
+    /** All strategist queries */
+    all: ['admin', 'strategist'] as const,
+    /** Application listing by status filter */
+    applications: (status: string) =>
+      ['admin', 'strategist', 'applications', status] as const,
+    /** Individual application detail */
+    detail: (slug: string) =>
+      ['admin', 'strategist', 'detail', slug] as const,
+  },
 } as const

@@ -37,6 +37,7 @@ import {
   X,
   LogOut,
   Bot,
+  Target,
   ExternalLink,
   ChevronDown,
   Activity,
@@ -114,7 +115,8 @@ const NAV_SECTIONS: readonly NavSection[] = [
   {
     label: 'Tools',
     items: [
-      { name: 'AI Agent', href: '/admin/ai-agent', icon: Bot, matchPrefix: '/admin/ai-agent' },
+      { name: 'AI Agent',    href: '/admin/ai-agent',    icon: Bot,    matchPrefix: '/admin/ai-agent' },
+      { name: 'Strategist',  href: '/admin/strategist',  icon: Target, matchPrefix: '/admin/strategist' },
     ],
   },
 ] as const

@@ -397,3 +397,103 @@ export async function deleteResume(id: string): Promise<void> {
     method: 'DELETE',
   })
 }
+
+// =============================================================================
+// STRATEGIST FETCHERS
+// =============================================================================
+
+/** Shape of a strategist application summary for the list endpoint */
+export type { ApplicationSummary } from '@/lib/types/strategist.types'
+
+/** Shape of a full strategist application detail */
+export type { ApplicationDetail } from '@/lib/types/strategist.types'
+
+/** Trigger response from the strategist pipeline */
+export type { TriggerResponse as StrategistTriggerResponse } from '@/lib/types/strategist.types'
+
+/** Status update response */
+export type { StatusUpdateResponse as StrategistStatusResponse } from '@/lib/types/strategist.types'
+
+/**
+ * Fetches strategist applications, optionally filtered by status.
+ *
+ * @param status - Status filter (default: 'all')
+ * @returns Array of application summaries
+ */
+export async function fetchStrategistApplications(
+  status = 'all',
+): Promise<import('@/lib/types/strategist.types').ApplicationSummary[]> {
+  return adminFetch(
+    `/api/admin/strategist/applications?status=${encodeURIComponent(status)}`,
+  )
+}
+
+/**
+ * Fetches full detail for a single strategist application.
+ *
+ * @param slug - Application slug
+ * @returns Full ApplicationDetail
+ */
+export async function fetchStrategistApplication(
+  slug: string,
+): Promise<import('@/lib/types/strategist.types').ApplicationDetail> {
+  return adminFetch(
+    `/api/admin/strategist/applications/${encodeURIComponent(slug)}`,
+  )
+}
+
+/**
+ * Triggers a new strategist analysis pipeline (Research → Strategist).
+ *
+ * @param body - Analysis trigger body (JD, company, role, optional resumeId)
+ * @returns Trigger response with pipelineId and slug
+ */
+export async function triggerStrategistAnalysis(
+  body: import('@/lib/types/strategist.types').AnalyseTriggerBody,
+): Promise<import('@/lib/types/strategist.types').TriggerResponse> {
+  return adminFetch('/api/admin/strategist/trigger', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  })
+}
+
+/**
+ * Triggers the Coach pipeline for a specific interview stage.
+ *
+ * @param body - Coach trigger body (applicationSlug, interviewStage)
+ * @returns Trigger response with pipelineId and slug
+ */
+export async function triggerStrategistCoach(
+  body: import('@/lib/types/strategist.types').CoachTriggerBody,
+): Promise<import('@/lib/types/strategist.types').TriggerResponse> {
+  return adminFetch('/api/admin/strategist/coach', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  })
+}
+
+/**
+ * Updates the lifecycle status of a strategist application.
+ *
+ * @param slug - Application slug
+ * @param status - New status
+ * @param interviewStage - Optional new interview stage
+ * @returns Status update response
+ */
+export async function updateStrategistStatus(
+  slug: string,
+  status: import('@/lib/types/strategist.types').ApplicationStatus,
+  interviewStage?: import('@/lib/types/strategist.types').InterviewStage,
+): Promise<import('@/lib/types/strategist.types').StatusUpdateResponse> {
+  return adminFetch(
+    `/api/admin/strategist/applications/${encodeURIComponent(slug)}/status`,
+    {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ status, interviewStage }),
+    },
+  )
+}
+

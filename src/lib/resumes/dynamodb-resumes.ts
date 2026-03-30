@@ -2,8 +2,13 @@
  * DynamoDB Resumes Data Layer (Server-Side Only)
  *
  * CRUD operations for resume versions stored in DynamoDB.
- * Follows the same single-table design as articles, using
- * RESUME#<id> partition keys.
+ * Uses RESUME#<id> partition keys within the strategist table.
+ *
+ * **Migration note (2026-03):** Resume entities were moved from the
+ * articles table (DYNAMODB_TABLE_NAME) to the strategist table
+ * (STRATEGIST_TABLE_NAME) for domain separation. The pipeline agents
+ * query the strategist table directly for the most up-to-date resume
+ * at invocation time, avoiding Knowledge Base sync delays.
  *
  * Each resume stores the full ResumeData JSON (~10–15 KB),
  * well within DynamoDB's 400 KB item limit.
@@ -13,12 +18,13 @@
  * This module should NEVER be imported from client components.
  *
  * Environment Variables:
- *   DYNAMODB_TABLE_NAME  – required
- *   DYNAMODB_GSI1_NAME   – default: gsi1-status-date
- *   AWS_REGION           – supplied by ECS task metadata
+ *   STRATEGIST_TABLE_NAME – primary table (strategist domain)
+ *   DYNAMODB_TABLE_NAME   – fallback (legacy, pre-migration)
+ *   DYNAMODB_GSI1_NAME    – default: gsi1-status-date
+ *   AWS_REGION            – supplied by ECS task metadata
  */
 
-import { randomUUID } from 'crypto'
+import { randomUUID } from 'node:crypto'
 
 import { DynamoDBClient } from '@aws-sdk/client-dynamodb'
 import {
@@ -87,12 +93,18 @@ export interface ResumeWithData extends ResumeSummary {
 // Configuration
 // ========================================
 
-const TABLE_NAME = process.env.DYNAMODB_TABLE_NAME || ''
+/**
+ * Table name resolution: prefer the strategist table, fall back to
+ * the legacy articles table for environments that haven't migrated yet.
+ */
+const TABLE_NAME =
+  process.env.STRATEGIST_TABLE_NAME || process.env.DYNAMODB_TABLE_NAME || ''
 const GSI1_NAME = process.env.DYNAMODB_GSI1_NAME || 'gsi1-status-date'
 const REGION = process.env.AWS_REGION || 'eu-west-1'
 
 /**
  * Check if DynamoDB is configured for resume operations.
+ * Returns true when either STRATEGIST_TABLE_NAME or DYNAMODB_TABLE_NAME is set.
  */
 export function isResumeDBConfigured(): boolean {
   return !!TABLE_NAME
