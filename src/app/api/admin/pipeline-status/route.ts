@@ -132,6 +132,7 @@ function derivePipelineState(
   // If DynamoDB has a known terminal status, use it directly
   if (dynamoStatus === 'published') return 'published'
   if (dynamoStatus === 'rejected') return 'rejected'
+  if (dynamoStatus === 'failed') return 'failed'
   if (dynamoStatus === 'review') return 'review'
 
   // If still processing but S3 review output exists, pipeline has finished
@@ -146,8 +147,8 @@ function derivePipelineState(
   // No record found — pipeline hasn't started or is very early
   if (!dynamoStatus) return 'pending'
 
-  // Fallback for any other status value
-  return 'processing'
+  // Fallback for any unknown status — treat as failed rather than polling forever
+  return 'failed'
 }
 
 // ---------------------------------------------------------------------------

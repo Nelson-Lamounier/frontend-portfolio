@@ -1088,6 +1088,32 @@ export default function AIAgentPage() {
               </div>
             </div>
           )}
+
+          {/* Polling timeout — pipeline may have failed silently */}
+          {pipelineStatus.timedOut && (
+            <div className="rounded-xl border border-amber-500/20 bg-amber-500/5 p-6">
+              <div className="flex items-start gap-3">
+                <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-amber-500/20">
+                  <Clock className="h-5 w-5 text-amber-400" />
+                </div>
+                <div>
+                  <p className="text-sm font-semibold text-amber-300">
+                    Pipeline polling timed out
+                  </p>
+                  <p className="mt-1 text-xs text-zinc-500">
+                    The pipeline has been running for over 10 minutes without completing.
+                    It may have failed silently. Check the Step Functions console for details.
+                  </p>
+                  <button
+                    onClick={backToMenu}
+                    className="mt-3 rounded-lg bg-zinc-800 px-3 py-1.5 text-xs font-medium text-zinc-300 transition-colours hover:bg-zinc-700"
+                  >
+                    Back to Menu
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
         </div>
       )}
     </div>
