@@ -87,6 +87,7 @@ const MIN_JD_LENGTH = 50
 const STATUS_COLOURS: Record<ApplicationStatus, string> = {
   'analysing': 'bg-violet-500/20 text-violet-300 border-violet-500/30',
   'analysis-ready': 'bg-emerald-500/20 text-emerald-300 border-emerald-500/30',
+  'coaching': 'bg-indigo-500/20 text-indigo-300 border-indigo-500/30',
   'interview-prep': 'bg-sky-500/20 text-sky-300 border-sky-500/30',
   'applied': 'bg-blue-500/20 text-blue-300 border-blue-500/30',
   'interviewing': 'bg-amber-500/20 text-amber-300 border-amber-500/30',
@@ -94,6 +95,7 @@ const STATUS_COLOURS: Record<ApplicationStatus, string> = {
   'accepted': 'bg-green-500/20 text-green-300 border-green-500/30',
   'withdrawn': 'bg-zinc-500/20 text-zinc-400 border-zinc-500/30',
   'rejected': 'bg-red-500/20 text-red-300 border-red-500/30',
+  'failed': 'bg-rose-500/20 text-rose-300 border-rose-500/30',
 }
 
 /** Maps fit rating to Tailwind colour classes */
@@ -124,6 +126,7 @@ const RECOMMENDATION_LABELS: Record<ApplicationRecommendation, string> = {
 const STATUS_LABELS: Record<ApplicationStatus, string> = {
   'analysing': 'Analysing',
   'analysis-ready': 'Ready',
+  'coaching': 'Coaching',
   'interview-prep': 'Interview Prep',
   'applied': 'Applied',
   'interviewing': 'Interviewing',
@@ -131,6 +134,7 @@ const STATUS_LABELS: Record<ApplicationStatus, string> = {
   'accepted': 'Accepted',
   'withdrawn': 'Withdrawn',
   'rejected': 'Rejected',
+  'failed': 'Failed',
 }
 
 // =============================================================================

@@ -22,6 +22,7 @@
 export type ApplicationStatus =
   | 'analysing'
   | 'analysis-ready'
+  | 'coaching'
   | 'interview-prep'
   | 'applied'
   | 'interviewing'
@@ -29,6 +30,7 @@ export type ApplicationStatus =
   | 'accepted'
   | 'withdrawn'
   | 'rejected'
+  | 'failed'
 
 /**
  * Interview stage progression.
