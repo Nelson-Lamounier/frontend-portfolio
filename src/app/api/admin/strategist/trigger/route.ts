@@ -79,6 +79,9 @@ function validateBody(body: Partial<AnalyseTriggerBody>): string | null {
   if (body.resumeId !== undefined && typeof body.resumeId !== 'string') {
     return 'resumeId must be a string when provided'
   }
+  if (body.includeCoverLetter !== undefined && typeof body.includeCoverLetter !== 'boolean') {
+    return 'includeCoverLetter must be a boolean when provided'
+  }
   return null
 }
 
@@ -155,6 +158,7 @@ export async function POST(
             targetRole: body.targetRole.trim(),
             interviewStage: body.interviewStage ?? 'applied',
             ...(body.resumeId ? { resumeId: body.resumeId } : {}),
+            includeCoverLetter: body.includeCoverLetter ?? true,
           }),
           requestContext: {
             http: { method: 'POST' },

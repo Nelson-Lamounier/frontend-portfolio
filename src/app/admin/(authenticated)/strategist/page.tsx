@@ -56,6 +56,7 @@ const STATUS_FILTER_OPTIONS: readonly { value: ApplicationStatus | 'all'; label:
   { value: 'all', label: 'All Applications' },
   { value: 'analysing', label: 'Analysing' },
   { value: 'analysis-ready', label: 'Analysis Ready' },
+  { value: 'failed', label: 'Failed' },
   { value: 'interview-prep', label: 'Interview Prep' },
   { value: 'applied', label: 'Applied' },
   { value: 'interviewing', label: 'Interviewing' },
@@ -286,6 +287,7 @@ function NewAnalysisPanel({
   const [targetRole, setTargetRole] = useState('')
   const [interviewStage, setInterviewStage] = useState<InterviewStage>('applied')
   const [selectedResumeId, setSelectedResumeId] = useState<string>('')
+  const [includeCoverLetter, setIncludeCoverLetter] = useState(true)
 
   // Pre-select the active resume when versions load
   const activeResume = resumeVersions?.find((r) => r.isActive)
@@ -305,6 +307,7 @@ function NewAnalysisPanel({
         targetRole: targetRole.trim(),
         interviewStage,
         resumeId: effectiveResumeId || undefined,
+        includeCoverLetter,
       },
       {
         onSuccess: () => {
@@ -459,6 +462,20 @@ function NewAnalysisPanel({
                 </select>
               )}
             </div>
+          </div>
+
+          {/* Options row */}
+          <div className="mt-5 flex items-center gap-2 px-1">
+            <input
+              id="include-cover-letter"
+              type="checkbox"
+              checked={includeCoverLetter}
+              onChange={(e) => setIncludeCoverLetter(e.target.checked)}
+              className="h-4 w-4 rounded border-zinc-700 bg-zinc-800 text-violet-600 focus:ring-violet-500/20 focus:ring-offset-0 focus:ring-offset-zinc-900"
+            />
+            <label htmlFor="include-cover-letter" className="text-sm font-medium text-zinc-300">
+              Generate Cover Letter
+            </label>
           </div>
 
           {/* Job Description textarea */}

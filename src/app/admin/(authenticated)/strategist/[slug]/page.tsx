@@ -45,6 +45,7 @@ import { useStrategistDetail } from '@/lib/hooks/use-strategist-detail'
 import { useStrategistStatus } from '@/lib/hooks/use-strategist-status'
 import { useStrategistCoach } from '@/lib/hooks/use-strategist-coach'
 import { useStrategistStore, type StrategistDetailTab } from '@/lib/stores/strategist-store'
+import { ResumeDocument } from '@/components/resume/ResumeDocument'
 import type {
   ApplicationDetail,
   ApplicationStatus,
@@ -62,6 +63,7 @@ import type {
 const TABS: readonly { id: StrategistDetailTab; label: string }[] = [
   { id: 'overview', label: 'Overview' },
   { id: 'skills', label: 'Skills Matrix' },
+  { id: 'tailored-resume', label: 'Tailored Resume' },
   { id: 'cover-letter', label: 'Cover Letter' },
   { id: 'interview-prep', label: 'Interview Prep' },
 ]
@@ -734,6 +736,172 @@ function ResumeSuggestionsPanel({ suggestions }: { readonly suggestions: ResumeS
 }
 
 /**
+ * Tailored Resume tab — visually renders the generated resume with PDF download.
+ *
+ * @param props - Component props
+ * @param props.detail - Application detail
+ * @returns Tailored resume tab JSX
+ */
+function TailoredResumeTab({ detail }: { readonly detail: ApplicationDetail }) {
+  const [downloading, setDownloading] = useState(false)
+  const resumeData = detail.analysis?.tailoredResume
+
+  const handleDownload = useCallback(async () => {
+    if (downloading || !resumeData) return
+    setDownloading(true)
+
+    try {
+      const [html2canvasModule, jspdfModule, domBuilderModule] = await Promise.all([
+        import('html2canvas'),
+        import('jspdf'),
+        import('@/lib/resumes/resume-dom-builder'),
+      ])
+      const html2canvas = html2canvasModule.default
+      const { jsPDF } = jspdfModule
+      const { buildResumeDomForPdf, A4_WIDTH, A4_HEIGHT, PDF_BG } = domBuilderModule
+
+      const container = document.createElement('div')
+      container.style.position = 'fixed'
+      container.style.left = '-9999px'
+      container.style.top = '0'
+      container.style.zIndex = '-9999'
+      document.body.appendChild(container)
+
+      const resumeEl = buildResumeDomForPdf(resumeData)
+      container.appendChild(resumeEl)
+
+      await new Promise((resolve) => requestAnimationFrame(resolve))
+      await new Promise((resolve) => setTimeout(resolve, 200))
+
+      const actualHeight = resumeEl.scrollHeight
+      const canvas = await html2canvas(resumeEl, {
+        scale: 2,
+        useCORS: true,
+        logging: false,
+        backgroundColor: PDF_BG,
+        width: A4_WIDTH,
+        height: actualHeight,
+      })
+
+      const pdf = new jsPDF({
+        orientation: 'portrait',
+        unit: 'mm',
+        format: 'a4',
+      })
+
+      const pdfWidth = pdf.internal.pageSize.getWidth()
+      const pdfHeight = pdf.internal.pageSize.getHeight()
+      const pageCount = Math.round(actualHeight / A4_HEIGHT)
+
+      for (let page = 0; page < pageCount; page++) {
+        if (page > 0) pdf.addPage()
+
+        const srcY = page * (A4_HEIGHT * 2)
+        const srcH = Math.min(A4_HEIGHT * 2, canvas.height - srcY)
+
+        const pageCanvas = document.createElement('canvas')
+        pageCanvas.width = A4_WIDTH * 2
+        pageCanvas.height = A4_HEIGHT * 2
+
+        const ctx = pageCanvas.getContext('2d')
+        if (ctx) {
+          ctx.fillStyle = PDF_BG
+          ctx.fillRect(0, 0, pageCanvas.width, pageCanvas.height)
+          ctx.drawImage(
+            canvas,
+            0,
+            srcY,
+            A4_WIDTH * 2,
+            srcH,
+            0,
+            0,
+            A4_WIDTH * 2,
+            srcH
+          )
+        }
+
+        const pageImgData = pageCanvas.toDataURL('image/png')
+        pdf.addImage(pageImgData, 'PNG', 0, 0, pdfWidth, pdfHeight)
+      }
+
+      const pdfBlob = pdf.output('blob')
+      const blobUrl = URL.createObjectURL(pdfBlob)
+      const downloadLink = document.createElement('a')
+      downloadLink.href = blobUrl
+      downloadLink.download = `Tailored_Resume_${detail.targetCompany.replace(/\s+/g, '_')}.pdf`
+      document.body.appendChild(downloadLink)
+      downloadLink.click()
+      document.body.removeChild(downloadLink)
+
+      setTimeout(() => URL.revokeObjectURL(blobUrl), 1000)
+      document.body.removeChild(container)
+      
+      const { trackResumeDownload } = await import('@/lib/observability/analytics')
+      trackResumeDownload()
+    } catch (error) {
+      // eslint-disable-next-line no-console
+      console.error('Resume PDF generation failed:', error)
+      alert('Failed to generate resume PDF. Please try again.')
+    } finally {
+      setDownloading(false)
+    }
+  }, [downloading, resumeData, detail.targetCompany])
+
+  if (!resumeData) {
+    return (
+      <div className="flex flex-col items-center justify-center py-16 text-zinc-500">
+        <Loader2 className="mb-3 h-8 w-8 animate-spin text-violet-400" />
+        <p>Tailored resume generation in progress…</p>
+      </div>
+    )
+  }
+
+  return (
+    <div className="space-y-8">
+      <div className="rounded-2xl border border-violet-500/20 bg-gradient-to-br from-violet-500/5 via-zinc-900 to-zinc-900 shadow-lg shadow-violet-500/5">
+        <div className="flex items-center justify-between border-b border-violet-500/10 px-6 py-4">
+          <div className="flex items-center gap-3">
+            <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-violet-500/20">
+              <ScrollText className="h-4.5 w-4.5 text-violet-400" />
+            </div>
+            <div>
+              <h3 className="text-base font-semibold text-zinc-100">
+                Tailored Resume
+              </h3>
+              <p className="text-xs text-zinc-500">
+                Optimised for {detail.targetCompany} — {detail.targetRole}
+              </p>
+            </div>
+          </div>
+          <button
+            type="button"
+            onClick={handleDownload}
+            disabled={downloading}
+            className="inline-flex items-center gap-1.5 rounded-lg border border-zinc-700 bg-zinc-800
+                       px-3 py-2 text-xs font-medium text-zinc-300 transition hover:bg-zinc-700 hover:text-zinc-100 disabled:opacity-50"
+          >
+            {downloading ? (
+              <Loader2 className="h-3.5 w-3.5 animate-spin" />
+            ) : (
+              <Download className="h-3.5 w-3.5" />
+            )}
+            {downloading ? 'Generating PDF…' : 'Download PDF'}
+          </button>
+        </div>
+        <div className="px-6 py-8 overflow-x-auto flex justify-center">
+          {/* Scaled-down preview wrapper */}
+          <div className="origin-top scale-[0.6] sm:scale-[0.8] md:scale-100 transition-transform">
+            <div className="flex flex-col gap-6 [&>div>div]:rounded-lg [&>div>div]:shadow-2xl [&>div>div]:ring-1 [&>div>div]:ring-black/5">
+              <ResumeDocument data={resumeData} />
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+/**
  * Interview Prep tab — stage-specific questions, checklist, coaching notes.
  *
  * @param props - Component props
@@ -1128,7 +1296,7 @@ export default function StrategistDetailPage(props: PageProps) {
       {/* Tabs */}
       <div className="mb-6 border-b border-zinc-700/50">
         <nav className="-mb-px flex gap-6" aria-label="Application detail tabs">
-          {TABS.map((tab) => (
+          {TABS.filter((tab) => tab.id !== 'cover-letter' || detail.analysis?.coverLetter).map((tab) => (
             <button
               key={tab.id}
               type="button"
@@ -1149,7 +1317,8 @@ export default function StrategistDetailPage(props: PageProps) {
       <div className="pb-16">
         {activeTab === 'overview' && <OverviewTab detail={detail} />}
         {activeTab === 'skills' && <SkillsTab detail={detail} />}
-        {activeTab === 'cover-letter' && <CoverLetterTab detail={detail} />}
+        {activeTab === 'tailored-resume' && <TailoredResumeTab detail={detail} />}
+        {activeTab === 'cover-letter' && detail.analysis?.coverLetter && <CoverLetterTab detail={detail} />}
         {activeTab === 'interview-prep' && <InterviewPrepTab detail={detail} />}
       </div>
     </div>

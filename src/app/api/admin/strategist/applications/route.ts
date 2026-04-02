@@ -38,6 +38,7 @@ const GSI1_INDEX = 'gsi1-status-date'
 const VALID_STATUSES: ReadonlySet<string> = new Set([
   'analysing',
   'analysis-ready',
+  'failed',
   'interview-prep',
   'applied',
   'interviewing',
@@ -92,7 +93,7 @@ async function queryByStatus(status: string): Promise<ApplicationSummary[]> {
   const result = await getDocClient().send(command)
 
   return (result.Items ?? []).map((item) => ({
-    slug: String(item['slug'] ?? ''),
+    slug: String(item['applicationSlug'] ?? item['slug'] ?? ''),
     targetCompany: String(item['targetCompany'] ?? ''),
     targetRole: String(item['targetRole'] ?? ''),
     status: String(item['status'] ?? 'analysing') as ApplicationStatus,

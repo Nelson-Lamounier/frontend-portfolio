@@ -330,13 +330,30 @@ export async function queryArticlesByTag(
 }
 
 /**
- * Fetch all draft articles, sorted by date descending.
+ * Non-published GSI1 partition keys the Drafts tab should include.
  *
- * Uses GSI1 with `STATUS#draft` partition key.
- * Falls back to a Scan if the GSI query returns no results
- * (handles cases where the GSI hasn't been populated yet).
+ * The Bedrock pipeline writes `STATUS#review` for QA-passed articles;
+ * manual drafts use `STATUS#draft`. Both must appear in the admin
+ * Drafts listing so nothing is invisible.
+ */
+const DRAFT_GSI1_PARTITIONS = ['STATUS#draft', 'STATUS#review'] as const
+
+/**
+ * Matching `status` attribute values for the Scan fallback.
+ */
+const DRAFT_STATUS_VALUES = ['draft', 'review'] as const
+
+/**
+ * Fetch all non-published articles (draft + review), sorted by date descending.
  *
- * @returns Array of draft articles awaiting review
+ * Strategy: fires one GSI1 Query per partition key in parallel,
+ * merges the results, then deduplicates by slug. Falls back to a
+ * Scan if every GSI1 Query fails (e.g. index not yet provisioned).
+ *
+ * Results are cached in-memory for 30 s (short TTL because the
+ * admin is actively working with these articles).
+ *
+ * @returns Array of non-published articles awaiting review or editing
  */
 export async function queryDraftArticles(): Promise<ArticleWithSlug[]> {
   const cacheKey = 'draft-articles'
@@ -350,45 +367,70 @@ export async function queryDraftArticles(): Promise<ArticleWithSlug[]> {
   const docClient = getDocClient()
   const start = Date.now()
 
-  // Try GSI1 first
+  // Try GSI1 — one Query per partition key, executed in parallel
   try {
-    const result = await docClient.send(
-      new QueryCommand({
-        TableName: TABLE_NAME,
-        IndexName: GSI1_NAME,
-        KeyConditionExpression: 'gsi1pk = :pk',
-        ExpressionAttributeValues: {
-          ':pk': 'STATUS#draft',
-        },
-        ScanIndexForward: false,
-      }),
+    const gsiResults = await Promise.all(
+      DRAFT_GSI1_PARTITIONS.map((pk) =>
+        docClient.send(
+          new QueryCommand({
+            TableName: TABLE_NAME,
+            IndexName: GSI1_NAME,
+            KeyConditionExpression: 'gsi1pk = :pk',
+            FilterExpression: 'sk = :metaSk',
+            ExpressionAttributeValues: {
+              ':pk': pk,
+              ':metaSk': 'METADATA',
+            },
+            ScanIndexForward: false,
+          }),
+        ),
+      ),
     )
 
     trackDynamoDB('Query', 'gsi1', (Date.now() - start) / 1000)
 
-    if (result.Items && result.Items.length > 0) {
-      const articles = result.Items.map((item) =>
-        entityToArticle(item as ArticleMetadataEntity),
-      )
-      cache.set(cacheKey, articles, 30_000) // Short TTL for drafts (30s)
-      return articles
+    // Debug: log per-partition counts
+    DRAFT_GSI1_PARTITIONS.forEach((pk, i) => {
+      const count = gsiResults[i].Items?.length ?? 0
+      console.log(`[dynamodb] queryDraftArticles GSI1 ${pk} → ${count} items`)
+    })
+
+    // Merge and deduplicate by slug
+    const seen = new Set<string>()
+    const merged: ArticleWithSlug[] = []
+
+    for (const result of gsiResults) {
+      for (const item of result.Items ?? []) {
+        const article = entityToArticle(item as ArticleMetadataEntity)
+        if (!seen.has(article.slug)) {
+          seen.add(article.slug)
+          merged.push(article)
+        }
+      }
+    }
+
+    if (merged.length > 0) {
+      merged.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
+      cache.set(cacheKey, merged, 30_000)
+      return merged
     }
   } catch {
     console.warn('[dynamodb] GSI1 unavailable for drafts, falling back to Scan')
   }
 
-  // Fallback: Scan filtered by status=draft
+  // Fallback: Scan filtered by status IN (draft, review)
   const scanStart = Date.now()
   const scanResult = await docClient.send(
     new ScanCommand({
       TableName: TABLE_NAME,
-      FilterExpression: 'sk = :sk AND #status = :status',
+      FilterExpression: 'sk = :sk AND #status IN (:s1, :s2)',
       ExpressionAttributeNames: {
         '#status': 'status',
       },
       ExpressionAttributeValues: {
         ':sk': 'METADATA',
-        ':status': 'draft',
+        ':s1': DRAFT_STATUS_VALUES[0],
+        ':s2': DRAFT_STATUS_VALUES[1],
       },
     }),
   )

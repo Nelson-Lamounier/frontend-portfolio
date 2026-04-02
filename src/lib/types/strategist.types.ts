@@ -11,6 +11,8 @@
  * - Page components (rendering pipeline output)
  */
 
+import type { ResumeData } from '../resumes/resume-data'
+
 // =============================================================================
 // ENUMS / UNION TYPES
 // =============================================================================
@@ -86,6 +88,8 @@ export interface AnalyseTriggerBody {
   readonly interviewStage?: InterviewStage
   /** Resume version ID — undefined means use the active resume */
   readonly resumeId?: string
+  /** Whether to generate a cover letter — defaults to true */
+  readonly includeCoverLetter?: boolean
 }
 
 /**
@@ -274,12 +278,14 @@ export interface ResumeSuggestions {
 export interface AnalysisOutput {
   /** Full XML analysis document */
   readonly analysisXml: string
-  /** Generated cover letter (plain text or Markdown) */
-  readonly coverLetter: string
+  /** Generated cover letter (plain text or Markdown). Null if skipped. */
+  readonly coverLetter: string | null
   /** Structured analysis metadata */
   readonly metadata: AnalysisMetadata
   /** Resume modification suggestions */
   readonly resumeSuggestions: ResumeSuggestions
+  /** Generated tailored resume from the Strategist Agent */
+  readonly tailoredResume?: ResumeData
 }
 
 /** Interview question from the Coach Agent */

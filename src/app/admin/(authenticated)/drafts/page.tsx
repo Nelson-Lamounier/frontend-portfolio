@@ -52,8 +52,8 @@ export default function AdminDraftsPage() {
 
   // Derived state
   const error = queryError?.message ?? null
-  const drafts = articles?.drafts ?? []
-  const published = articles?.published ?? []
+  const drafts = [...(articles?.drafts ?? [])].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
+  const published = [...(articles?.published ?? [])].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
   const currentList = activeTab === 'drafts' ? drafts : published
 
   /**
@@ -201,7 +201,7 @@ export default function AdminDraftsPage() {
               </p>
             </div>
           ) : (
-            <div className="space-y-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
               {currentList.map((article) => (
                 <ArticleCard
                   key={article.slug}
@@ -272,18 +272,25 @@ function ArticleCard({ article, isDraft, isMutating, onPublish, onUnpublish, onD
   }
 
   return (
-    <div className="rounded-2xl border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-800/50 p-6 transition-shadow hover:shadow-lg">
+    <div className="flex flex-col h-full rounded-2xl border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-800/50 p-6 transition-shadow hover:shadow-lg">
       {/* Status + Meta Row */}
       <div className="flex items-center justify-between mb-3">
-        <span
-          className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${
-            isDraft
-              ? 'bg-amber-100 dark:bg-amber-900/30 text-amber-800 dark:text-amber-300'
-              : 'bg-teal-100 dark:bg-teal-900/30 text-teal-800 dark:text-teal-300'
-          }`}
-        >
-          {isDraft ? 'Draft' : 'Published'}
-        </span>
+        <div className="flex items-center gap-2">
+          <span
+            className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${
+              isDraft
+                ? 'bg-amber-100 dark:bg-amber-900/30 text-amber-800 dark:text-amber-300'
+                : 'bg-teal-100 dark:bg-teal-900/30 text-teal-800 dark:text-teal-300'
+            }`}
+          >
+            {isDraft ? 'Draft' : 'Published'}
+          </span>
+          {article.version && (
+            <span className="inline-flex items-center rounded-full bg-zinc-100 dark:bg-zinc-800 px-2 py-0.5 text-[10px] font-medium text-zinc-600 dark:text-zinc-400 border border-zinc-200 dark:border-zinc-700">
+              v{article.version}
+            </span>
+          )}
+        </div>
         {article.readingTimeMinutes && (
           <span className="text-xs text-zinc-400 dark:text-zinc-500">
             {article.readingTimeMinutes} min read
@@ -371,7 +378,7 @@ function ArticleCard({ article, isDraft, isMutating, onPublish, onUnpublish, onD
       </div>
 
       {/* Actions */}
-      <div className="mt-5 flex items-center gap-3">
+      <div className="mt-auto pt-5 flex flex-wrap items-center gap-3">
         <a
           href={`/articles/${article.slug}`}
           target="_blank"

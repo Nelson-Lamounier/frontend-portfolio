@@ -32,7 +32,7 @@ export const ArticleMetadataSchema = z.object({
   contentRef: z.string().min(1),
   readingTimeMinutes: z.number().int().positive().optional(),
   githubUrl: z.string().url().optional(),
-  status: z.enum(['draft', 'published', 'archived']).default('published'),
+  status: z.enum(['draft', 'processing', 'review', 'published', 'rejected', 'archived']).default('published'),
 })
 
 /** Inferred type from Zod — use this instead of manually defining */

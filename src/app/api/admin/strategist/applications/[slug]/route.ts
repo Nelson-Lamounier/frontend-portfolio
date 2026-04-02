@@ -19,6 +19,7 @@ import { DynamoDBClient } from '@aws-sdk/client-dynamodb'
 import { DynamoDBDocumentClient, QueryCommand } from '@aws-sdk/lib-dynamodb'
 import { auth } from '@/lib/auth'
 import type { ApplicationDetail, AnalysisMetadata, ResumeSuggestions } from '@/lib/types/strategist.types'
+import type { ResumeData } from '@/lib/resumes/resume-data'
 
 // ---------------------------------------------------------------------------
 // Constants
@@ -154,7 +155,7 @@ function assembleDetail(
     analysis: analysisRecord
       ? {
           analysisXml: String(analysisRecord['analysisXml'] ?? ''),
-          coverLetter: String(analysisRecord['coverLetter'] ?? ''),
+          coverLetter: analysisRecord['coverLetter'] ? String(analysisRecord['coverLetter']) : null,
           metadata: (analysisRecord['analysisMetadata'] ?? {
             overallFitRating: 'STRETCH' as const,
             applicationRecommendation: 'APPLY_WITH_CAVEATS' as const,
@@ -165,6 +166,7 @@ function assembleDetail(
             eslCorrections: 0,
             summary: '',
           }) as ResumeSuggestions,
+          tailoredResume: (analysisRecord['tailoredResume'] ?? undefined) as ResumeData | undefined,
         }
       : null,
     interviewPrep: (interviewRecord?.['coaching'] ?? null) as ApplicationDetail['interviewPrep'],

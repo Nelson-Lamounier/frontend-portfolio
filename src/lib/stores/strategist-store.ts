@@ -19,6 +19,7 @@ import type { ApplicationStatus } from '@/lib/types/strategist.types'
 export type StrategistDetailTab =
   | 'overview'
   | 'skills'
+  | 'tailored-resume'
   | 'cover-letter'
   | 'interview-prep'
 
