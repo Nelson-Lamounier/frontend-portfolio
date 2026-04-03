@@ -156,7 +156,6 @@ export async function POST(
             jobDescription: body.jobDescription,
             targetCompany: body.targetCompany.trim(),
             targetRole: body.targetRole.trim(),
-            interviewStage: body.interviewStage ?? 'applied',
             ...(body.resumeId ? { resumeId: body.resumeId } : {}),
             includeCoverLetter: body.includeCoverLetter ?? true,
           }),
@@ -192,6 +191,20 @@ export async function POST(
       return NextResponse.json(
         { error: 'Empty response from Trigger Lambda' },
         { status: 502 },
+      )
+    }
+
+    if (responsePayload.statusCode && responsePayload.statusCode >= 400) {
+      let errorMessage = 'Lambda trigger failed'
+      try {
+        const parsed = JSON.parse(responsePayload.body)
+        errorMessage = parsed.error || errorMessage
+      } catch {
+        errorMessage = responsePayload.body
+      }
+      return NextResponse.json(
+        { error: errorMessage },
+        { status: responsePayload.statusCode },
       )
     }
 

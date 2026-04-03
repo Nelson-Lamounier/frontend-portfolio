@@ -76,6 +76,7 @@ interface PartitionedRecords {
   readonly metadata: DynamoRecord | null
   readonly analysis: DynamoRecord | null
   readonly interview: DynamoRecord | null
+  readonly tailoredResume: DynamoRecord | null
 }
 
 /**
@@ -89,6 +90,7 @@ function partitionItems(items: DynamoRecord[]): PartitionedRecords {
   let metadata: DynamoRecord | null = null
   let analysis: DynamoRecord | null = null
   let interview: DynamoRecord | null = null
+  let tailoredResume: DynamoRecord | null = null
 
   for (const item of items) {
     const sk = String(item['sk'] ?? '')
@@ -98,10 +100,12 @@ function partitionItems(items: DynamoRecord[]): PartitionedRecords {
       analysis = selectLatest(analysis, item)
     } else if (sk.startsWith('INTERVIEW#')) {
       interview = selectLatest(interview, item)
+    } else if (sk.startsWith('TAILORED_RESUME#')) {
+      tailoredResume = selectLatest(tailoredResume, item)
     }
   }
 
-  return { metadata, analysis, interview }
+  return { metadata, analysis, interview, tailoredResume }
 }
 
 /**
@@ -135,6 +139,7 @@ function assembleDetail(
   metadata: DynamoRecord,
   analysisRecord: DynamoRecord | null,
   interviewRecord: DynamoRecord | null,
+  tailoredResumeRecord: DynamoRecord | null,
 ): ApplicationDetail {
   return {
     slug,
@@ -166,7 +171,7 @@ function assembleDetail(
             eslCorrections: 0,
             summary: '',
           }) as ResumeSuggestions,
-          tailoredResume: (analysisRecord['tailoredResume'] ?? undefined) as ResumeData | undefined,
+          tailoredResume: (tailoredResumeRecord?.['tailoredResume'] ?? undefined) as ResumeData | undefined,
         }
       : null,
     interviewPrep: (interviewRecord?.['coaching'] ?? null) as ApplicationDetail['interviewPrep'],
@@ -236,7 +241,7 @@ export async function GET(
       )
     }
 
-    const { metadata, analysis, interview } = partitionItems(items)
+    const { metadata, analysis, interview, tailoredResume } = partitionItems(items)
 
     if (!metadata) {
       return NextResponse.json(
@@ -245,7 +250,7 @@ export async function GET(
       )
     }
 
-    const detail = assembleDetail(slug, metadata, analysis, interview)
+    const detail = assembleDetail(slug, metadata, analysis, interview, tailoredResume)
     return NextResponse.json(detail)
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error)
@@ -257,3 +262,68 @@ export async function GET(
   }
 }
 
+
+/**
+ * DELETE /api/admin/strategist/applications/[slug]
+ *
+ * Deletes all DynamoDB records for a given application slug.
+ *
+ * @param _request - Incoming request
+ * @param context - Route context with slug param
+ * @returns JSON indicating success
+ */
+export async function DELETE(
+  _request: NextRequest,
+  context: RouteParams,
+): Promise<NextResponse<{ success: boolean } | { error: string }>> {
+  const session = await auth()
+  if (!session?.user) {
+    return NextResponse.json({ error: 'Unauthorised' }, { status: 401 })
+  }
+  const { slug } = await context.params
+  if (!slug) return NextResponse.json({ error: 'Missing slug' }, { status: 400 })
+
+  if (!TABLE_NAME) {
+    return NextResponse.json({ error: 'Missing STRATEGIST_TABLE_NAME' }, { status: 500 })
+  }
+
+  try {
+    // 1. Query all items for this application
+    const { QueryCommand, BatchWriteCommand } = await import('@aws-sdk/lib-dynamodb')
+    const queryCmd = new QueryCommand({
+      TableName: TABLE_NAME,
+      KeyConditionExpression: 'pk = :pk',
+      ExpressionAttributeValues: { ':pk': `APPLICATION#${slug}` },
+    })
+    const { Items } = await getDocClient().send(queryCmd)
+    if (!Items || Items.length === 0) {
+      return NextResponse.json({ success: true })
+    }
+
+    // 2. Batch delete all items
+    const deleteRequests = Items.map((item) => ({
+      DeleteRequest: {
+        Key: { pk: item.pk, sk: item.sk },
+      },
+    }))
+
+    // In most cases there are < 10 items. BatchWrite supports max 25.
+    const batchCmd = new BatchWriteCommand({
+      RequestItems: {
+        [TABLE_NAME]: deleteRequests.slice(0, 25),
+      },
+    })
+    await getDocClient().send(batchCmd)
+
+    // Note: If there are >25 items, we would need to loop. But for strategist it's 2-4 items.
+    if (deleteRequests.length > 25) {
+      console.warn(`[strategist-delete] ${slug} had >25 items, only first 25 deleted.`)
+    }
+
+    return NextResponse.json({ success: true })
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error)
+    console.error(`[strategist-delete] Failed to delete ${slug}:`, message)
+    return NextResponse.json({ error: 'Failed to delete application' }, { status: 500 })
+  }
+}

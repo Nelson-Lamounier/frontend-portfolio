@@ -15,7 +15,7 @@
 
 'use client'
 
-import { useCallback, useState } from 'react'
+import { useCallback, useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import {
   Target,
@@ -34,8 +34,13 @@ import {
   FileText,
   Sparkles,
   ScrollText,
+  Trash2,
+  RotateCw,
 } from 'lucide-react'
-import { useStrategistApplications } from '@/lib/hooks/use-strategist-applications'
+import {
+  useStrategistApplications,
+  useDeleteStrategistApplication,
+} from '@/lib/hooks/use-strategist-applications'
 import { useStrategistTrigger } from '@/lib/hooks/use-strategist-trigger'
 import { useResumeVersions } from '@/lib/hooks/use-resume-versions'
 import { useStrategistStore } from '@/lib/stores/strategist-store'
@@ -191,9 +196,13 @@ function FitRatingChip({ rating }: { readonly rating: FitRating }) {
 function ApplicationCard({
   app,
   onClick,
+  onDeleteClick,
+  onResendClick,
 }: {
   readonly app: ApplicationSummary
   readonly onClick: () => void
+  readonly onDeleteClick?: (e: React.MouseEvent) => void
+  readonly onResendClick?: (e: React.MouseEvent) => void
 }) {
   const dateStr = new Date(app.createdAt).toLocaleDateString('en-GB', {
     day: 'numeric',
@@ -202,12 +211,19 @@ function ApplicationCard({
   })
 
   return (
-    <button
-      type="button"
+    <div
+      role="button"
+      tabIndex={0}
       onClick={onClick}
+      onKeyDown={(e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault()
+          onClick()
+        }
+      }}
       className="group w-full rounded-xl border border-zinc-700/50 bg-zinc-800/60 p-5
                  text-left transition-all duration-200 hover:border-violet-500/40
-                 hover:bg-zinc-800/80 hover:shadow-lg hover:shadow-violet-500/5"
+                 hover:bg-zinc-800/80 hover:shadow-lg hover:shadow-violet-500/5 focus:outline-none focus:ring-2 focus:ring-violet-500"
     >
       {/* Header row */}
       <div className="flex items-start justify-between">
@@ -250,7 +266,29 @@ function ApplicationCard({
           </span>
         )}
       </div>
-    </button>
+
+      {/* Failed actions */}
+      {app.status === 'failed' && (
+        <div className="mt-4 flex items-center justify-end gap-2 border-t border-zinc-700/50 pt-3">
+          <button
+            type="button"
+            onClick={onDeleteClick}
+            className="flex items-center gap-1.5 rounded-lg border border-zinc-700 bg-zinc-800/80 px-3 py-1.5 text-xs font-medium text-zinc-400 transition-colors hover:border-red-500/50 hover:bg-red-500/10 hover:text-red-400"
+          >
+            <Trash2 className="h-3.5 w-3.5" />
+            Delete
+          </button>
+          <button
+            type="button"
+            onClick={onResendClick}
+            className="flex items-center gap-1.5 rounded-lg bg-violet-600/20 px-3 py-1.5 text-xs font-medium text-violet-400 transition-colors hover:bg-violet-600/30"
+          >
+            <RotateCw className="h-3.5 w-3.5" />
+            Resend
+          </button>
+        </div>
+      )}
+    </div>
   )
 }
 
@@ -289,6 +327,52 @@ function NewAnalysisPanel({
   const [selectedResumeId, setSelectedResumeId] = useState<string>('')
   const [includeCoverLetter, setIncludeCoverLetter] = useState(true)
 
+  // Listen for external retry events
+  useEffect(() => {
+    const handleRetry = (e: Event) => {
+      const customEvent = e as CustomEvent
+      const { targetCompany, targetRole, interviewStage } = customEvent.detail
+      if (targetCompany) setTargetCompany(targetCompany)
+      if (targetRole) setTargetRole(targetRole)
+      if (interviewStage) setInterviewStage(interviewStage)
+    }
+    window.addEventListener('strategist-retry', handleRetry)
+    return () => window.removeEventListener('strategist-retry', handleRetry)
+  }, [])
+
+  // Auto-restore form draft on mount
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+    const saved = localStorage.getItem('strategist-form-draft')
+    if (saved) {
+      try {
+        const parsed = JSON.parse(saved)
+        if (parsed.jobDescription) setJobDescription(parsed.jobDescription)
+        if (parsed.targetCompany) setTargetCompany(parsed.targetCompany)
+        if (parsed.targetRole) setTargetRole(parsed.targetRole)
+        if (parsed.interviewStage) setInterviewStage(parsed.interviewStage)
+        if (parsed.selectedResumeId) setSelectedResumeId(parsed.selectedResumeId)
+        if (typeof parsed.includeCoverLetter === 'boolean') setIncludeCoverLetter(parsed.includeCoverLetter)
+      } catch (e) {
+        // Ignored
+      }
+    }
+  }, [])
+
+  // Auto-save form draft on change
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+    const draft = {
+      jobDescription,
+      targetCompany,
+      targetRole,
+      interviewStage,
+      selectedResumeId,
+      includeCoverLetter,
+    }
+    localStorage.setItem('strategist-form-draft', JSON.stringify(draft))
+  }, [jobDescription, targetCompany, targetRole, interviewStage, selectedResumeId, includeCoverLetter])
+
   // Pre-select the active resume when versions load
   const activeResume = resumeVersions?.find((r) => r.isActive)
   const effectiveResumeId = selectedResumeId || activeResume?.resumeId || ''
@@ -311,6 +395,7 @@ function NewAnalysisPanel({
       },
       {
         onSuccess: () => {
+          localStorage.removeItem('strategist-form-draft')
           setJobDescription('')
           setTargetCompany('')
           setTargetRole('')
@@ -506,9 +591,12 @@ function NewAnalysisPanel({
 
           {/* Error */}
           {trigger.error && (
-            <div className="mt-4 flex items-center gap-2 rounded-lg bg-red-500/10 px-3 py-2 text-sm text-red-400">
-              <AlertCircle className="h-4 w-4 shrink-0" />
-              {trigger.error.message}
+            <div className="mt-4 flex flex-col gap-2 rounded-lg bg-red-500/10 px-4 py-3 text-sm text-red-500 border border-red-500/20">
+              <div className="flex items-center gap-2 font-semibold">
+                <AlertCircle className="h-4 w-4 shrink-0" />
+                Analysis trigger failed
+              </div>
+              <p className="text-red-400 whitespace-pre-wrap break-words">{trigger.error.message}</p>
             </div>
           )}
 
@@ -589,6 +677,7 @@ export default function StrategistDashboardPage() {
     isLoading,
     error,
   } = useStrategistApplications(statusFilter)
+  const deleteApp = useDeleteStrategistApplication()
 
   // Client-side company name filter
   const filteredApps = applications?.filter((app) => {
@@ -729,6 +818,28 @@ export default function StrategistDashboardPage() {
               key={app.slug}
               app={app}
               onClick={() => router.push(`/admin/strategist/${app.slug}`)}
+              onDeleteClick={(e) => {
+                e.preventDefault()
+                e.stopPropagation()
+                if (window.confirm('Are you sure you want to delete this failed application?')) {
+                  deleteApp.mutate(app.slug)
+                }
+              }}
+              onResendClick={(e) => {
+                e.preventDefault()
+                e.stopPropagation()
+                window.dispatchEvent(
+                  new CustomEvent('strategist-retry', {
+                    detail: {
+                      targetCompany: app.targetCompany,
+                      targetRole: app.targetRole,
+                      interviewStage: app.interviewStage,
+                    },
+                  }),
+                )
+                if (!isNewAnalysisOpen) openNewAnalysis()
+                window.scrollTo({ top: 0, behavior: 'smooth' })
+              }}
             />
           ))}
         </div>

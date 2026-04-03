@@ -497,3 +497,12 @@ export async function updateStrategistStatus(
   )
 }
 
+
+/**
+ * Deletes a strategist application and all its related records.
+ */
+export async function deleteStrategistApplication(slug: string): Promise<void> {
+  await adminFetch(`/api/admin/strategist/applications/${encodeURIComponent(slug)}`, {
+    method: 'DELETE',
+  })
+}

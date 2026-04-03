@@ -12,9 +12,10 @@
 'use client'
 
 import { useEffect, useRef, useState } from 'react'
-import { useQuery } from '@tanstack/react-query'
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { adminKeys } from '@/lib/api/query-keys'
-import { fetchStrategistApplications } from '@/lib/api/admin-api'
+import { fetchStrategistApplications, deleteStrategistApplication } from '@/lib/api/admin-api'
+import { useToastStore } from '@/lib/stores/toast-store'
 import type { ApplicationStatus, ApplicationSummary } from '@/lib/types/strategist.types'
 
 /** Polling interval for active pipeline entries (5 seconds) */
@@ -88,4 +89,23 @@ export function useStrategistApplications(status = 'all') {
   }, [query.data])
 
   return { ...query, timedOut }
+}
+
+// =============================================================================
+// DELETE APPLICATION
+// =============================================================================
+export function useDeleteStrategistApplication() {
+  const queryClient = useQueryClient()
+  const addToast = useToastStore((s) => s.addToast)
+
+  return useMutation({
+    mutationFn: deleteStrategistApplication,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: adminKeys.strategist.all })
+      addToast('success', 'Application deleted.')
+    },
+    onError: (err) => {
+      addToast('error', `Failed to delete application: ${err.message}`)
+    },
+  })
 }
