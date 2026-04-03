@@ -269,10 +269,10 @@ jobs:
 
       - name: Verify Build Output
         run: |
-          if [ -d ".next" ]; then
+          if [ -d "apps/site/.next" ] && [ -d "apps/admin/.next" ]; then
             echo "✓ Build output directory exists"
             echo "Build size:"
-            du -sh .next
+            du -sh apps/*/.next
           else
             echo "✗ Build output directory not found"
             exit 1
@@ -304,6 +304,8 @@ jobs:
           push: false
           load: true
           tags: frontend:ci-test
+          build-args: |
+            APP_NAME=site
           cache-from: type=gha
           cache-to: type=gha,mode=max
 

@@ -15,8 +15,9 @@ services:
       context: .
       dockerfile: Dockerfile
       args:
+        APP_NAME: site
         NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-}
-    container_name: nextjs-local
+    container_name: nextjs-site
     ports:
       - "3000:3000"
     environment:
@@ -27,6 +28,32 @@ services:
       # - DYNAMODB_TABLE_NAME=your-table-name
       - OTEL_SDK_DISABLED=true
       - OTEL_SERVICE_NAME=nextjs-portfolio
+      - METRICS_ENABLED=true
+      - NEXT_TELEMETRY_DISABLED=1
+    healthcheck:
+      test: ["CMD", "node", "-e", "require('http').get('http://localhost:3000/api/health', (r) => process.exit(r.statusCode === 200 ? 0 : 1))"]
+      interval: 30s
+      timeout: 3s
+      start_period: 10s
+      retries: 3
+    restart: unless-stopped
+
+  nextjs-admin:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        APP_NAME: admin
+        NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-}
+    container_name: nextjs-admin
+    ports:
+      - "3001:3000"
+    environment:
+      - NODE_ENV=production
+      - PORT=3000
+      - HOSTNAME=0.0.0.0
+      - OTEL_SDK_DISABLED=true
+      - OTEL_SERVICE_NAME=nextjs-admin
       - METRICS_ENABLED=true
       - NEXT_TELEMETRY_DISABLED=1
     healthcheck:

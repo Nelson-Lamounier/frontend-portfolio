@@ -1,0 +1,41 @@
+{
+  "compilerOptions": {
+    "target": "ES2018",
+    "lib": ["dom", "dom.iterable", "esnext"],
+    "allowJs": true,
+    "skipLibCheck": true,
+    "strict": true,
+    "forceConsistentCasingInFileNames": true,
+    "noEmit": true,
+    "esModuleInterop": true,
+    "module": "esnext",
+    "moduleResolution": "bundler",
+    "resolveJsonModule": true,
+    "isolatedModules": true,
+    "jsx": "preserve",
+    "incremental": true,
+    "baseUrl": ".",
+    "plugins": [
+      {
+        "name": "next"
+      }
+    ],
+    "paths": {
+      "@/*": ["./src/*"],
+      "@/lib/*": ["../../packages/shared/src/lib/*"],
+      "@/types/*": ["../../packages/shared/src/types/*"],
+      "@/components/ui/*": ["../../packages/shared/src/components/ui/*"],
+      "@/components/ui": ["../../packages/shared/src/components/ui"],
+      "@/components/resume/*": ["../../packages/shared/src/components/resume/*"],
+      "@/components/resume": ["../../packages/shared/src/components/resume"],
+      "@/components/analytics/*": ["../../packages/shared/src/components/analytics/*"],
+      "@/components/analytics": ["../../packages/shared/src/components/analytics"],
+      "@/components/providers/*": ["../../packages/shared/src/components/providers/*"],
+      "@/components/providers": ["../../packages/shared/src/components/providers"],
+      "@/images/*": ["../../packages/shared/src/images/*"]
+    },
+    "types": ["mdx"]
+  },
+  "include": ["next-env.d.ts", "**/*.ts", "**/*.tsx", ".next/types/**/*.ts", "**/*.mdx"],
+  "exclude": ["node_modules"]
+}

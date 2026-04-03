@@ -29,6 +29,10 @@ WORKDIR /app
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 
+# Select application to build (default to site)
+ARG APP_NAME=site
+ENV APP_NAME=$APP_NAME
+
 # Inject API URL at build time (Next.js inlines NEXT_PUBLIC_* during build)
 ARG NEXT_PUBLIC_API_URL
 ENV NEXT_PUBLIC_API_URL=$NEXT_PUBLIC_API_URL
@@ -48,11 +52,14 @@ ENV ESLINT_NO_DEV_ERRORS=true
 ENV USE_FILE_FALLBACK=true
 
 # Build Next.js application (skip lint/typecheck - validated in CI)
-RUN yarn build --no-lint
+RUN yarn workspace ${APP_NAME} build --no-lint
 
 # ── Stage 4: Production runner (Amazon Linux 2023) ────────────────
 FROM amazonlinux:2023 AS runner
 WORKDIR /app
+
+ARG APP_NAME=site
+ENV APP_NAME=$APP_NAME
 
 # Install Node.js runtime and shadow-utils (groupadd/useradd)
 RUN dnf install -y nodejs22 shadow-utils && \
@@ -65,10 +72,14 @@ ENV NEXT_TELEMETRY_DISABLED=1
 RUN groupadd --system --gid 1001 nodejs && \
   useradd --system --uid 1001 --gid nodejs nextjs
 
+# Set specific application directory as working directory
+# Since next output is relative to workspace root inside the standalone folder
+WORKDIR /app
+
 # Copy the standalone build output
-COPY --from=builder --chown=nextjs:nodejs /app/public ./public
-COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
-COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
+COPY --from=builder --chown=nextjs:nodejs /app/apps/${APP_NAME}/public ./apps/${APP_NAME}/public
+COPY --from=builder --chown=nextjs:nodejs /app/apps/${APP_NAME}/.next/standalone ./
+COPY --from=builder --chown=nextjs:nodejs /app/apps/${APP_NAME}/.next/static ./apps/${APP_NAME}/.next/static
 
 # Switch to non-root user
 USER nextjs
@@ -80,7 +91,7 @@ ENV HOSTNAME="0.0.0.0"
 
 # OpenTelemetry configuration (disabled by default, enabled in K8s via pod spec)
 ENV OTEL_SDK_DISABLED=true
-ENV OTEL_SERVICE_NAME=nextjs-portfolio
+ENV OTEL_SERVICE_NAME=nextjs-${APP_NAME}
 ENV OTEL_EXPORTER_OTLP_ENDPOINT=http://localhost:4317
 
 # Health check
@@ -88,4 +99,4 @@ HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
   CMD node -e "const port = process.env.PORT || 3000; require('http').get('http://localhost:' + port + '/api/health', (r) => {process.exit(r.statusCode === 200 ? 0 : 1)})" || exit 1
 
 # Start the application
-CMD ["node", "server.js"]
+CMD node apps/${APP_NAME}/server.js
