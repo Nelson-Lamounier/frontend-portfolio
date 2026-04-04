@@ -12,8 +12,8 @@
  */
 
 import { useCallback, useState } from 'react'
-import { resumeDataFullstack as resumeData } from '../../lib/resumes/resume-data-fullstack'
-import { trackResumeDownload } from '../../lib/observability/analytics'
+import { resumeDataFullstack as resumeData } from '@/lib/resumes/resume-data-fullstack'
+import { trackResumeDownload } from '@/lib/observability/analytics'
 
 export function ResumeDownloadButton() {
   const [generating, setGenerating] = useState(false)
@@ -29,7 +29,7 @@ export function ResumeDownloadButton() {
         await Promise.all([
           import('html2canvas'),
           import('jspdf'),
-          import('../../lib/resumes/resume-dom-builder'),
+          import('@/lib/resumes/resume-dom-builder'),
         ])
       const html2canvas = html2canvasModule.default
       const { jsPDF } = jspdfModule

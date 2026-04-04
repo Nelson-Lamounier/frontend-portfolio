@@ -9,7 +9,7 @@
  * with inline styles (html2canvas cannot capture Tailwind).
  */
 
-import type { ResumeData } from '../../lib/resumes/resume-data'
+import type { ResumeData } from '@/lib/resumes/resume-data'
 
 interface ResumeDocumentProps {
   data: ResumeData

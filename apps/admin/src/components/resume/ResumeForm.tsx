@@ -12,7 +12,6 @@
 'use client'
 
 import { useState, useCallback } from 'react'
-import { useRouter } from 'next/navigation'
 import type {
   ResumeData,
   ResumeProfile,
@@ -22,7 +21,7 @@ import type {
   ResumeSkillGroup,
   ResumeProject,
   ResumeAchievement,
-} from '../../lib/resumes/resume-data'
+} from '@/lib/resumes/resume-data'
 
 // =============================================================================
 // TYPES
@@ -37,6 +36,12 @@ interface ResumeFormProps {
   initialLabel?: string
   /** Initial resume data */
   initialData?: ResumeData
+  /** Called when the form explicitly saves successfully, or pass an onSubmit handler */
+  onSuccess?: () => void
+  /** Submit handler (if provided, replaces the default fetch) */
+  onSubmit?: (label: string, data: ResumeData) => Promise<void>
+  /** Called when the user clicks cancel */
+  onCancel?: () => void
 }
 
 // =============================================================================
@@ -102,8 +107,10 @@ export function ResumeForm({
   resumeId,
   initialLabel = '',
   initialData,
+  onSuccess,
+  onSubmit,
+  onCancel,
 }: ResumeFormProps) {
-  const router = useRouter()
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
@@ -183,9 +190,15 @@ export function ResumeForm({
     }
 
     try {
+      if (onSubmit) {
+        await onSubmit(label, data)
+        if (onSuccess) onSuccess()
+        return
+      }
+
       const url = mode === 'create'
-        ? '/api/admin/resumes'
-        : `/api/admin/resumes/${resumeId}`
+        ? '/admin/api/resumes'
+        : `/admin/api/resumes/${resumeId}`
 
       const res = await fetch(url, {
         method: mode === 'create' ? 'POST' : 'PUT',
@@ -197,8 +210,9 @@ export function ResumeForm({
         const body = await res.json().catch(() => ({ error: 'Unknown error' }))
         throw new Error(body.error || `HTTP ${res.status}`)
       }
-
-      router.push('/admin/resumes')
+      if (onSuccess) {
+        onSuccess()
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to save resume')
     } finally {
@@ -207,7 +221,7 @@ export function ResumeForm({
   }, [
     saving, mode, resumeId, label, profile, summary,
     keyAchievements, experience, certifications, skills,
-    education, projects, router,
+    education, projects, onSuccess, onSubmit,
   ])
 
   // =========================================================================
@@ -254,7 +268,7 @@ export function ResumeForm({
         </h1>
         <button
           type="button"
-          onClick={() => router.push('/admin/resumes')}
+          onClick={onCancel}
           className="text-sm text-zinc-500 transition hover:text-zinc-700 dark:text-zinc-400 dark:hover:text-zinc-300"
         >
           ← Back
@@ -494,7 +508,7 @@ export function ResumeForm({
       <div className="mt-8 flex items-center justify-end gap-4 border-t border-zinc-200 pt-6 dark:border-zinc-700">
         <button
           type="button"
-          onClick={() => router.push('/admin/resumes')}
+          onClick={onCancel}
           className="rounded-lg border border-zinc-300 px-4 py-2 text-sm font-medium text-zinc-700 transition hover:bg-zinc-50 dark:border-zinc-600 dark:text-zinc-300 dark:hover:bg-zinc-700"
         >
           Cancel
