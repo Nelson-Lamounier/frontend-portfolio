@@ -1,5 +1,6 @@
 import { createFileRoute } from '@tanstack/react-router'
 import { AIAgentContainer } from '@/features/ai-agent/components/AIAgentContainer'
+import { DashboardPage } from '@/components/layouts/DashboardPage'
 
 export const Route = createFileRoute('/_dashboard/ai-agent')({
   component: AIAgentRoute,
@@ -7,8 +8,9 @@ export const Route = createFileRoute('/_dashboard/ai-agent')({
 
 function AIAgentRoute() {
   return (
-    <div className="space-y-6 max-w-5xl mx-auto">
+    <DashboardPage title="AI Agent" description="Bedrock-powered content generation and transformation">
       <AIAgentContainer />
-    </div>
+    </DashboardPage>
   )
 }
+

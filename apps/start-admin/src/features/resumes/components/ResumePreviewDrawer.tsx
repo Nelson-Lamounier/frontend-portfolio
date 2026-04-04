@@ -10,6 +10,7 @@ interface ResumePreviewDrawerProps {
   readonly isOpen: boolean
   readonly onClose: () => void
   readonly resume?: AdminResumeWithData | null
+  readonly coverLetter?: string | null
   readonly onDownload: () => void
   readonly isDownloading: boolean
 }
@@ -18,18 +19,22 @@ export function ResumePreviewDrawer({
   isOpen,
   onClose,
   resume,
+  coverLetter,
   onDownload,
   isDownloading,
 }: ResumePreviewDrawerProps) {
+  const hasContent = !!resume || !!coverLetter
+  const description = resume ? (resume.label ?? 'Resume') : (coverLetter ? 'Cover Letter' : 'Loading...')
+
   return (
     <DashboardDrawer
       isOpen={isOpen}
       onClose={onClose}
       title="PDF Preview"
-      description={resume?.label ?? 'Loading...'}
+      description={description}
       unstyledContent
       actions={
-        resume && (
+        hasContent && (
           <Button
             variant="primary"
             size="sm"
@@ -50,6 +55,19 @@ export function ResumePreviewDrawer({
           >
             <div className="flex flex-col gap-6 [&>div>div]:rounded-lg [&>div>div]:shadow-2xl [&>div>div]:ring-1 [&>div>div]:ring-white/10 relative z-10 bg-white">
               <ResumeDocument data={resume.data} />
+            </div>
+          </div>
+        </div>
+      ) : coverLetter ? (
+        <div className="h-full overflow-y-auto no-scrollbar rounded-xl border border-white/10 bg-black/40 p-6 shadow-inner relative">
+          <div
+            className="mx-auto origin-top"
+            style={{ width: '794px', transform: 'scale(0.95)', transformOrigin: 'top center' }}
+          >
+            <div className="flex flex-col gap-6 relative z-10 bg-white p-12 shadow-2xl ring-1 ring-white/10 min-h-[1123px]">
+              <div className="whitespace-pre-wrap whitespace-pre-line text-slate-800 text-sm leading-relaxed">
+                {coverLetter}
+              </div>
             </div>
           </div>
         </div>

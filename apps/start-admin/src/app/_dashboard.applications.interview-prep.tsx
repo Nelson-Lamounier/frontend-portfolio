@@ -4,6 +4,7 @@ import { ApplicationInterviewPrep } from '@/features/applications/components/App
 import { useApplications } from '@/lib/hooks/use-applications'
 import { ApplicationCard } from '@/features/applications/components/ApplicationCard'
 import { Target, Loader2, AlertCircle } from 'lucide-react'
+import { DashboardPage } from '@/components/layouts/DashboardPage'
 
 export const Route = createFileRoute('/_dashboard/applications/interview-prep')({
   component: InterviewPrepHubRoute,
@@ -20,31 +21,20 @@ function InterviewPrepHubRoute() {
 
   if (selectedSlug) {
     return (
-      <div className="mx-auto max-w-4xl px-4 sm:px-6 lg:px-8 space-y-6">
-        <div>
-          <h2 className="text-2xl font-bold leading-7 text-white sm:truncate sm:text-3xl sm:tracking-tight mb-6">
-            Interview Preparation
-          </h2>
-        </div>
+      <DashboardPage title="Interview Preparation">
         <ApplicationInterviewPrep 
           slug={selectedSlug} 
           onBack={() => setSelectedSlug(null)} 
         />
-      </div>
+      </DashboardPage>
     )
   }
 
   return (
-    <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 space-y-6">
-      <div>
-        <h2 className="text-2xl font-bold leading-7 text-white sm:truncate sm:text-3xl sm:tracking-tight">
-          Select Application for Prep
-        </h2>
-        <p className="mt-2 text-sm text-gray-400">
-          Choose an active application in the interview stage to generate preparation materials.
-        </p>
-      </div>
-
+    <DashboardPage
+      title="Select Application for Prep"
+      description="Choose an active application in the interview stage to generate preparation materials."
+    >
       {isLoading && (
         <div className="flex items-center justify-center py-16">
           <Loader2 className="h-8 w-8 animate-spin text-violet-400" />
@@ -81,6 +71,6 @@ function InterviewPrepHubRoute() {
           ))}
         </div>
       )}
-    </div>
+    </DashboardPage>
   )
 }

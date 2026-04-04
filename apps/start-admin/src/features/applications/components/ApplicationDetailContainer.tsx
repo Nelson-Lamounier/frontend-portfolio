@@ -1,4 +1,4 @@
-import { useCallback, useState } from 'react'
+import { useCallback } from 'react'
 import { useNavigate } from '@tanstack/react-router'
 import {
   ArrowLeft,
@@ -12,16 +12,9 @@ import {
 import { useApplicationDetail } from '@/lib/hooks/use-application-detail'
 import { useApplicationStatus } from '@/lib/hooks/use-application-status'
 import type { ApplicationStatus } from '@/lib/types/applications.types'
-import {
-  OverviewTab,
-  SkillsTab,
-  TailoredResumeTab,
-  CoverLetterTab,
-} from './ApplicationDetailTabs'
 import { ApplicationReviewDetail } from './ApplicationReviewDetail'
-import { ResumePreviewDrawer } from '../../resumes/components/ResumePreviewDrawer'
 import DropDownOptions from '../../../components/ui/DropDownOptions'
-import type { AdminResumeWithData } from '@/lib/api/admin-api'
+
 import {
   STATUS_OPTIONS,
   STATUS_COLOURS,
@@ -38,10 +31,7 @@ export function ApplicationDetailContainer({ slug }: { readonly slug: string }) 
   const statusMutation = useApplicationStatus()
 
 
-  // TanStack Query data
   const { data: detail, isLoading, error } = useApplicationDetail(slug)
-  const [isPreviewOpen, setIsPreviewOpen] = useState(false)
-  const [isDownloading, setIsDownloading] = useState(false)
 
   const handleStatusChange = useCallback(
     (newStatus: ApplicationStatus) => {
@@ -50,11 +40,7 @@ export function ApplicationDetailContainer({ slug }: { readonly slug: string }) 
     [slug, statusMutation],
   )
 
-  const handleDownloadPreview = useCallback(() => {
-    setIsDownloading(true)
-    // Add real PDF download logic here if needed
-    setTimeout(() => setIsDownloading(false), 1000)
-  }, [])
+
 
   // Loading state
   if (isLoading) {
@@ -123,16 +109,7 @@ export function ApplicationDetailContainer({ slug }: { readonly slug: string }) 
 
           {/* Status and actions */}
           <div className="flex items-center gap-3">
-            <DropDownOptions
-              onEditResume={() => console.log('Edit resume')}
-              onEditCoverLetter={() => console.log('Edit cover letter')}
-              showPreviewResume={!!detail.analysis?.tailoredResume}
-              onPreviewResume={() => setIsPreviewOpen(true)}
-              showPreviewCoverLetter={!!detail.analysis?.coverLetter}
-              onPreviewCoverLetter={() => console.log('Preview cover letter')}
-              onPublish={() => console.log('Publish application')}
-              onDelete={() => console.log('Delete application')}
-            />
+
             <DropDownOptions
               label={STATUS_LABELS[detail.status]}
               disabled={statusMutation.isPending}
@@ -176,52 +153,7 @@ export function ApplicationDetailContainer({ slug }: { readonly slug: string }) 
 
       <div className="mt-8 space-y-12">
         <ApplicationReviewDetail detail={detail} />
-        
-        {/* Render previously tabbed content vertically */}
-        <div className="space-y-12">
-          <section>
-            <h2 className="mb-6 text-xl font-bold text-zinc-100">Overview</h2>
-            <OverviewTab detail={detail} />
-          </section>
-
-          <section>
-            <h2 className="mb-6 text-xl font-bold text-zinc-100">Skills Matrix</h2>
-            <SkillsTab detail={detail} />
-          </section>
-
-          <section>
-            <h2 className="mb-6 text-xl font-bold text-zinc-100">Tailored Resume</h2>
-            <TailoredResumeTab detail={detail} />
-          </section>
-
-          {detail.analysis?.coverLetter && (
-            <section>
-              <h2 className="mb-6 text-xl font-bold text-zinc-100">Cover Letter</h2>
-              <CoverLetterTab detail={detail} />
-            </section>
-          )}
-        </div>
       </div>
-
-      {detail.analysis?.tailoredResume && (
-        <ResumePreviewDrawer
-          isOpen={isPreviewOpen}
-          onClose={() => setIsPreviewOpen(false)}
-          isDownloading={isDownloading}
-          onDownload={handleDownloadPreview}
-          resume={{
-            id: 'tailored',
-            resumeId: 'tailored',
-            userId: 'user',
-            createdAt: detail.createdAt,
-            updatedAt: detail.updatedAt,
-            label: 'Tailored Resume',
-            version: 1,
-            isActive: true,
-            data: detail.analysis.tailoredResume,
-          } as unknown as AdminResumeWithData}
-        />
-      )}
     </div>
   )
 }

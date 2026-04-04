@@ -5,6 +5,7 @@ import {
   AcademicCapIcon,
 } from '@heroicons/react/24/outline'
 import { GridListActions, type GridListAction } from '../components/ui/GridListActions'
+import { DashboardPage } from '../components/layouts/DashboardPage'
 
 const actions: GridListAction[] = [
   {
@@ -39,37 +40,14 @@ export const Route = createFileRoute('/_dashboard/applications/')({
 
 function ApplicationsIndexRoute() {
   return (
-    // <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 space-y-6">
-    //   <div>
-    //     <h1 className="text-2xl font-bold tracking-tight text-white mb-6">
-    //       Applications Hub
-    //     </h1>
-    //   </div>
-
-    //   <GridListActions actions={actions} />
-    // </div>
-
-        <div className="space-y-6">
-      <div>
-        <div className="flex items-center gap-3 mb-2">
-
-        </div>
-        <h2 className="text-2xl font-bold leading-7 text-white sm:truncate sm:text-3xl sm:tracking-tight">
-           Applications Hub
-        </h2>
-        <p className="mt-2 text-sm text-gray-400">
-          Manage your job applications and interview preparation.
-        </p>
+    <DashboardPage
+      title="Applications Hub"
+      description="Manage your job applications and interview preparation."
+    >
+      <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 space-y-6">
+        <GridListActions actions={actions} />
       </div>
-         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 space-y-6">
-  <div>
-
-     </div>
-
-     <GridListActions actions={actions} />
-    </div>
-     
-    </div>
+    </DashboardPage>
   )
 }
 

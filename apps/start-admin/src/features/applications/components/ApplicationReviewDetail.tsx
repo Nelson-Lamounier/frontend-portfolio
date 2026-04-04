@@ -1,16 +1,55 @@
 import { PaperClipIcon } from '@heroicons/react/20/solid'
-import { CheckCircle2, AlertTriangle, XCircle } from 'lucide-react'
+import {
+  CheckCircle2,
+  AlertTriangle,
+  XCircle,
+} from 'lucide-react'
 import type { ApplicationDetail } from '@/lib/types/applications.types'
+import { useState, useCallback } from 'react'
+import { ResumePreviewDrawer } from '../../resumes/components/ResumePreviewDrawer'
+import { ResumeForm } from '../../resumes/components/ResumeForm'
+import { CoverLetterForm } from './CoverLetterForm'
+import { DashboardDrawer } from '../../../components/ui/DashboardDrawer'
+import DropDownOptions from '../../../components/ui/DropDownOptions'
+import type { AdminResumeWithData } from '@/lib/api/admin-api'
+
 interface ApplicationReviewDetailProps {
   readonly detail: ApplicationDetail
 }
 
 export function ApplicationReviewDetail({ detail }: ApplicationReviewDetailProps) {
+
+  const [isPreviewOpen, setIsPreviewOpen] = useState(false)
+  const [isCoverLetterPreviewOpen, setIsCoverLetterPreviewOpen] = useState(false)
+  const [isEditResumeOpen, setIsEditResumeOpen] = useState(false)
+  const [isEditCoverLetterOpen, setIsEditCoverLetterOpen] = useState(false)
+  const [isDownloading, setIsDownloading] = useState(false)
+
+  const handleDownloadPreview = useCallback(() => {
+    setIsDownloading(true)
+    // Add real PDF download logic here if needed
+    setTimeout(() => setIsDownloading(false), 1000)
+  }, [])
+
   return (
     <div>
-      <div className="px-4 sm:px-0">
-        <h3 className="text-base/7 font-semibold text-white">Application Information</h3>
-        <p className="mt-1 max-w-2xl text-sm/6 text-zinc-400">Application details for {detail.targetCompany}.</p>
+      <div className="px-4 sm:px-0 flex items-start justify-between">
+        <div>
+          <h3 className="text-base/7 font-semibold text-white">Application Information</h3>
+          <p className="mt-1 max-w-2xl text-sm/6 text-zinc-400">Application details for {detail.targetCompany}.</p>
+        </div>
+        <div className="flex shrink-0">
+          <DropDownOptions
+            onEditResume={() => setIsEditResumeOpen(true)}
+            onEditCoverLetter={detail.analysis?.coverLetter ? () => setIsEditCoverLetterOpen(true) : undefined}
+            showPreviewResume={!!detail.analysis?.tailoredResume}
+            onPreviewResume={() => setIsPreviewOpen(true)}
+            showPreviewCoverLetter={!!detail.analysis?.coverLetter}
+            onPreviewCoverLetter={detail.analysis?.coverLetter ? () => setIsCoverLetterPreviewOpen(true) : undefined}
+            onPublish={() => console.log('Publish application')}
+            onDelete={() => console.log('Delete application')}
+          />
+        </div>
       </div>
       <div className="mt-6">
         <dl className="grid grid-cols-1 sm:grid-cols-2">
@@ -50,6 +89,16 @@ export function ApplicationReviewDetail({ detail }: ApplicationReviewDetailProps
                 <dt className="text-sm/6 font-medium text-white">Leadership Level</dt>
                 <dd className="mt-1 text-sm/6 text-zinc-400 sm:mt-2">{detail.research.experienceSignals.leadership}</dd>
               </div>
+
+              {/* Resume Suggestions */}
+              {detail.analysis?.resumeSuggestions?.summary && (
+                <div className="border-t border-white/10 px-4 py-6 sm:col-span-1 sm:px-0">
+                  <dt className="text-sm/6 font-medium text-white">Resume Suggestions</dt>
+                  <dd className="mt-1 text-sm/6 text-zinc-400 sm:mt-2">
+                    {detail.analysis.resumeSuggestions.summary}
+                  </dd>
+                </div>
+              )}
               <div className="border-t border-white/10 px-4 py-6 sm:col-span-1 sm:px-0">
                 <dt className="text-sm/6 font-medium text-white">Scale Expected</dt>
                 <dd className="mt-1 text-sm/6 text-zinc-400 sm:mt-2">{detail.research.experienceSignals.scale}</dd>
@@ -204,98 +253,6 @@ export function ApplicationReviewDetail({ detail }: ApplicationReviewDetailProps
           )}
 
 
-          {/* Resume Suggestions summary */}
-          {detail.analysis?.resumeSuggestions?.summary && (
-            <div className="border-t border-white/10 px-4 py-6 sm:col-span-2 sm:px-0">
-              <dt className="text-sm/6 font-medium text-white">Resume Suggestions</dt>
-              <dd className="mt-1 text-sm/6 text-zinc-400 sm:mt-2">
-                {detail.analysis.resumeSuggestions.summary}
-              </dd>
-            </div>
-          )}
-
-          {/* Additions */}
-          {detail.analysis?.resumeSuggestions?.additionItems && detail.analysis.resumeSuggestions.additionItems.length > 0 && (
-            <div className="border-t border-white/10 px-4 py-6 sm:col-span-2 sm:px-0">
-              <dt className="text-sm/6 font-medium text-white">Suggested Additions</dt>
-              <dd className="mt-4">
-                <ul className="grid gap-8 sm:grid-cols-2 lg:grid-cols-3">
-                  {detail.analysis.resumeSuggestions.additionItems.map((item, idx) => (
-                    <li key={`add-${String(idx)}`}>
-                      <h4 className="mb-2 text-xs font-semibold uppercase tracking-wider text-zinc-500">
-                        {item.section}
-                      </h4>
-                      <p className="text-sm/6 text-zinc-400">{item.suggestedBullet}</p>
-                      {item.sourceCitation && (
-                        <p className="mt-1.5 text-xs text-zinc-500">Source: {item.sourceCitation}</p>
-                      )}
-                    </li>
-                  ))}
-                </ul>
-              </dd>
-            </div>
-          )}
-
-          {/* Reframes */}
-          {detail.analysis?.resumeSuggestions?.reframeItems && detail.analysis.resumeSuggestions.reframeItems.length > 0 && (
-            <div className="border-t border-white/10 px-4 py-6 sm:col-span-2 sm:px-0">
-              <dt className="text-sm/6 font-medium text-white">Suggested Reframes</dt>
-              <dd className="mt-4">
-                <ul className="grid gap-8 sm:grid-cols-2 lg:grid-cols-3">
-                  {detail.analysis.resumeSuggestions.reframeItems.map((item, idx) => (
-                    <li key={`reframe-${String(idx)}`}>
-                      <h4 className="mb-2 text-xs font-semibold uppercase tracking-wider text-zinc-500">
-                        {item.section}
-                      </h4>
-                      <div className="mb-3">
-                        <span className="text-xs font-medium text-red-400/80 uppercase tracking-widest">
-                          Original:
-                        </span>
-                        <p className="mt-1 text-sm/6 text-zinc-400 line-through">{item.original}</p>
-                      </div>
-                      <div className="mb-3">
-                        <span className="text-xs font-medium text-emerald-400/80 uppercase tracking-widest">
-                          Suggested:
-                        </span>
-                        <p className="mt-1 text-sm/6 text-zinc-300">{item.suggested}</p>
-                      </div>
-                      <p className="text-xs text-zinc-500">
-                        <span className="font-medium text-zinc-400">Rationale:</span> {item.rationale}
-                      </p>
-                    </li>
-                  ))}
-                </ul>
-              </dd>
-            </div>
-          )}
-
-          {/* ESL Corrections */}
-          {detail.analysis?.resumeSuggestions?.eslCorrectionItems && detail.analysis.resumeSuggestions.eslCorrectionItems.length > 0 && (
-            <div className="border-t border-white/10 px-4 py-6 sm:col-span-2 sm:px-0">
-              <dt className="text-sm/6 font-medium text-white">ESL Corrections</dt>
-              <dd className="mt-4">
-                <ul className="grid gap-8 sm:grid-cols-2 lg:grid-cols-3">
-                  {detail.analysis.resumeSuggestions.eslCorrectionItems.map((item, idx) => (
-                    <li key={`esl-${String(idx)}`} className="flex flex-col gap-3">
-                      <div>
-                        <span className="text-xs font-medium text-red-400/80 uppercase tracking-widest">
-                          Original:
-                        </span>
-                        <p className="mt-1 text-sm/6 text-zinc-400 line-through">{item.original}</p>
-                      </div>
-                      <div>
-                        <span className="text-xs font-medium text-sky-400/80 uppercase tracking-widest">
-                          Corrected:
-                        </span>
-                        <p className="mt-1 text-sm/6 text-zinc-300">{item.corrected}</p>
-                      </div>
-                    </li>
-                  ))}
-                </ul>
-              </dd>
-            </div>
-          )}
-
           <div className="border-t border-white/10 px-4 py-6 sm:col-span-2 sm:px-0">
             <dt className="text-sm/6 font-medium text-white">Attachments</dt>
             <dd className="mt-2 text-sm text-white">
@@ -308,8 +265,8 @@ export function ApplicationReviewDetail({ detail }: ApplicationReviewDetailProps
                       <span className="shrink-0 text-zinc-500">2.4mb</span>
                     </div>
                   </div>
-                  <div className="ml-4 shrink-0">
-                    <button type="button" className="font-medium text-violet-400 hover:text-violet-300 transition-colors">
+                  <div className="ml-4 shrink-0 flex gap-4">
+                    <button type="button" onClick={() => setIsPreviewOpen(true)} className="font-medium text-blue-500 hover:text-blue-400 transition-colors">
                       Download
                     </button>
                   </div>
@@ -323,8 +280,8 @@ export function ApplicationReviewDetail({ detail }: ApplicationReviewDetailProps
                         <span className="shrink-0 text-zinc-500">1.2mb</span>
                       </div>
                     </div>
-                    <div className="ml-4 shrink-0">
-                      <button type="button" className="font-medium text-violet-400 hover:text-violet-300 transition-colors">
+                    <div className="ml-4 shrink-0 flex gap-4">
+                      <button type="button" onClick={() => setIsCoverLetterPreviewOpen(true)} className="font-medium text-blue-500 hover:text-blue-400 transition-colors">
                         Download
                       </button>
                     </div>
@@ -335,6 +292,81 @@ export function ApplicationReviewDetail({ detail }: ApplicationReviewDetailProps
           </div>
         </dl>
       </div>
+
+      {detail.analysis?.tailoredResume && (
+        <ResumePreviewDrawer
+          isOpen={isPreviewOpen}
+          onClose={() => setIsPreviewOpen(false)}
+          isDownloading={isDownloading}
+          onDownload={handleDownloadPreview}
+          resume={{
+            id: 'tailored',
+            resumeId: 'tailored',
+            userId: 'user',
+            createdAt: detail.createdAt,
+            updatedAt: detail.updatedAt,
+            label: 'Tailored Resume',
+            version: 1,
+            isActive: true,
+            data: detail.analysis.tailoredResume,
+          } as unknown as AdminResumeWithData}
+        />
+      )} 
+
+       {detail.analysis?.coverLetter && (
+        <ResumePreviewDrawer
+          isOpen={isCoverLetterPreviewOpen}
+          onClose={() => setIsCoverLetterPreviewOpen(false)}
+          isDownloading={isDownloading}
+          onDownload={handleDownloadPreview}
+          coverLetter={detail.analysis.coverLetter}
+        />
+      )}
+
+      {detail.analysis?.tailoredResume && (
+        <DashboardDrawer
+          isOpen={isEditResumeOpen}
+          onClose={() => setIsEditResumeOpen(false)}
+          title="Edit Tailored Resume"
+          description={`${detail.targetCompany} - ${detail.targetRole}`}
+          unstyledContent
+        >
+          <div className="h-full overflow-y-auto no-scrollbar">
+            <ResumeForm
+              mode="edit"
+              initialLabel="Tailored Resume"
+              initialData={detail.analysis.tailoredResume}
+              onCancel={() => setIsEditResumeOpen(false)}
+              onSubmit={async (label, data) => {
+                console.log('Resume updated', { label, data })
+                setIsEditResumeOpen(false)
+              }}
+            />
+          </div>
+        </DashboardDrawer>
+      )}
+
+      {detail.analysis?.coverLetter && (
+        <DashboardDrawer
+          isOpen={isEditCoverLetterOpen}
+          onClose={() => setIsEditCoverLetterOpen(false)}
+          title="Edit Cover Letter"
+          description={`${detail.targetCompany} - ${detail.targetRole}`}
+          unstyledContent
+        >
+          <div className="h-full overflow-y-auto no-scrollbar">
+            <CoverLetterForm
+              initialContent={detail.analysis.coverLetter}
+              onCancel={() => setIsEditCoverLetterOpen(false)}
+              onSubmit={async (content) => {
+                console.log('Cover letter updated', content)
+                setIsEditCoverLetterOpen(false)
+              }}
+            />
+          </div>
+        </DashboardDrawer>
+      )}
     </div>
   )
 }
+
