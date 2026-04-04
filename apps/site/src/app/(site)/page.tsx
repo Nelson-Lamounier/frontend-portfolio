@@ -5,8 +5,6 @@ import { Card } from '@/components/ui'
 import { Container } from '@/components/layout'
 import { DevOpsPipelineAnimation } from '@/components/animations'
 import { TrackedSocialLinks } from '@/components/analytics'
-import { ResumeDownloadButton } from '@/components/resume'
-import { ResumePreview } from '@/components/resume'
 import { NewsletterForm } from '@/components/newsletter'
 import {
   GitHubIcon,
@@ -185,8 +183,6 @@ function Resume() {
           <Role key={roleIndex} role={role} />
         ))}
       </ol>
-      <ResumeDownloadButton />
-      <ResumePreview />
     </div>
   )
 }

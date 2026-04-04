@@ -1,33 +1,79 @@
-# Next.js specific ignores
-# (Common ignores are handled by root .gitignore)
+# ======================
+# Dependencies
+# ======================
+node_modules/
 
-# Next.js build outputs
-/.next/
-/out/
+# ======================
+# Environment & secrets
+# ======================
+.env
+.env.*
+!.env.example
 
+# ======================
 # Vercel
+# ======================
 .vercel
 
 # Next.js TypeScript
 next-env.d.ts
 
-# Frontend-specific documentation
-YARN_MIGRATION.md
+# ======================
+# TanStack Start / Vinxi
+# ======================
+.tanstack/
+.vinxi/
+.nitro/
+.output/
+.wrangler/
 
-# Frontend-specific documentation
-docs/*
-!docs/admin-state-management/
-node_modules/
+# ======================
+# Build outputs (TanStack Start apps only)
+# ======================
+# NOTE: .next/ folders are intentionally TRACKED — they are required
+# for the Docker container deployments on AWS (apps/admin, apps/site).
+dist/
+dist-ssr/
+*.tsbuildinfo
 
-.env.*
-.env
-# Large audio files — served from S3/CloudFront
-public/audio/*.mp3
-tsconfig.test.tsbuildinfo
+# ======================
+# IDE & OS
+# ======================
+.agents/
+.vscode/
+.DS_Store
+*.local
 
+# ======================
 # Test coverage
+# ======================
 coverage/
 
+# ======================
+# Debug & temporary files
+# ======================
+ts_errors*.txt
+tsc_errors*.txt
+build_output*.log
+grep_val.txt
+__unconfig*
+todos.json
+*.cta.json
 
-IDE
-.agents/
+# ======================
+# Project-specific ignores
+# ======================
+
+# Frontend-specific documentation
+YARN_MIGRATION.md
+MIGRATION_README.md
+
+# Docs (allow admin-state-management only)
+docs/*
+!docs/admin-state-management/
+
+# Large audio files — served from S3/CloudFront
+public/audio/*.mp3
+
+# Yarn
+.yarn/install-state.gz

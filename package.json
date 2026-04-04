@@ -7,9 +7,9 @@
     "packages/*"
   ],
   "scripts": {
-    "dev": "yarn workspaces foreach -A -pi run dev",
-    "build": "yarn workspaces foreach -A -pt run build",
-    "lint": "yarn workspaces foreach -A -pt run lint",
-    "test": "yarn workspaces foreach -A -pt run test"
+    "dev": "yarn workspaces foreach -A --exclude start-admin --exclude start-site -pi run dev",
+    "build": "yarn workspaces foreach -A --exclude start-admin --exclude start-site -pt run build",
+    "lint": "yarn workspaces foreach -A --exclude start-admin --exclude start-site -pt run lint",
+    "test": "yarn workspaces foreach -A --exclude start-admin --exclude start-site -pt run test"
   }
 }
