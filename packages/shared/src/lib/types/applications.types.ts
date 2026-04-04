@@ -1,9 +1,9 @@
 /**
- * Job Strategist — Shared Types
+ * Job Applications — Shared Types
  *
- * TypeScript interfaces and union types for the Job Strategist pipeline.
- * Derived from the infrastructure contracts in `strategist-types.ts`,
- * `trigger-handler.ts`, `coach-handler.ts`, and `strategist-data-stack.ts`.
+ * TypeScript interfaces and union types for the Job Applications pipeline.
+ * Derived from the infrastructure contracts in `applications-types.ts`,
+ * `trigger-handler.ts`, `coach-handler.ts`, and `applications-data-stack.ts`.
  *
  * Used by:
  * - Next.js API routes (server-side DynamoDB/Lambda calls)
@@ -58,7 +58,7 @@ export type FitRating =
   | 'REACH'
 
 /**
- * Application recommendation from the Strategist Agent.
+ * Application recommendation from the Applications Agent.
  * Shown as a banner on the detail page.
  */
 export type ApplicationRecommendation =
@@ -68,14 +68,14 @@ export type ApplicationRecommendation =
   | 'NOT_RECOMMENDED'
 
 // =============================================================================
-// API CONTRACTS — Analysis Trigger (Research → Strategist State Machine)
+// API CONTRACTS — Analysis Trigger (Research → Applications State Machine)
 // =============================================================================
 
 /**
  * Request body for the Analysis trigger Lambda.
- * Invokes the Research → Strategist pipeline.
+ * Invokes the Research → Applications pipeline.
  *
- * @see POST /api/admin/strategist/trigger
+ * @see POST /api/admin/applications/trigger
  */
 export interface AnalyseTriggerBody {
   /** Raw job description text (free-form, pasted) */
@@ -106,7 +106,7 @@ export type TriggerRequestBody = AnalyseTriggerBody
  * Request body for the Coach trigger Lambda.
  * Invokes the Coach pipeline for a specific interview stage.
  *
- * @see POST /api/admin/strategist/coach
+ * @see POST /api/admin/applications/coach
  */
 export interface CoachTriggerBody {
   /** The existing application slug to prepare for */
@@ -135,7 +135,7 @@ export interface TriggerResponse {
 
 /**
  * Lightweight application summary for the dashboard listing.
- * Returned by `GET /api/admin/strategist/applications`.
+ * Returned by `GET /api/admin/applications/applications`.
  */
 export interface ApplicationSummary {
   /** Kebab-case application slug */
@@ -216,7 +216,7 @@ export interface ResearchOutput {
   readonly technologyInventory: TechnologyInventory
 }
 
-/** Analysis metadata from the Strategist Agent */
+/** Analysis metadata from the Applications Agent */
 export interface AnalysisMetadata {
   readonly overallFitRating: FitRating
   readonly applicationRecommendation: ApplicationRecommendation
@@ -256,7 +256,7 @@ export interface ResumeEslCorrection {
   readonly corrected: string
 }
 
-/** Resume modification suggestions from the Strategist Agent */
+/** Resume modification suggestions from the Applications Agent */
 export interface ResumeSuggestions {
   /** Count of addition suggestions */
   readonly additions: number
@@ -274,7 +274,7 @@ export interface ResumeSuggestions {
   readonly eslCorrectionItems?: ResumeEslCorrection[]
 }
 
-/** Strategist Agent output — part of ApplicationDetail */
+/** Applications Agent output — part of ApplicationDetail */
 export interface AnalysisOutput {
   /** Full XML analysis document */
   readonly analysisXml: string
@@ -284,7 +284,7 @@ export interface AnalysisOutput {
   readonly metadata: AnalysisMetadata
   /** Resume modification suggestions */
   readonly resumeSuggestions: ResumeSuggestions
-  /** Generated tailored resume from the Strategist Agent */
+  /** Generated tailored resume from the Applications Agent */
   readonly tailoredResume?: ResumeData
 }
 
@@ -349,7 +349,7 @@ export interface PipelineContext {
 
 /**
  * Full application detail — combines all three agent outputs.
- * Returned by `GET /api/admin/strategist/applications/[slug]`.
+ * Returned by `GET /api/admin/applications/applications/[slug]`.
  */
 export interface ApplicationDetail {
   /** Application slug */
@@ -370,7 +370,7 @@ export interface ApplicationDetail {
   readonly context: PipelineContext
   /** Research Agent output (may be null while analysing) */
   readonly research: ResearchOutput | null
-  /** Strategist Agent output (may be null while analysing) */
+  /** Applications Agent output (may be null while analysing) */
   readonly analysis: AnalysisOutput | null
   /** Coach Agent output (may be null if no interview prep yet) */
   readonly interviewPrep: InterviewPrepOutput | null
@@ -383,7 +383,7 @@ export interface ApplicationDetail {
 /**
  * Request body for PATCH status updates.
  *
- * @see PATCH /api/admin/strategist/applications/[slug]/status
+ * @see PATCH /api/admin/applications/applications/[slug]/status
  */
 export interface StatusUpdateRequest {
   /** New lifecycle status */

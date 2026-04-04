@@ -1,5 +1,5 @@
 /**
- * useStrategistCoach — TanStack Query Mutation Hook
+ * useApplicationsCoach — TanStack Query Mutation Hook
  *
  * Triggers the Coach pipeline for a specific interview stage on an
  * existing application. Invalidates both detail and list caches on success.
@@ -11,8 +11,8 @@
 
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { adminKeys } from '@/lib/api/query-keys'
-import { triggerStrategistCoach } from '@/lib/api/admin-api'
-import type { CoachTriggerBody, TriggerResponse } from '@/lib/types/strategist.types'
+import { triggerApplicationsCoach } from '@/lib/api/admin-api'
+import type { CoachTriggerBody, TriggerResponse } from '@/lib/types/applications.types'
 
 /**
  * Mutation hook for triggering the Coach pipeline.
@@ -20,17 +20,17 @@ import type { CoachTriggerBody, TriggerResponse } from '@/lib/types/strategist.t
  *
  * @returns TanStack mutation with coach trigger capabilities
  */
-export function useStrategistCoach() {
+export function useApplicationCoach() {
   const queryClient = useQueryClient()
 
   return useMutation<TriggerResponse, Error, CoachTriggerBody>({
-    mutationFn: triggerStrategistCoach,
+    mutationFn: triggerApplicationsCoach,
     onSuccess: (_data, variables) => {
       void queryClient.invalidateQueries({
-        queryKey: adminKeys.strategist.detail(variables.applicationSlug),
+        queryKey: adminKeys.applications.detail(variables.applicationSlug),
       })
       void queryClient.invalidateQueries({
-        queryKey: adminKeys.strategist.all,
+        queryKey: adminKeys.applications.all,
       })
     },
   })

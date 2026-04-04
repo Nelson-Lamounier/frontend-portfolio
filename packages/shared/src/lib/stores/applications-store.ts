@@ -1,7 +1,7 @@
 /**
- * Strategist UI Store — Zustand
+ * Applications UI Store — Zustand
  *
- * Client-side UI state for the Job Strategist dashboard and detail pages.
+ * Client-side UI state for the Job Applications dashboard and detail pages.
  * Manages filter selections, active tab, and modal visibility.
  * Server data is NOT stored here — that lives in TanStack Query cache.
  *
@@ -9,27 +9,27 @@
  */
 
 import { create } from 'zustand'
-import type { ApplicationStatus } from '@/lib/types/strategist.types'
+import type { ApplicationStatus } from '@/lib/types/applications.types'
 
 // =============================================================================
 // TYPES
 // =============================================================================
 
 /** Available detail page tabs */
-export type StrategistDetailTab =
+export type ApplicationDetailTab =
   | 'overview'
   | 'skills'
   | 'tailored-resume'
   | 'cover-letter'
   | 'interview-prep'
 
-/** Strategist UI store state and actions */
-interface StrategistUIStore {
+/** Applications UI store state and actions */
+interface ApplicationsUIStore {
   // ── State ─────────────────────────────────────────────────────────────
   /** Active status filter on the applications dashboard */
   activeStatusFilter: ApplicationStatus | 'all'
   /** Active tab on the detail page */
-  activeDetailTab: StrategistDetailTab
+  activeDetailTab: ApplicationDetailTab
   /** Whether the "New Analysis" modal is open */
   isNewAnalysisOpen: boolean
   /** Search query for company name filtering */
@@ -39,7 +39,7 @@ interface StrategistUIStore {
   /** Sets the active status filter */
   setStatusFilter: (status: ApplicationStatus | 'all') => void
   /** Sets the active detail tab */
-  setDetailTab: (tab: StrategistDetailTab) => void
+  setDetailTab: (tab: ApplicationDetailTab) => void
   /** Toggles the "New Analysis" modal */
   toggleNewAnalysis: () => void
   /** Opens the "New Analysis" modal */
@@ -68,10 +68,10 @@ const INITIAL_STATE = {
 // =============================================================================
 
 /**
- * Zustand store for strategist UI state.
+ * Zustand store for applications UI state.
  * Manages filters, tabs, modals, and search — NOT server data.
  */
-export const useStrategistStore = create<StrategistUIStore>((set) => ({
+export const useApplicationsStore = create<ApplicationsUIStore>((set) => ({
   ...INITIAL_STATE,
 
   setStatusFilter: (status) => set({ activeStatusFilter: status }),

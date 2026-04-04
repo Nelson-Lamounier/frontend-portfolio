@@ -1,7 +1,7 @@
 /**
- * useStrategistApplications — TanStack Query Hook
+ * useApplicationsApplications — TanStack Query Hook
  *
- * Fetches the strategist application listing with optional status filtering.
+ * Fetches the applications application listing with optional status filtering.
  * Enables auto-polling at 5-second intervals when any entries have active
  * pipeline status ('analysing' or 'coaching'), stopping once all reach
  * a terminal state or the polling timeout is exceeded.
@@ -14,9 +14,9 @@
 import { useEffect, useRef, useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { adminKeys } from '@/lib/api/query-keys'
-import { fetchStrategistApplications, deleteStrategistApplication } from '@/lib/api/admin-api'
+import { fetchApplicationsApplications, deleteApplicationsApplication } from '@/lib/api/admin-api'
 import { useToastStore } from '@/lib/stores/toast-store'
-import type { ApplicationStatus, ApplicationSummary } from '@/lib/types/strategist.types'
+import type { ApplicationStatus, ApplicationSummary } from '@/lib/types/applications.types'
 
 /** Polling interval for active pipeline entries (5 seconds) */
 const PIPELINE_POLL_INTERVAL = 5_000
@@ -28,10 +28,10 @@ const POLL_TIMEOUT_MS = 10 * 60 * 1_000
 const ACTIVE_PIPELINE_STATUSES: ReadonlySet<ApplicationStatus> = new Set([
   'analysing',
   'coaching',
-])
+] as ApplicationStatus[])
 
 /**
- * Fetches strategist applications with auto-polling for active pipeline entries.
+ * Fetches applications applications with auto-polling for active pipeline entries.
  *
  * Polling stops when:
  * - All entries reach a terminal state
@@ -40,13 +40,22 @@ const ACTIVE_PIPELINE_STATUSES: ReadonlySet<ApplicationStatus> = new Set([
  * @param status - Status filter (default: 'all')
  * @returns TanStack Query result with ApplicationSummary[] + timedOut flag
  */
-export function useStrategistApplications(status = 'all') {
+export function useApplications(status = 'all') {
   const pollStartRef = useRef<number | null>(null)
   const [timedOut, setTimedOut] = useState(false)
 
   const query = useQuery<ApplicationSummary[]>({
-    queryKey: adminKeys.strategist.applications(status),
-    queryFn: () => fetchStrategistApplications(status),
+    queryKey: adminKeys.applications.applications(status),
+    queryFn: async () => {
+      try {
+        const data = await fetchApplicationsApplications(status)
+        if (Array.isArray(data)) return data
+        return []
+      } catch (err) {
+        console.error('Backend fetch failed:', err)
+        throw err
+      }
+    },
     refetchInterval: (queryResult) => {
       if (timedOut) return false
 
@@ -94,14 +103,14 @@ export function useStrategistApplications(status = 'all') {
 // =============================================================================
 // DELETE APPLICATION
 // =============================================================================
-export function useDeleteStrategistApplication() {
+export function useDeleteApplication() {
   const queryClient = useQueryClient()
   const addToast = useToastStore((s) => s.addToast)
 
   return useMutation({
-    mutationFn: deleteStrategistApplication,
+    mutationFn: deleteApplicationsApplication,
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: adminKeys.strategist.all })
+      queryClient.invalidateQueries({ queryKey: adminKeys.applications.all })
       addToast('success', 'Application deleted.')
     },
     onError: (err) => {

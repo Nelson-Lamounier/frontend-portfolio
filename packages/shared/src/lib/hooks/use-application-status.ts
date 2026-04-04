@@ -1,7 +1,7 @@
 /**
- * useStrategistStatus — TanStack Query Mutation Hook
+ * useApplicationsStatus — TanStack Query Mutation Hook
  *
- * Updates the lifecycle status of a strategist application and
+ * Updates the lifecycle status of a applications application and
  * invalidates both the detail and list caches on success.
  *
  * @module
@@ -11,8 +11,8 @@
 
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { adminKeys } from '@/lib/api/query-keys'
-import { updateStrategistStatus } from '@/lib/api/admin-api'
-import type { ApplicationStatus, InterviewStage, StatusUpdateResponse } from '@/lib/types/strategist.types'
+import { updateApplicationsStatus } from '@/lib/api/admin-api'
+import type { ApplicationStatus, InterviewStage, StatusUpdateResponse } from '@/lib/types/applications.types'
 
 /** Mutation variables for the status update */
 interface StatusUpdateVariables {
@@ -30,18 +30,18 @@ interface StatusUpdateVariables {
  *
  * @returns TanStack mutation with status update capabilities
  */
-export function useStrategistStatus() {
+export function useApplicationStatus() {
   const queryClient = useQueryClient()
 
   return useMutation<StatusUpdateResponse, Error, StatusUpdateVariables>({
     mutationFn: ({ slug, status, interviewStage }) =>
-      updateStrategistStatus(slug, status, interviewStage),
+      updateApplicationsStatus(slug, status, interviewStage),
     onSuccess: (_data, variables) => {
       void queryClient.invalidateQueries({
-        queryKey: adminKeys.strategist.detail(variables.slug),
+        queryKey: adminKeys.applications.detail(variables.slug),
       })
       void queryClient.invalidateQueries({
-        queryKey: adminKeys.strategist.all,
+        queryKey: adminKeys.applications.all,
       })
     },
   })
