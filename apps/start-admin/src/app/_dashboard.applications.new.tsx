@@ -1,0 +1,60 @@
+import { useState } from 'react'
+import { createFileRoute, useNavigate } from '@tanstack/react-router'
+import { NewAnalysisPanel } from '@/features/applications/components/NewAnalysisPanel'
+import { ResumeSelect } from '@/features/applications/components/ResumeSelect'
+import { FullWidthBar, type FullWidthBarStep } from '../components/ui/FullWidthBar'
+
+export const Route = createFileRoute('/_dashboard/applications/new')({
+  component: ApplicationsNewRoute,
+})
+
+function ApplicationsNewRoute() {
+  const navigate = useNavigate()
+  const [step, setStep] = useState<1 | 2>(1)
+  const [selectedResumeId, setSelectedResumeId] = useState<string>('')
+
+  const steps: FullWidthBarStep[] = [
+    {
+      name: '1. Select Resume',
+      current: step === 1,
+      onClick: () => setStep(1),
+    },
+    {
+      name: '2. Job Details',
+      current: step === 2,
+    },
+  ]
+
+  return (
+    <div className="space-y-6">
+      <FullWidthBar steps={steps} />
+      
+      <div>
+        <h2 className="text-2xl font-bold leading-7 text-white sm:truncate sm:text-3xl sm:tracking-tight">
+          Application Analysis
+        </h2>
+        <p className="mt-2 text-sm text-gray-400">
+          Create a new application analysis.
+        </p>
+      </div>
+
+      {step === 1 && (
+        <ResumeSelect 
+          onSelect={(id) => {
+            setSelectedResumeId(id)
+            setStep(2)
+          }} 
+        />
+      )}
+
+      {step === 2 && (
+        <NewAnalysisPanel 
+          preselectedResumeId={selectedResumeId} 
+          onSuccess={() => {
+             navigate({ to: '/applications/list' })
+          }}
+        />
+      )}
+    </div>
+  )
+}
