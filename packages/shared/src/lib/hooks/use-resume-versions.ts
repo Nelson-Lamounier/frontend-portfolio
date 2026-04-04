@@ -2,7 +2,7 @@
  * useResumeVersions — TanStack Query Hook
  *
  * Fetches all resume versions from `GET /api/admin/resumes` for the
- * resume selector dropdown in the strategist analysis form.
+ * resume selector dropdown in the applications analysis form.
  *
  * @module
  */

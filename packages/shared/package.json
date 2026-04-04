@@ -5,6 +5,7 @@
   "main": "index.ts",
   "dependencies": {
     "clsx": "^2.1.1",
+    "jose": "^6.2.2",
     "tailwind-merge": "^2.2.1"
   }
 }

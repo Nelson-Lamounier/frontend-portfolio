@@ -108,6 +108,26 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
 
   callbacks: {
     /**
+     * Controls the redirect URL after successful sign-in or sign-out.
+     * Overridden to allow cross-origin redirects between localhost:3000 (auth server)
+     * and localhost:5001 (TanStack admin) during development.
+     */
+    async redirect({ url, baseUrl }) {
+      // Allows relative callback URLs
+      if (url.startsWith('/')) return `${baseUrl}${url}`
+      
+      // Allows callback URLs on the same origin
+      if (new URL(url).origin === baseUrl) return url
+      
+      // Allow localhost:5001 redirects in development
+      if (process.env.NODE_ENV === 'development' && url.startsWith('http://localhost:5001')) {
+        return url
+      }
+      
+      return baseUrl
+    },
+
+    /**
      * Called after a successful sign-in.
      * Logs the event and allows the sign-in to proceed.
      *

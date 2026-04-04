@@ -2,12 +2,12 @@
  * DynamoDB Resumes Data Layer (Server-Side Only)
  *
  * CRUD operations for resume versions stored in DynamoDB.
- * Uses RESUME#<id> partition keys within the strategist table.
+ * Uses RESUME#<id> partition keys within the applications table.
  *
  * **Migration note (2026-03):** Resume entities were moved from the
- * articles table (DYNAMODB_TABLE_NAME) to the strategist table
+ * articles table (DYNAMODB_TABLE_NAME) to the applications table
  * (STRATEGIST_TABLE_NAME) for domain separation. The pipeline agents
- * query the strategist table directly for the most up-to-date resume
+ * query the applications table directly for the most up-to-date resume
  * at invocation time, avoiding Knowledge Base sync delays.
  *
  * Each resume stores the full ResumeData JSON (~10–15 KB),
@@ -18,7 +18,7 @@
  * This module should NEVER be imported from client components.
  *
  * Environment Variables:
- *   STRATEGIST_TABLE_NAME – primary table (strategist domain)
+ *   STRATEGIST_TABLE_NAME – primary table (applications domain)
  *   DYNAMODB_TABLE_NAME   – fallback (legacy, pre-migration)
  *   DYNAMODB_GSI1_NAME    – default: gsi1-status-date
  *   AWS_REGION            – supplied by ECS task metadata
@@ -94,7 +94,7 @@ export interface ResumeWithData extends ResumeSummary {
 // ========================================
 
 /**
- * Table name resolution: prefer the strategist table, fall back to
+ * Table name resolution: prefer the applications table, fall back to
  * the legacy articles table for environments that haven't migrated yet.
  */
 const TABLE_NAME =
@@ -176,7 +176,7 @@ function cacheSet<T>(key: string, data: T, ttlMs: number = CACHE_TTL_MS): void {
  * Invalidates all resume-related cache entries.
  */
 function cacheInvalidate(): void {
-  for (const key of cacheStore.keys()) {
+  for (const key of Array.from(cacheStore.keys())) {
     if (key.startsWith('resume:')) {
       cacheStore.delete(key)
     }
@@ -337,6 +337,8 @@ export async function deleteResume(resumeId: string): Promise<void> {
   cacheInvalidate()
 }
 
+let warnedGSI1 = false
+
 /**
  * List all resume versions, sorted by creation date (newest first).
  *
@@ -373,7 +375,10 @@ export async function listResumes(): Promise<ResumeSummary[]> {
       return resumes
     }
   } catch {
-    console.warn('[dynamodb-resumes] GSI1 unavailable, falling back to Scan')
+    if (!warnedGSI1) {
+      console.warn('[dynamodb-resumes] GSI1 unavailable, falling back to Scan')
+      warnedGSI1 = true
+    }
   }
 
   // Fallback: Scan filtered by entityType=RESUME
@@ -389,6 +394,7 @@ export async function listResumes(): Promise<ResumeSummary[]> {
   )
 
   if (!scanResult.Items || scanResult.Items.length === 0) {
+    cacheSet(cacheKey, [])
     return []
   }
 
@@ -408,8 +414,8 @@ export async function listResumes(): Promise<ResumeSummary[]> {
  */
 export async function getResume(resumeId: string): Promise<ResumeWithData | null> {
   const cacheKey = `resume:${resumeId}`
-  const cached = cacheGet<ResumeWithData>(cacheKey)
-  if (cached) return cached
+  const cached = cacheGet<ResumeWithData | null>(cacheKey)
+  if (cached !== null && cached !== undefined) return cached
 
   const docClient = getDocClient()
 
@@ -423,7 +429,11 @@ export async function getResume(resumeId: string): Promise<ResumeWithData | null
     }),
   )
 
-  if (!result.Item) return null
+  if (!result.Item) {
+    // Cache the null result so we don't spam the DB
+    cacheSet(cacheKey, null)
+    return null
+  }
 
   const resume = entityToFull(result.Item as ResumeEntity)
   cacheSet(cacheKey, resume)
@@ -440,8 +450,14 @@ export async function getResume(resumeId: string): Promise<ResumeWithData | null
  */
 export async function getActiveResume(): Promise<ResumeWithData | null> {
   const cacheKey = 'resume:active'
-  const cached = cacheGet<ResumeWithData>(cacheKey)
-  if (cached) return cached
+  // cacheGet technically returns T | null, but if the cached value IS null...
+  // wait, our cache map stores objects. We can differentiate missing vs null, but cacheGet returns `null` for missing.
+  // Actually, wait, let's just perform the DB query if it returns null, unless we change cacheGet.
+  // For simplicity, we just look inside `cacheStore`.
+  const entry = cacheStore.get(cacheKey)
+  if (entry && Date.now() <= entry.expiresAt) {
+    return entry.data as ResumeWithData | null
+  }
 
   const docClient = getDocClient()
 
@@ -458,7 +474,10 @@ export async function getActiveResume(): Promise<ResumeWithData | null> {
     }),
   )
 
-  if (!result.Items || result.Items.length === 0) return null
+  if (!result.Items || result.Items.length === 0) {
+    cacheSet(cacheKey, null, 300_000)
+    return null
+  }
 
   const resume = entityToFull(result.Items[0] as ResumeEntity)
   cacheSet(cacheKey, resume, 300_000) // 5 min cache for public reads

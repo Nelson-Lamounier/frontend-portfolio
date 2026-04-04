@@ -2,8 +2,6 @@
 
 'use client';
 
-import Script from 'next/script';
-
 const GA_MEASUREMENT_ID = process.env.NEXT_PUBLIC_GA_MEASUREMENT_ID;
 
 /**
@@ -22,11 +20,11 @@ export function GoogleAnalytics() {
 
   return (
     <>
-      <Script
+      <script
+        async
         src={`https://www.googletagmanager.com/gtag/js?id=${GA_MEASUREMENT_ID}`}
-        strategy="afterInteractive"
       />
-      <Script id="google-analytics" strategy="afterInteractive">
+      <script id="google-analytics">
         {`
           window.dataLayer = window.dataLayer || [];
           function gtag(){dataLayer.push(arguments);}
@@ -35,7 +33,7 @@ export function GoogleAnalytics() {
             page_path: window.location.pathname,
           });
         `}
-      </Script>
+      </script>
     </>
   );
 }
