@@ -3,7 +3,7 @@
 import { Download } from 'lucide-react'
 import { ResumeDocument } from '@/components/resume/ResumeDocument'
 import { Button } from '../../../components/ui/Button'
-import type { AdminResumeWithData } from '@/lib/api/admin-api'
+import type { AdminResumeWithData } from '../../applications/hooks/use-resume-versions'
 import { DashboardDrawer } from '../../../components/ui/DashboardDrawer'
 
 interface ResumePreviewDrawerProps {
