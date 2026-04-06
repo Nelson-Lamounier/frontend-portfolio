@@ -1,7 +1,7 @@
 import { useCallback } from 'react'
 import { CheckCircle, Archive, Loader2 } from 'lucide-react'
-import type { PipelineState } from '@/lib/api/admin-api'
-import { usePipelineAction } from '@/lib/hooks/use-pipeline-action'
+import type { PipelineState } from '../hooks/use-pipeline-status'
+import { usePipelineAction } from '../hooks/use-pipeline-action'
 import { useToastStore } from '@/lib/stores/toast-store'
 
 interface PipelineActionsProps {
@@ -18,13 +18,9 @@ export function PipelineActions({ slug, pipelineState, onActionComplete }: Pipel
     actionMutation.mutate(
       { slug, action: 'approve' },
       {
-        onSuccess: (data) => {
-          if (data.success) {
-            addToast('success', `Article "${slug}" published successfully!`)
-            onActionComplete()
-          } else {
-            addToast('error', data.message)
-          }
+        onSuccess: () => {
+          addToast('success', `Article "${slug}" published successfully!`)
+          onActionComplete()
         },
         onError: (err) => addToast('error', err.message),
       },
@@ -35,13 +31,9 @@ export function PipelineActions({ slug, pipelineState, onActionComplete }: Pipel
     actionMutation.mutate(
       { slug, action: 'reject' },
       {
-        onSuccess: (data) => {
-          if (data.success) {
-            addToast('success', `Article "${slug}" rejected and archived.`)
-            onActionComplete()
-          } else {
-            addToast('error', data.message)
-          }
+        onSuccess: () => {
+          addToast('success', `Article "${slug}" rejected and archived.`)
+          onActionComplete()
         },
         onError: (err) => addToast('error', err.message),
       },
