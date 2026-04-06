@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react'
-import type { PipelineState } from '@/lib/api/admin-api'
+import type { PipelineState } from '../hooks/use-pipeline-status'
 
 export type AgentMode = 'upload' | 'paste' | 'pipeline' | 'test'
 
