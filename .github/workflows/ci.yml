@@ -33,8 +33,10 @@ jobs:
       start-admin: ${{ steps.filter.outputs.start-admin }}
       # Computed: should we run all checks?
       run-all: ${{ steps.compute.outputs.run-all }}
-      # Computed: should we run docker build test?
+      # Computed: should we run site docker build test?
       run-docker: ${{ steps.compute.outputs.run-docker }}
+      # Computed: should we run start-admin docker build?
+      run-start-admin-docker: ${{ steps.compute.outputs.run-start-admin-docker }}
       # Computed: should we run start-admin checks?
       run-start-admin: ${{ steps.compute.outputs.run-start-admin }}
 
@@ -48,31 +50,36 @@ jobs:
         with:
           filters: |
             src:
-              - 'src/**'
-              - 'public/**'
-              - 'mdx-components.tsx'
+              - 'apps/site/src/**'
+              - 'apps/site/public/**'
+              - 'apps/site/mdx-components.tsx'
+              - 'packages/shared/src/**'
             tests:
-              - '__tests__/**'
-              - 'jest.config.*'
-              - 'jest.setup.*'
+              - 'apps/site/__tests__/**'
+              - 'apps/site/jest.config.*'
+              - 'apps/site/jest.setup.*'
             styles:
-              - '**/*.css'
-              - 'tailwind.config.*'
-              - 'postcss.config.*'
-              - 'typography.ts'
+              - 'apps/site/**/*.css'
+              - 'apps/site/tailwind.config.*'
+              - 'apps/site/postcss.config.*'
+              - 'packages/shared/**/*.css'
             config:
               - '.github/**'
               - 'package.json'
               - 'yarn.lock'
-              - 'tsconfig*.json'
-              - 'next.config.*'
-              - 'eslint.config.*'
+              - 'apps/site/tsconfig*.json'
+              - 'apps/site/next.config.*'
+              - 'apps/site/eslint.config.*'
+              - 'apps/site/package.json'
             docker:
               - 'Dockerfile'
               - '.dockerignore'
             start-admin:
               - 'apps/start-admin/**'
               - 'packages/shared/**'
+            start-admin-docker:
+              - 'apps/start-admin/Dockerfile'
+              - 'apps/start-admin/**'
 
       - name: Compute Run Flags
         id: compute
@@ -102,6 +109,14 @@ jobs:
             echo "run-start-admin=false" >> $GITHUB_OUTPUT
           fi
 
+          # Run start-admin docker build if its Dockerfile or source changed
+          if [[ "${{ steps.filter.outputs.start-admin-docker }}" == "true" ]] || \
+             [[ "${{ steps.filter.outputs.config }}" == "true" ]]; then
+            echo "run-start-admin-docker=true" >> $GITHUB_OUTPUT
+          else
+            echo "run-start-admin-docker=false" >> $GITHUB_OUTPUT
+          fi
+
       - name: Summary
         run: |
           echo "## Change Detection Results" >> $GITHUB_STEP_SUMMARY
@@ -112,12 +127,14 @@ jobs:
           echo "| Tests | ${{ steps.filter.outputs.tests }} |" >> $GITHUB_STEP_SUMMARY
           echo "| Styles | ${{ steps.filter.outputs.styles }} |" >> $GITHUB_STEP_SUMMARY
           echo "| Config | ${{ steps.filter.outputs.config }} |" >> $GITHUB_STEP_SUMMARY
-          echo "| Docker | ${{ steps.filter.outputs.docker }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Docker (Site) | ${{ steps.filter.outputs.docker }} |" >> $GITHUB_STEP_SUMMARY
           echo "| Start Admin | ${{ steps.filter.outputs.start-admin }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Start Admin Docker | ${{ steps.filter.outputs.start-admin-docker }} |" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "**Run All Checks:** ${{ steps.compute.outputs.run-all }}" >> $GITHUB_STEP_SUMMARY
-          echo "**Run Docker Build:** ${{ steps.compute.outputs.run-docker }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Run Site Docker Build:** ${{ steps.compute.outputs.run-docker }}" >> $GITHUB_STEP_SUMMARY
           echo "**Run Start Admin:** ${{ steps.compute.outputs.run-start-admin }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Run Start Admin Docker:** ${{ steps.compute.outputs.run-start-admin-docker }}" >> $GITHUB_STEP_SUMMARY
 
   # ============================================================================
   # Dependency Installation & Caching
@@ -285,12 +302,12 @@ jobs:
 
       - name: Verify Build Output
         run: |
-          if [ -d "apps/site/.next" ] && [ -d "apps/admin/.next" ]; then
-            echo "✓ Build output directory exists"
+          if [ -d "apps/site/.next" ]; then
+            echo "✓ Site build output directory exists"
             echo "Build size:"
-            du -sh apps/*/.next
+            du -sh apps/site/.next
           else
-            echo "✗ Build output directory not found"
+            echo "✗ Site build output directory not found"
             exit 1
           fi
 
@@ -461,13 +478,103 @@ jobs:
 
       - name: Verify Build Output
         run: |
-          if [ -d "apps/start-admin/.output" ]; then
-            echo "✓ Vinxi build output exists"
-            du -sh apps/start-admin/.output
+          if [ -d "apps/start-admin/dist" ] && [ -f "apps/start-admin/dist/server/server.js" ]; then
+            echo "✓ Start Admin build output exists"
+            du -sh apps/start-admin/dist
           else
-            echo "✗ Build output directory not found"
+            echo "✗ Start Admin build output not found (expected dist/server/server.js)"
             exit 1
           fi
+
+  # ============================================================================
+  # Start-Admin — Unit Tests
+  # ============================================================================
+  start-admin-test:
+    name: Start Admin Tests
+    needs: [setup, detect-changes]
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    if: |
+      needs.detect-changes.outputs.run-start-admin == 'true' ||
+      needs.detect-changes.outputs.run-all == 'true'
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js and Yarn
+        uses: ./.github/actions/setup-node-yarn
+        with:
+          node-version: ${{ needs.setup.outputs.node-version }}
+
+      - name: Run Tests (start-admin)
+        run: yarn workspace start-admin test
+
+  # ============================================================================
+  # Start-Admin — Docker Build Test
+  # ============================================================================
+  start-admin-docker-build:
+    name: Start Admin Docker Build
+    needs: [setup, detect-changes, start-admin-build]
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    if: |
+      needs.detect-changes.outputs.run-start-admin-docker == 'true' &&
+      needs.start-admin-build.result == 'success'
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build Docker Image (Test Only)
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: apps/start-admin/Dockerfile
+          push: false
+          load: true
+          tags: start-admin:ci-test
+          cache-from: type=gha,scope=start-admin
+          cache-to: type=gha,mode=max,scope=start-admin
+
+      - name: Smoke Test Container
+        run: |
+          echo "Starting start-admin container for smoke tests..."
+          docker run -d --name admin-test-container -p 5001:5001 start-admin:ci-test
+
+          # Wait for server to be ready (poll for up to 30s)
+          echo "Waiting for server to be ready..."
+          for i in $(seq 1 30); do
+            if curl -sf --max-time 2 http://localhost:5001/admin/ > /dev/null 2>&1; then
+              echo "✓ Server is ready (attempt $i)"
+              break
+            fi
+            if [ $i -eq 30 ]; then
+              echo "✗ Server failed to start within 30s"
+              docker logs admin-test-container
+              exit 1
+            fi
+            sleep 1
+          done
+
+          ADMIN_STATUS=$(curl -s -o /dev/null -w "%{http_code}" --max-time 5 http://localhost:5001/admin/)
+          if [ "$ADMIN_STATUS" -lt "500" ]; then
+            echo "✓ /admin/ returned $ADMIN_STATUS"
+          else
+            echo "✗ /admin/ returned $ADMIN_STATUS (expected < 500)"
+            docker logs admin-test-container
+            exit 1
+          fi
+
+          echo ""
+          echo "=== Start Admin smoke tests passed ==="
+
+          # Cleanup
+          docker stop admin-test-container
+          docker rm admin-test-container
 
   # ============================================================================
   # CI Summary
@@ -484,7 +591,9 @@ jobs:
       - docker-build
       - start-admin-lint
       - start-admin-typecheck
+      - start-admin-test
       - start-admin-build
+      - start-admin-docker-build
     runs-on: ubuntu-latest
     timeout-minutes: 5
     if: always()
@@ -497,16 +606,17 @@ jobs:
 
           echo "### Change Detection" >> $GITHUB_STEP_SUMMARY
           echo "- Run All: ${{ needs.detect-changes.outputs.run-all }}" >> $GITHUB_STEP_SUMMARY
-          echo "- Run Docker: ${{ needs.detect-changes.outputs.run-docker }}" >> $GITHUB_STEP_SUMMARY
+          echo "- Run Site Docker: ${{ needs.detect-changes.outputs.run-docker }}" >> $GITHUB_STEP_SUMMARY
+          echo "- Run Start Admin Docker: ${{ needs.detect-changes.outputs.run-start-admin-docker }}" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
 
-          echo "### Code Quality" >> $GITHUB_STEP_SUMMARY
+          echo "### Site — Code Quality" >> $GITHUB_STEP_SUMMARY
           echo "- Audit: ${{ needs.audit.result }}" >> $GITHUB_STEP_SUMMARY
           echo "- Lint: ${{ needs.lint.result }}" >> $GITHUB_STEP_SUMMARY
           echo "- Type Check: ${{ needs.typecheck.result }}" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
 
-          echo "### Tests & Build" >> $GITHUB_STEP_SUMMARY
+          echo "### Site — Tests & Build" >> $GITHUB_STEP_SUMMARY
           echo "- Unit Tests: ${{ needs.test.result }}" >> $GITHUB_STEP_SUMMARY
           echo "- Build: ${{ needs.build.result }}" >> $GITHUB_STEP_SUMMARY
           echo "- Docker Build: ${{ needs.docker-build.result }}" >> $GITHUB_STEP_SUMMARY
@@ -515,12 +625,21 @@ jobs:
           echo "### Start Admin" >> $GITHUB_STEP_SUMMARY
           echo "- Lint: ${{ needs.start-admin-lint.result }}" >> $GITHUB_STEP_SUMMARY
           echo "- Type Check: ${{ needs.start-admin-typecheck.result }}" >> $GITHUB_STEP_SUMMARY
+          echo "- Unit Tests: ${{ needs.start-admin-test.result }}" >> $GITHUB_STEP_SUMMARY
           echo "- Build: ${{ needs.start-admin-build.result }}" >> $GITHUB_STEP_SUMMARY
+          echo "- Docker Build: ${{ needs.start-admin-docker-build.result }}" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
 
-          # Critical failures check
+          # Critical failures check (skip 'skipped' — only fail on actual 'failure')
           FAILED=false
-          for RESULT in "${{ needs.lint.result }}" "${{ needs.typecheck.result }}" "${{ needs.build.result }}" "${{ needs.start-admin-lint.result }}" "${{ needs.start-admin-typecheck.result }}" "${{ needs.start-admin-build.result }}"; do
+          for RESULT in \
+            "${{ needs.lint.result }}" \
+            "${{ needs.typecheck.result }}" \
+            "${{ needs.build.result }}" \
+            "${{ needs.start-admin-lint.result }}" \
+            "${{ needs.start-admin-typecheck.result }}" \
+            "${{ needs.start-admin-test.result }}" \
+            "${{ needs.start-admin-build.result }}"; do
             if [[ "$RESULT" == "failure" ]]; then
               FAILED=true
               break
@@ -535,3 +654,4 @@ jobs:
 
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "✅ All critical CI checks passed" >> $GITHUB_STEP_SUMMARY
+
