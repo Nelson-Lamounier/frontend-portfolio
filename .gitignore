@@ -18,6 +18,10 @@ node_modules/
 # Next.js TypeScript
 next-env.d.ts
 
+# Next.js build output — not needed in Git.
+# The Dockerfile runs yarn build internally.
+.next/
+
 # ======================
 # TanStack Start / Vinxi
 # ======================
@@ -30,11 +34,10 @@ next-env.d.ts
 # ======================
 # Build outputs (TanStack Start apps only)
 # ======================
-# NOTE: .next/ folders are intentionally TRACKED — they are required
-# for the Docker container deployments on AWS (apps/site).
 dist/
 dist-ssr/
 *.tsbuildinfo
+
 
 # ======================
 # IDE & OS
