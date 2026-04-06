@@ -2,10 +2,9 @@
  * Root Application Layout
  *
  * Minimal shell providing the HTML document structure, global CSS import,
- * theme/session providers, and cookie consent banner.
+ * theme providers, and cookie consent banner.
  *
  * Public pages get their Header/Footer from `(site)/layout.tsx`.
- * Admin pages get their sidebar shell from `admin/(authenticated)/layout.tsx`.
  * This root layout intentionally contains NO visual chrome.
  */
 

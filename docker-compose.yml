@@ -38,28 +38,28 @@ services:
       retries: 3
     restart: unless-stopped
 
-  nextjs-admin:
+  start-admin:
     build:
       context: .
-      dockerfile: Dockerfile
-      args:
-        APP_NAME: admin
-        NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-}
-    container_name: nextjs-admin
+      dockerfile: apps/start-admin/Dockerfile
+    container_name: start-admin
     ports:
-      - "3001:3000"
+      - "5001:5001"
     environment:
       - NODE_ENV=production
-      - PORT=3000
-      - HOSTNAME=0.0.0.0
-      - OTEL_SDK_DISABLED=true
-      - OTEL_SERVICE_NAME=nextjs-admin
-      - METRICS_ENABLED=true
-      - NEXT_TELEMETRY_DISABLED=1
+      - PORT=5001
+      # Cognito auth (required for login)
+      # - AUTH_COGNITO_USER_POOL_ID=
+      # - AUTH_COGNITO_CLIENT_ID=
+      # - AUTH_COGNITO_ISSUER_URL=
+      # - JWT_SECRET=
+      # DynamoDB
+      # - DYNAMODB_TABLE_NAME=
+      # - ARTICLES_TABLE_NAME=
     healthcheck:
-      test: ["CMD", "node", "-e", "require('http').get('http://localhost:3000/api/health', (r) => process.exit(r.statusCode === 200 ? 0 : 1))"]
+      test: ["CMD", "curl", "-sf", "http://localhost:5001/admin/", "--max-time", "3"]
       interval: 30s
-      timeout: 3s
-      start_period: 10s
+      timeout: 5s
+      start_period: 15s
       retries: 3
     restart: unless-stopped

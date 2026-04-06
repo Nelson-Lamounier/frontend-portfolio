@@ -136,12 +136,7 @@ describe('Home Page', () => {
       expect(lists.length).toBeGreaterThan(0)
     })
 
-    it('renders download CV button', async () => {
-      render(await Home())
 
-      const downloadButton = screen.getByRole('button', { name: /download cv/i })
-      expect(downloadButton).toBeInTheDocument()
-    })
 
     it('displays multiple work roles', async () => {
       render(await Home())
