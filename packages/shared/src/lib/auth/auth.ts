@@ -29,6 +29,8 @@
  */
 
 import NextAuth from 'next-auth'
+import type { Session, User } from 'next-auth'
+import type { JWT } from 'next-auth/jwt'
 import CognitoProvider from 'next-auth/providers/cognito'
 
 
@@ -176,7 +178,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
      * @param params - Session callback parameters
      * @returns Updated session
      */
-    session({ session, token }) {
+    session({ session, token }: { session: Session; token: JWT }) {
       const sess = session as unknown as { user?: Record<string, unknown> }
       if (sess.user && token.sub) {
         sess.user.id = token.sub
@@ -200,7 +202,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
      * @param params - Auth callback parameters
      * @returns Always `true` — enforcement is in middleware.ts
      */
-    authorized({ auth: session, request }) {
+    authorized({ auth: session, request }: { auth: { user?: User } | null; request: { nextUrl: URL } }) {
       const { pathname } = request.nextUrl
       const isAdminRoute =
         pathname.startsWith('/admin') && !pathname.startsWith('/admin/login')
@@ -225,7 +227,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
      *
      * @param message - Sign-out event message
      */
-    signOut(message) {
+    signOut(message: Record<string, unknown>) {
       const msg = message as { token?: { email?: string } }
       authLog({
         event: 'sign_out',
@@ -257,7 +259,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
      *
      * @param code - Warning code
      */
-    warn(code) {
+    warn(code: string) {
       authLog({
         event: 'auth_warning',
         level: 'warn',
