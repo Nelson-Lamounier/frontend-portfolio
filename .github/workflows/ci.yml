@@ -236,7 +236,7 @@ jobs:
           node-version: ${{ needs.setup.outputs.node-version }}
 
       - name: Run TypeScript Compiler
-        run: yarn tsc --noEmit
+        run: yarn workspace site exec tsc --noEmit
 
   # ============================================================================
   # Unit Tests

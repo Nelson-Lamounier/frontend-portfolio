@@ -19,7 +19,13 @@ FROM base AS deps
 WORKDIR /app
 
 COPY package.json yarn.lock .yarnrc.yml ./
-RUN yarn install --frozen-lockfile
+
+# Copy all workspace package.json files so Yarn 4 can resolve the workspace graph
+COPY apps/site/package.json ./apps/site/package.json
+COPY apps/start-admin/package.json ./apps/start-admin/package.json
+COPY packages/shared/package.json ./packages/shared/package.json
+
+RUN yarn install --immutable
 
 # ── Stage 3: Build the Next.js application ────────────────────────
 FROM base AS builder
@@ -98,5 +104,5 @@ ENV OTEL_EXPORTER_OTLP_ENDPOINT=http://localhost:4317
 HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
   CMD node -e "const port = process.env.PORT || 3000; require('http').get('http://localhost:' + port + '/api/health', (r) => {process.exit(r.statusCode === 200 ? 0 : 1)})" || exit 1
 
-# Start the application
-CMD node apps/${APP_NAME}/server.js
+# Start the application (exec form for proper OS signal handling)
+CMD ["sh", "-c", "exec node apps/${APP_NAME}/server.js"]

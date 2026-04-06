@@ -2,9 +2,10 @@
  * @format
  * Unit tests for article management server functions.
  *
- * Mocks DynamoDB DocumentClient and auth-guard to verify:
- * - Article listing with status filtering
- * - Content retrieval
+ * Mocks DynamoDB DocumentClient, S3 content helpers, and auth-guard
+ * to verify:
+ * - Article listing via GSI with status filtering
+ * - Content retrieval (metadata from DynamoDB + body from S3)
  * - Publish/unpublish status transitions
  * - Article deletion (metadata + content)
  */
@@ -49,6 +50,17 @@ vi.mock('../../server/auth-guard', () => ({
 }))
 
 // ---------------------------------------------------------------------------
+// Mock: S3 content helpers
+// ---------------------------------------------------------------------------
+const mockFetchArticleContent = vi.fn()
+const mockPutArticleContent = vi.fn()
+
+vi.mock('@/lib/articles/s3-content', () => ({
+  fetchArticleContent: (...args: unknown[]) => mockFetchArticleContent(...args),
+  putArticleContent: (...args: unknown[]) => mockPutArticleContent(...args),
+}))
+
+// ---------------------------------------------------------------------------
 // Mock: DynamoDB
 // ---------------------------------------------------------------------------
 const mockSend = vi.fn()
@@ -86,11 +98,13 @@ import {
 } from '../../server/articles'
 
 // ---------------------------------------------------------------------------
-// Test data
+// Test data — mirrors real DynamoDB GSI schema
 // ---------------------------------------------------------------------------
 const DRAFT_ARTICLE = {
-  pk: 'ARTICLES',
-  sk: 'ARTICLE#my-draft',
+  pk: 'ARTICLE#my-draft',
+  sk: 'METADATA',
+  gsi1pk: 'STATUS#draft',
+  gsi1sk: '2026-01-11T10:00:00Z',
   title: 'Draft Article',
   slug: 'my-draft',
   status: 'draft',
@@ -99,8 +113,10 @@ const DRAFT_ARTICLE = {
 }
 
 const PUBLISHED_ARTICLE = {
-  pk: 'ARTICLES',
-  sk: 'ARTICLE#my-published',
+  pk: 'ARTICLE#my-published',
+  sk: 'METADATA',
+  gsi1pk: 'STATUS#published',
+  gsi1sk: '2026-01-12T10:00:00Z',
   title: 'Published Article',
   slug: 'my-published',
   status: 'published',
@@ -109,10 +125,18 @@ const PUBLISHED_ARTICLE = {
   updatedAt: '2026-01-12T10:00:00Z',
 }
 
-const CONTENT_RECORD = {
-  pk: 'ARTICLES',
-  sk: 'CONTENT#my-draft',
-  content: '# My Draft Article\n\nThis is the content.',
+const DRAFT_CONTENT_REF = 's3://test-bucket/drafts/my-draft.mdx'
+const DRAFT_CONTENT_BODY = '# My Draft Article\n\nThis is the content.'
+
+const METADATA_WITH_CONTENT_REF = {
+  pk: 'ARTICLE#my-draft',
+  sk: 'METADATA',
+  title: 'Draft Article',
+  slug: 'my-draft',
+  status: 'draft',
+  contentRef: DRAFT_CONTENT_REF,
+  createdAt: '2026-01-10T10:00:00Z',
+  updatedAt: '2026-01-11T10:00:00Z',
 }
 
 // ---------------------------------------------------------------------------
@@ -125,21 +149,22 @@ describe('getArticlesFn', () => {
   })
 
   it('should return all articles when status is "all"', async () => {
-    mockSend.mockResolvedValue({
-      Items: [DRAFT_ARTICLE, PUBLISHED_ARTICLE],
-    })
+    // The handler makes 3 GSI queries: draft, published, review
+    mockSend
+      .mockResolvedValueOnce({ Items: [DRAFT_ARTICLE] })
+      .mockResolvedValueOnce({ Items: [PUBLISHED_ARTICLE] })
+      .mockResolvedValueOnce({ Items: [] })
 
     const handler = getArticlesFn as (input: { data: { status: string } }) => Promise<unknown[]>
     const result = await handler({ data: { status: 'all' } })
 
     expect(result).toHaveLength(2)
-    expect(mockSend).toHaveBeenCalledTimes(1)
+    expect(mockSend).toHaveBeenCalledTimes(3)
   })
 
   it('should filter by draft status', async () => {
-    mockSend.mockResolvedValue({
-      Items: [DRAFT_ARTICLE, PUBLISHED_ARTICLE],
-    })
+    // Single GSI query for STATUS#draft
+    mockSend.mockResolvedValue({ Items: [DRAFT_ARTICLE] })
 
     const handler = getArticlesFn as (input: { data: { status: string } }) => Promise<unknown[]>
     const result = await handler({ data: { status: 'draft' } })
@@ -149,9 +174,8 @@ describe('getArticlesFn', () => {
   })
 
   it('should filter by published status', async () => {
-    mockSend.mockResolvedValue({
-      Items: [DRAFT_ARTICLE, PUBLISHED_ARTICLE],
-    })
+    // Single GSI query for STATUS#published
+    mockSend.mockResolvedValue({ Items: [PUBLISHED_ARTICLE] })
 
     const handler = getArticlesFn as (input: { data: { status: string } }) => Promise<unknown[]>
     const result = await handler({ data: { status: 'published' } })
@@ -167,13 +191,17 @@ describe('getArticleContentFn', () => {
   })
 
   it('should return content when it exists', async () => {
-    mockSend.mockResolvedValue({ Item: CONTENT_RECORD })
+    // DynamoDB returns the METADATA record with a contentRef pointer
+    mockSend.mockResolvedValue({ Item: METADATA_WITH_CONTENT_REF })
+    // S3 helper returns the actual MDX body
+    mockFetchArticleContent.mockResolvedValue({ content: DRAFT_CONTENT_BODY })
 
     const handler = getArticleContentFn as (input: { data: string }) => Promise<Record<string, unknown> | null>
     const result = await handler({ data: 'my-draft' })
 
     expect(result).not.toBeNull()
     expect(result?.content).toContain('# My Draft Article')
+    expect(mockFetchArticleContent).toHaveBeenCalledWith(DRAFT_CONTENT_REF)
   })
 
   it('should return null when content does not exist', async () => {
