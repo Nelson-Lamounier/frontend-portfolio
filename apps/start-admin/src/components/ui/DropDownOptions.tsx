@@ -22,6 +22,7 @@ interface DropDownOptionsProps {
   readonly onEditCoverLetter?: () => void
   readonly onDelete?: () => void
   readonly onPublish?: () => void
+  readonly onUnpublish?: () => void
   readonly showPreviewResume?: boolean
   readonly showPreviewCoverLetter?: boolean
 }
@@ -38,9 +39,12 @@ export default function DropDownOptions({
   onEditCoverLetter,
   onDelete,
   onPublish,
+  onUnpublish,
+  onPreviewArticle,
+  onEditArticle,
   showPreviewResume = true,
   showPreviewCoverLetter = true,
-}: DropDownOptionsProps) {
+}: DropDownOptionsProps & { onPreviewArticle?: () => void; onEditArticle?: () => void; }) {
   return (
     <Menu as="div" className="relative inline-block text-left">
       <MenuButton
@@ -76,7 +80,7 @@ export default function DropDownOptions({
           </div>
         )}
 
-        {(onEditResume || onEditCoverLetter || onPreviewResume || onPreviewCoverLetter || onPublish) && (
+        {(onEditResume || onEditCoverLetter || onPreviewResume || onPreviewCoverLetter || onPublish || onUnpublish || onPreviewArticle || onEditArticle) && (
           <div className="py-1">
             {onEditResume && (
               <MenuItem>
@@ -150,6 +154,51 @@ export default function DropDownOptions({
                     className="mr-3 size-5 text-gray-500 group-data-focus:text-white"
                   />
                   Publish
+                </button>
+              </MenuItem>
+            )}
+            {onUnpublish && (
+              <MenuItem>
+                <button
+                  type="button"
+                  onClick={onUnpublish}
+                  className="group flex w-full items-center px-4 py-2 text-sm text-gray-300 data-focus:bg-white/5 data-focus:text-white data-focus:outline-hidden"
+                >
+                  <PaperAirplaneIcon
+                    aria-hidden="true"
+                    className="mr-3 size-5 text-gray-500 group-data-focus:text-white rotate-180"
+                  />
+                  Unpublish
+                </button>
+              </MenuItem>
+            )}
+            {onPreviewArticle && (
+              <MenuItem>
+                <button
+                  type="button"
+                  onClick={onPreviewArticle}
+                  className="group flex w-full items-center px-4 py-2 text-sm text-gray-300 data-focus:bg-white/5 data-focus:text-white data-focus:outline-hidden"
+                >
+                  <DocumentTextIcon
+                    aria-hidden="true"
+                    className="mr-3 size-5 text-gray-500 group-data-focus:text-white"
+                  />
+                  Preview
+                </button>
+              </MenuItem>
+            )}
+            {onEditArticle && (
+              <MenuItem>
+                <button
+                  type="button"
+                  onClick={onEditArticle}
+                  className="group flex w-full items-center px-4 py-2 text-sm text-gray-300 data-focus:bg-white/5 data-focus:text-white data-focus:outline-hidden"
+                >
+                  <PencilSquareIcon
+                    aria-hidden="true"
+                    className="mr-3 size-5 text-gray-500 group-data-focus:text-white"
+                  />
+                  Edit
                 </button>
               </MenuItem>
             )}

@@ -30,8 +30,8 @@ export function DashboardDrawer({
 
       <div className="fixed inset-0 overflow-hidden">
         <div className="absolute inset-0 overflow-hidden">
-          {/* On lg screens: width is 100vw minus sidebar (18rem). On smaller screens: full width but give pt-16 for the topnav */}
-          <div className="pointer-events-none fixed inset-y-0 right-0 flex w-full lg:w-[calc(100vw-18rem)] pt-[72px] lg:pt-0">
+          {/* On lg screens: width is 100vw minus sidebar (18rem). On all screens: top-16 clears the 64px header nav */}
+          <div className="pointer-events-none fixed top-16 bottom-0 right-0 flex w-full lg:w-[calc(100vw-18rem)]">
             <DialogPanel
               transition
               className="pointer-events-auto w-full transform transition duration-500 ease-in-out data-closed:translate-x-full sm:duration-700"
