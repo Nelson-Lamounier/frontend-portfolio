@@ -11,7 +11,7 @@ import { ResumeForm } from '../../resumes/components/ResumeForm'
 import { CoverLetterForm } from './CoverLetterForm'
 import { DashboardDrawer } from '../../../components/ui/DashboardDrawer'
 import DropDownOptions from '../../../components/ui/DropDownOptions'
-import type { AdminResumeWithData } from '@/lib/api/admin-api'
+import type { AdminResumeWithData } from '../../applications/hooks/use-resume-versions'
 
 interface ApplicationReviewDetailProps {
   readonly detail: ApplicationDetail
