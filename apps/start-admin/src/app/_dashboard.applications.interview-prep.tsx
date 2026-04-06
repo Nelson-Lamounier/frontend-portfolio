@@ -1,7 +1,7 @@
 import { createFileRoute } from '@tanstack/react-router'
 import { useState } from 'react'
 import { ApplicationInterviewPrep } from '@/features/applications/components/ApplicationInterviewPrep'
-import { useApplications } from '@/lib/hooks/use-applications'
+import { useApplications } from '@/hooks/use-admin-applications'
 import { ApplicationCard } from '@/features/applications/components/ApplicationCard'
 import { Target, Loader2, AlertCircle } from 'lucide-react'
 import { DashboardPage } from '@/components/layouts/DashboardPage'

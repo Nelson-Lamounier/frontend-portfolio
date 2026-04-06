@@ -27,14 +27,12 @@ function ApplicationsNewRoute() {
   ]
 
   return (
-    <div className="space-y-6">
-      <FullWidthBar steps={steps} />
-      
-      <DashboardPage
-        title="Application Analysis"
-        description="Create a new application analysis."
-      >
-        {step === 1 && (
+    <DashboardPage
+      title="Application Analysis"
+      description="Create a new application analysis."
+      headerBottom={<FullWidthBar steps={steps} />}
+    >
+      {step === 1 && (
           <ResumeSelect 
             onSelect={(id) => {
               setSelectedResumeId(id)
@@ -52,6 +50,5 @@ function ApplicationsNewRoute() {
           />
         )}
       </DashboardPage>
-    </div>
   )
 }

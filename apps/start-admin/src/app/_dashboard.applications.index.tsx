@@ -4,6 +4,7 @@ import {
   QueueListIcon,
   AcademicCapIcon,
 } from '@heroicons/react/24/outline'
+import { Sparkles } from 'lucide-react'
 import { GridListActions, type GridListAction } from '../components/ui/GridListActions'
 import { DashboardPage } from '../components/layouts/DashboardPage'
 
@@ -31,6 +32,22 @@ const actions: GridListAction[] = [
     iconForeground: 'text-indigo-400',
     iconBackground: 'bg-indigo-500/10',
     description: 'Focus on applications currently in the interview stage to prep and practice.',
+  },
+  {
+    title: 'Create Article',
+    href: '/ai-agent?mode=test',
+    icon: Sparkles,
+    iconForeground: 'text-violet-400',
+    iconBackground: 'bg-violet-500/10',
+    description: 'Create an Article',
+  },
+  {
+    title: 'Generate Article',
+    onClick: () => {},
+    icon: Sparkles,
+    iconForeground: 'text-zinc-500',
+    iconBackground: 'bg-zinc-800',
+    description: 'Describe a topic and Bedrock will generate a complete article (Coming Soon)',
   },
 ]
 
