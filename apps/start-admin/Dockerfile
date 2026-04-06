@@ -32,8 +32,8 @@ WORKDIR /app
 
 # Copy node_modules from deps stage
 COPY --from=deps /app/node_modules ./node_modules
-COPY --from=deps /app/apps/start-admin/node_modules ./apps/start-admin/node_modules
-COPY --from=deps /app/packages/shared/node_modules ./packages/shared/node_modules
+COPY --from=deps /app/apps/start-admin/node_module[s] ./apps/start-admin/node_modules/
+COPY --from=deps /app/packages/shared/node_module[s] ./packages/shared/node_modules/
 
 # Copy source code
 COPY . .
@@ -63,7 +63,7 @@ RUN groupadd --system --gid 1001 nodejs && \
 COPY --from=builder --chown=startadmin:nodejs /app/apps/start-admin/dist ./dist
 
 # Copy required node_modules for server runtime
-COPY --from=builder --chown=startadmin:nodejs /app/apps/start-admin/node_modules ./node_modules
+COPY --from=builder --chown=startadmin:nodejs /app/apps/start-admin/node_module[s] ./node_modules/
 COPY --from=builder --chown=startadmin:nodejs /app/node_modules ./root_node_modules
 
 # Switch to non-root user
