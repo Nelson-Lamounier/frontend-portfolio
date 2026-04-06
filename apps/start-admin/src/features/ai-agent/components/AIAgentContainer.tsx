@@ -1,8 +1,8 @@
 import { useState, useCallback } from 'react'
 import type { ChangeEvent, DragEvent } from 'react'
 import { useNavigate } from '@tanstack/react-router'
-import { ArrowLeft, Bot } from 'lucide-react'
-import { usePublishDraft } from '@/lib/hooks/use-publish-draft'
+import { Bot } from 'lucide-react'
+import { usePublishDraft } from '../hooks/use-publish-draft'
 import { useToastStore } from '@/lib/stores/toast-store'
 import { AiArticlesList } from './AiArticlesList'
 import { MultiColumnLayout } from '#/components/ui/MultiColumnLayout'
@@ -120,7 +120,7 @@ export function AIAgentContainer({ initialMode = 'test' }: AIAgentContainerProps
     let fileName: string
     let content: string
 
-    if (mode === 'paste') {
+    if (mode === 'paste' || (mode === 'test' && !draft && isPasteReady)) {
       if (!isPasteReady) return
       fileName = sanitisedFilename
       content = pasteContent
