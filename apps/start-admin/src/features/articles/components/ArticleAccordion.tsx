@@ -30,10 +30,38 @@ export function ArticleAccordion({ article, isDraft }: ArticleAccordionProps) {
   }
 
   return (
-    <div>
+    <div className={isExpanded ? 'relative z-10' : 'relative z-0'}>
       <SectionHeader
         title={article.title}
-        description={article.description || article.aiSummary || 'No description available.'}
+        description={
+          <div className="flex flex-col gap-2">
+            <span>{article.description || article.aiSummary || 'No description available.'}</span>
+            <div className="flex items-center gap-2">
+              {article.tags && article.tags.length > 0 && (
+                <div className="flex gap-1.5 flex-wrap">
+                  {article.tags.map((tag) => (
+                    <span
+                      key={tag}
+                      className="inline-block rounded-md bg-white/5 border border-white/10 px-2 py-0.5 text-[11px] text-gray-400"
+                    >
+                      {tag}
+                    </span>
+                  ))}
+                </div>
+              )}
+              {article.category && (
+                <span className="text-xs text-gray-500 border-l border-white/10 pl-2 ml-1">
+                  {article.category}
+                </span>
+              )}
+              {article.readingTimeMinutes && (
+                <span className="text-xs text-gray-500 border-l border-white/10 pl-2 ml-1">
+                  {article.readingTimeMinutes} min read
+                </span>
+              )}
+            </div>
+          </div>
+        }
         onClick={() => setIsExpanded(!isExpanded)}
         expandable={true}
         isExpanded={isExpanded}
@@ -48,7 +76,7 @@ export function ArticleAccordion({ article, isDraft }: ArticleAccordionProps) {
         }
       />
       {isExpanded && (
-        <div className="p-4 sm:p-6 animate-in fade-in slide-in-from-top-2 duration-200">
+        <div className=" animate-in fade-in slide-in-from-top-2 duration-200">
           <ArticleVersionsList article={article} isDraft={isDraft} />
         </div>
       )}
