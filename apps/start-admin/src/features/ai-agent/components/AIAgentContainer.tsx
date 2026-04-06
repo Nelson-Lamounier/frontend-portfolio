@@ -1,8 +1,13 @@
 import { useState, useCallback } from 'react'
 import type { ChangeEvent, DragEvent } from 'react'
+import { useNavigate } from '@tanstack/react-router'
 import { ArrowLeft, Bot } from 'lucide-react'
 import { usePublishDraft } from '@/lib/hooks/use-publish-draft'
 import { useToastStore } from '@/lib/stores/toast-store'
+import { AiArticlesList } from './AiArticlesList'
+import { MultiColumnLayout } from '#/components/ui/MultiColumnLayout'
+import { AIAgentDetailsPanel } from './AIAgentDetailsPanel'
+
 
 import {
   type AgentMode,
@@ -12,16 +17,19 @@ import {
   slugifyFilename,
 } from './AIAgentTypes'
 
-import { AIAgentMenu } from './AIAgentMenu'
-import { UploadMode } from './UploadMode'
-import { PasteMode } from './PasteMode'
 import { PipelineMode } from './PipelineMode'
+import { AiArticleForm } from './AiArticleForm'
 
-export function AIAgentContainer() {
+interface AIAgentContainerProps {
+  initialMode?: AgentMode
+}
+
+export function AIAgentContainer({ initialMode = 'test' }: AIAgentContainerProps) {
   const { addToast } = useToastStore()
+  const navigate = useNavigate()
 
   // ── Shared state ──────────────────────────────────────────────────────────
-  const [mode, setMode] = useState<AgentMode>('menu')
+  const [mode, setMode] = useState<AgentMode>(initialMode)
   const [pipelineSlug, setPipelineSlug] = useState<string | null>(null)
 
   // ── Upload mode state ─────────────────────────────────────────────────────
@@ -44,10 +52,10 @@ export function AIAgentContainer() {
 
   // ── Mode subtitle ─────────────────────────────────────────────────────────
   const subtitle: Record<AgentMode, string> = {
-    menu: 'Bedrock-powered content generation and transformation',
     upload: 'Upload a Markdown draft to create an article',
     paste: 'Paste your Markdown content and generate an article',
     pipeline: `Tracking pipeline for "${pipelineSlug ?? '...'}"`,
+    test: 'Create an Article',
   }
 
   // ── Upload handlers ───────────────────────────────────────────────────────
@@ -98,13 +106,8 @@ export function AIAgentContainer() {
 
   // ── Shared handlers ───────────────────────────────────────────────────────
   const backToMenu = useCallback(() => {
-    setMode('menu')
-    setDraft(null)
-    setPasteContent('')
-    setPasteFilename('')
-    setPipelineSlug(null)
-    publishMutation.reset()
-  }, [publishMutation])
+    navigate({ to: '/applications' })
+  }, [navigate])
 
   const clearDraft = useCallback(() => {
     setDraft(null)
@@ -151,17 +154,8 @@ export function AIAgentContainer() {
       {/* Header */}
       <div className="mb-8">
         <div className="flex items-center gap-3">
-          {mode !== 'menu' && (
-            <button
-              onClick={backToMenu}
-              className="flex h-8 w-8 items-center justify-center rounded-lg text-zinc-500 transition-colors hover:bg-zinc-800 hover:text-zinc-300"
-              aria-label="Back to menu"
-            >
-              <ArrowLeft className="h-4 w-4" />
-            </button>
-          )}
-          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-violet-500 to-purple-600 shadow-lg shadow-violet-500/20">
-            <Bot className="h-5 w-5 text-white" />
+          <div className="flex items-center justify-center rounded-xl bg-gradient-to-br from- shadow-lg ">
+            <Bot className="h-10 w-10 text-white" />
           </div>
           <div>
             <h1 className="text-xl font-bold text-zinc-100">
@@ -174,35 +168,31 @@ export function AIAgentContainer() {
         </div>
       </div>
 
-      {mode === 'menu' && <AIAgentMenu setMode={setMode} />}
 
-      {mode === 'upload' && (
-        <UploadMode
-          draft={draft}
-          isDragOver={isDragOver}
-          isPending={publishMutation.isPending}
-          onDragOver={handleDragOver}
-          onDragLeave={handleDragLeave}
-          onDrop={handleDrop}
-          onFileSelect={handleFileSelect}
-          onClearDraft={clearDraft}
-          onPublish={handlePublish}
-        />
+            {mode === 'test' && (
+        <MultiColumnLayout secondaryColumn={<AIAgentDetailsPanel mode={mode} />}>
+          <AiArticleForm
+            draft={draft}
+            isDragOver={isDragOver}
+            isPending={publishMutation.isPending}
+            onDragOver={handleDragOver}
+            onDragLeave={handleDragLeave}
+            onDrop={handleDrop}
+            onFileSelect={handleFileSelect}
+            onClearDraft={clearDraft}
+            onPublish={handlePublish}
+            pasteFilename={pasteFilename}
+            setPasteFilename={setPasteFilename}
+            sanitisedFilename={sanitisedFilename}
+            pasteContent={pasteContent}
+            setPasteContent={setPasteContent}
+            pasteCharCount={pasteCharCount}
+            isPasteReady={isPasteReady}
+          />
+        </MultiColumnLayout>
       )}
 
-      {mode === 'paste' && (
-        <PasteMode
-          pasteFilename={pasteFilename}
-          setPasteFilename={setPasteFilename}
-          sanitisedFilename={sanitisedFilename}
-          pasteContent={pasteContent}
-          setPasteContent={setPasteContent}
-          pasteCharCount={pasteCharCount}
-          isPasteReady={isPasteReady}
-          isPending={publishMutation.isPending}
-          onPublish={handlePublish}
-        />
-      )}
+
 
       {mode === 'pipeline' && pipelineSlug && (
         <PipelineMode
@@ -210,6 +200,10 @@ export function AIAgentContainer() {
           backToMenu={backToMenu}
         />
       )}
+
+          <div className="mt-16 sm:mt-24 pt-10 border-t border-white/10">
+            <AiArticlesList />
+          </div>
     </div>
   )
 }

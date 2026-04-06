@@ -1,7 +1,7 @@
 import type { ReactNode } from 'react'
 import type { PipelineState } from '@/lib/api/admin-api'
 
-export type AgentMode = 'menu' | 'upload' | 'paste' | 'pipeline'
+export type AgentMode = 'upload' | 'paste' | 'pipeline' | 'test'
 
 export interface DraftFile {
   readonly name: string

@@ -1,4 +1,5 @@
 import { Bot, Clock, Loader2, AlertCircle, FileText, CheckCircle, ExternalLink, Archive, XCircle } from 'lucide-react'
+import { Link } from '@tanstack/react-router'
 import { PipelineStepper } from './PipelineStepper'
 import { PipelineActions } from './PipelineActions'
 import { usePipelineStatus } from '@/lib/hooks/use-pipeline-status'
@@ -104,12 +105,12 @@ export function PipelineMode({ pipelineSlug, backToMenu }: PipelineModeProps) {
                   <ExternalLink className="h-3 w-3" />
                   View Article
                 </a>
-                <a
-                  href={`/admin/editor/${pipelineSlug}`}
+                <Link
+                  to="/articles"
                   className="inline-flex items-center gap-1.5 rounded-lg bg-zinc-800 px-3 py-1.5 text-xs font-medium text-zinc-300 transition-colors hover:bg-zinc-700"
                 >
-                  Edit in Editor
-                </a>
+                  View in Articles
+                </Link>
                 <button
                   onClick={backToMenu}
                   className="rounded-lg bg-zinc-800 px-3 py-1.5 text-xs font-medium text-zinc-300 transition-colors hover:bg-zinc-700"
