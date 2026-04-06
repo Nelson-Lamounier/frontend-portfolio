@@ -16,8 +16,7 @@ node_modules/
 .vercel
 
 # Next.js TypeScript
-next-env.d.ts
-
+# (Next.js requires next-env.d.ts to be committed so `tsc` works in CI without running `next build` first)
 # Next.js build output — not needed in Git.
 # The Dockerfile runs yarn build internally.
 .next/
