@@ -3,8 +3,10 @@ import { Menu, MenuButton, MenuItem, MenuItems } from '@headlessui/react'
 import { EllipsisVerticalIcon } from '@heroicons/react/20/solid'
 import { useAdminArticles } from '@/hooks/use-admin-articles'
 import type { ArticleWithSlug, ArticleStatus } from '@/lib/types/article.types'
-import { Link } from '@tanstack/react-router'
+
 import { Pagination } from '#/components/ui/Pagination'
+import { DashboardDrawer } from '#/components/ui/DashboardDrawer'
+import { ArticleEditorDrawerContent } from '#/features/articles/components/ArticleEditorDrawerContent'
 
 /**
  * Maps an ArticleStatus to a display label for the badge.
@@ -69,12 +71,20 @@ export function AiArticlesList() {
   ].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
 
   const [currentPage, setCurrentPage] = useState(1)
+  const [editingArticle, setEditingArticle] = useState<ArticleWithSlug | null>(null)
   const ITEMS_PER_PAGE = 5
   const totalPages = Math.ceil(articles.length / ITEMS_PER_PAGE)
   const paginatedArticles = articles.slice(
     (currentPage - 1) * ITEMS_PER_PAGE,
     currentPage * ITEMS_PER_PAGE
   )
+
+  function handlePreview(slug: string) {
+    const baseUrl = import.meta.env?.PROD
+      ? 'https://nelsonlamounier.com'
+      : 'http://localhost:3000'
+    globalThis.window.open(`${baseUrl}/articles/${slug}`, '_blank', 'noopener,noreferrer')
+  }
 
   if (isLoading) {
     return (
@@ -120,7 +130,13 @@ export function AiArticlesList() {
         <li key={article.slug} className="flex items-center justify-between gap-x-6 py-5">
           <div className="min-w-0">
             <div className="flex items-start gap-x-3">
-              <p className="text-sm/6 font-semibold text-white">{article.title}</p>
+              <button
+                type="button"
+                onClick={() => handlePreview(article.slug)}
+                className="text-sm/6 text-left font-semibold text-indigo-400 hover:text-indigo-300 hover:underline"
+              >
+                {article.title}
+              </button>
               {article.status ? (
                 <p
                   className={`mt-0.5 rounded-md px-1.5 py-0.5 text-xs font-medium ${statusClasses(article.status)}`}
@@ -160,12 +176,6 @@ export function AiArticlesList() {
             ) : null}
           </div>
           <div className="flex flex-none items-center gap-x-4">
-            <Link
-              to="/articles"
-              className="hidden rounded-md bg-white/10 px-2.5 py-1.5 text-sm font-semibold text-white inset-ring inset-ring-white/5 hover:bg-white/20 sm:block"
-            >
-              View article<span className="sr-only">, {article.title}</span>
-            </Link>
             <Menu as="div" className="relative flex-none">
               <MenuButton className="relative block text-gray-400 hover:text-white">
                 <span className="absolute -inset-2.5" />
@@ -177,20 +187,22 @@ export function AiArticlesList() {
                 className="absolute right-0 z-10 mt-2 w-32 origin-top-right rounded-md bg-gray-800 py-2 outline-1 -outline-offset-1 outline-white/10 transition data-closed:scale-95 data-closed:transform data-closed:opacity-0 data-enter:duration-100 data-enter:ease-out data-leave:duration-75 data-leave:ease-in"
               >
                 <MenuItem>
-                  <Link
-                    to="/articles"
-                    className="block px-3 py-1 text-sm/6 text-white data-focus:bg-white/5 data-focus:outline-hidden"
+                  <button
+                    type="button"
+                    onClick={() => setEditingArticle(article)}
+                    className="block w-full text-left px-3 py-1 text-sm/6 text-white data-focus:bg-white/5 data-focus:outline-hidden"
                   >
                     Edit<span className="sr-only">, {article.title}</span>
-                  </Link>
+                  </button>
                 </MenuItem>
                 <MenuItem>
-                  <Link
-                    to="/articles"
-                    className="block px-3 py-1 text-sm/6 text-white data-focus:bg-white/5 data-focus:outline-hidden"
+                  <button
+                    type="button"
+                    onClick={() => handlePreview(article.slug)}
+                    className="block w-full text-left px-3 py-1 text-sm/6 text-white data-focus:bg-white/5 data-focus:outline-hidden"
                   >
-                    View<span className="sr-only">, {article.title}</span>
-                  </Link>
+                    Preview<span className="sr-only">, {article.title}</span>
+                  </button>
                 </MenuItem>
                 <MenuItem>
                   <button
@@ -214,6 +226,23 @@ export function AiArticlesList() {
           onPageChange={setCurrentPage}
         />
       </div>
+
+      <DashboardDrawer
+        isOpen={!!editingArticle}
+        onClose={() => setEditingArticle(null)}
+        title="Edit Article"
+        description={editingArticle?.title ?? ''}
+        unstyledContent
+      >
+        {editingArticle && (
+          <div className="flex h-full flex-col overflow-hidden">
+            <ArticleEditorDrawerContent
+              slug={editingArticle.slug}
+              onClose={() => setEditingArticle(null)}
+            />
+          </div>
+        )}
+      </DashboardDrawer>
     </>
   )
 }
