@@ -8,7 +8,7 @@ import {
   Eye,
   Rocket,
 } from 'lucide-react'
-import type { PipelineState } from '@/lib/api/admin-api'
+import type { PipelineState } from '../hooks/use-pipeline-status'
 import { getStageIndex } from './AIAgentTypes'
 
 // Export this here or in AIAgentTypes, let's keep the const array here and import types
