@@ -19,10 +19,12 @@ WORKDIR /app
 
 # Copy root workspace configs for monorepo resolution
 COPY package.json yarn.lock .yarnrc.yml ./
-COPY apps/start-admin/package.json ./apps/start-admin/
-COPY packages/shared/package.json ./packages/shared/
+COPY apps/site/package.json ./apps/site/package.json
+COPY apps/start-admin/package.json ./apps/start-admin/package.json
+COPY apps/start-site/package.json ./apps/start-site/package.json
+COPY packages/shared/package.json ./packages/shared/package.json
 
-RUN yarn install --frozen-lockfile
+RUN yarn install --immutable
 
 # ── Stage 3: Build the TanStack Start application ─────────────────
 FROM base AS builder
