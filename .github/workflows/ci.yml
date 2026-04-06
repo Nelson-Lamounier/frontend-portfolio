@@ -65,9 +65,11 @@ jobs:
               - 'packages/shared/**/*.css'
             config:
               - '.github/**'
+              - '.gitignore'
               - 'package.json'
               - 'yarn.lock'
               - 'apps/site/tsconfig*.json'
+              - 'apps/site/next-env.d.ts'
               - 'apps/site/next.config.*'
               - 'apps/site/eslint.config.*'
               - 'apps/site/package.json'
