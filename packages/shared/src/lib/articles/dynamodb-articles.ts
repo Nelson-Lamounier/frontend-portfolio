@@ -223,7 +223,11 @@ export async function getArticleMetadataBySlug(
   const docClient = getDocClient()
   const start = Date.now()
 
-  const result = await docClient.send(
+  // Direct GetItem for the METADATA record only.
+  // Previous approach queried ALL sk items (METADATA + VERSION#v1..vN)
+  // and merged them, which caused VERSION records with status:"failed"
+  // to overwrite the correct METADATA status — breaking Zod validation.
+  const getResult = await docClient.send(
     new GetCommand({
       TableName: TABLE_NAME,
       Key: {
@@ -235,11 +239,18 @@ export async function getArticleMetadataBySlug(
 
   trackDynamoDB('GetItem', 'primary', (Date.now() - start) / 1000)
 
-  if (!result.Item) {
+  if (!getResult.Item) {
     return null
   }
 
-  const article = entityToArticle(result.Item as ArticleMetadataEntity)
+  const item = getResult.Item
+
+  // Derive status from gsi1pk if not explicitly set
+  if (!item.status && typeof item.gsi1pk === 'string' && item.gsi1pk.startsWith('STATUS#')) {
+    item.status = item.gsi1pk.replace('STATUS#', '')
+  }
+
+  const article = entityToArticle(item as ArticleMetadataEntity)
   cache.set(cacheKey, article)
   return article
 }
@@ -376,10 +387,8 @@ export async function queryDraftArticles(): Promise<ArticleWithSlug[]> {
             TableName: TABLE_NAME,
             IndexName: GSI1_NAME,
             KeyConditionExpression: 'gsi1pk = :pk',
-            FilterExpression: 'sk = :metaSk',
             ExpressionAttributeValues: {
               ':pk': pk,
-              ':metaSk': 'METADATA',
             },
             ScanIndexForward: false,
           }),
@@ -396,18 +405,37 @@ export async function queryDraftArticles(): Promise<ArticleWithSlug[]> {
     })
 
     // Merge and deduplicate by slug
-    const seen = new Set<string>()
-    const merged: ArticleWithSlug[] = []
+    const mergedMap = new Map<string, any>()
 
     for (const result of gsiResults) {
       for (const item of result.Items ?? []) {
-        const article = entityToArticle(item as ArticleMetadataEntity)
-        if (!seen.has(article.slug)) {
-          seen.add(article.slug)
-          merged.push(article)
+        if (!item.pk) continue
+        
+        if (!item.status && typeof item.gsi1pk === 'string' && item.gsi1pk.startsWith('STATUS#')) {
+          item.status = item.gsi1pk.replace('STATUS#', '')
+        }
+
+        const existing = mergedMap.get(item.pk)
+        if (!existing) {
+          mergedMap.set(item.pk, { ...item })
+        } else {
+          const merged = { ...existing }
+          for (const key of Object.keys(item)) {
+            if (item[key] !== undefined && item[key] !== null && item[key] !== '') {
+              merged[key] = item[key]
+            } else if (existing[key] === undefined) {
+               merged[key] = item[key]
+            }
+          }
+          merged.sk = 'METADATA'
+          mergedMap.set(item.pk, merged)
         }
       }
     }
+
+    const merged = Array.from(mergedMap.values()).map((item) =>
+      entityToArticle(item as ArticleMetadataEntity),
+    )
 
     if (merged.length > 0) {
       merged.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
@@ -612,7 +640,7 @@ export interface UpdatableArticleMetadata {
 }
 
 /** Fields allowed in partial metadata updates */
-const ALLOWED_UPDATE_FIELDS: ReadonlySet<keyof UpdatableArticleMetadata> = new Set([
+const ALLOWED_UPDATE_FIELDS: ReadonlySet<keyof UpdatableArticleMetadata> = new Set<keyof UpdatableArticleMetadata>([
   'githubUrl',
 ])
 

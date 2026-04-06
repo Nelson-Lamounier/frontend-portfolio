@@ -14,7 +14,7 @@ export function DashboardPage({
   description,
   actions,
   headerBottom,
-  fullWidth = false,
+  fullWidth: _fullWidth = false,
   children,
 }: DashboardPageProps) {
   return (

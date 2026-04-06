@@ -123,11 +123,13 @@ export const getArticlesFn = createServerFn({ method: 'GET' })
         }),
       )
 
-      return [
+      const allItems = [
         ...(result.Items ?? []),
         ...(reviewResult.Items ?? []),
         ...(publishedResult.Items ?? [])
       ]
+
+      return mergeArticleItems(allItems)
     }
 
     const command = new QueryCommand({
@@ -139,8 +141,36 @@ export const getArticlesFn = createServerFn({ method: 'GET' })
     })
 
     const result = await getDocClient().send(command)
-    return result.Items ?? []
+    return mergeArticleItems(result.Items ?? [])
   })
+
+function mergeArticleItems(items: Record<string, any>[]): Record<string, any>[] {
+  const mergedMap = new Map<string, any>()
+  for (const item of items) {
+    if (!item.pk) continue
+    
+    if (!item.status && typeof item.gsi1pk === 'string' && item.gsi1pk.startsWith('STATUS#')) {
+      item.status = item.gsi1pk.replace('STATUS#', '')
+    }
+
+    const existing = mergedMap.get(item.pk)
+    if (!existing) {
+      mergedMap.set(item.pk, { ...item })
+    } else {
+      const merged = { ...existing }
+      for (const key of Object.keys(item)) {
+        if (item[key] !== undefined && item[key] !== null && item[key] !== '') {
+          merged[key] = item[key]
+        } else if (existing[key] === undefined) {
+           merged[key] = item[key]
+        }
+      }
+      merged.sk = 'METADATA'
+      mergedMap.set(item.pk, merged)
+    }
+  }
+  return Array.from(mergedMap.values())
+}
 
 /**
  * Retrieves full article metadata from DynamoDB and the MDX body from S3.
