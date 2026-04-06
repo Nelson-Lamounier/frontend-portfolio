@@ -1,13 +1,29 @@
+/**
+ * @format
+ * Media upload server function for the admin dashboard.
+ *
+ * Handles file uploads to S3 with MIME type validation,
+ * size limits, and content-addressed key derivation.
+ * Protected by JWT authentication via `requireAuth()`.
+ */
+
 import { createServerFn } from '@tanstack/react-start'
 import { S3Client, PutObjectCommand } from '@aws-sdk/client-s3'
+import { requireAuth } from './auth-guard'
+import { z } from 'zod'
+
+// =============================================================================
+// Constants
+// =============================================================================
 
 const ASSETS_BUCKET_NAME = process.env.ASSETS_BUCKET_NAME || ''
 const REGION = process.env.AWS_REGION || 'eu-west-1'
 const PRODUCTION_DOMAIN = 'https://nelsonlamounier.com'
 
+/** Maximum upload size: 50 MB */
 const MAX_FILE_SIZE = 50 * 1024 * 1024
 
-const MIME_TO_EXTENSION: Record<string, string> = {
+const MIME_TO_EXTENSION: Readonly<Record<string, string>> = {
   'image/jpeg': 'jpeg',
   'image/png': 'png',
   'image/webp': 'webp',
@@ -16,37 +32,67 @@ const MIME_TO_EXTENSION: Record<string, string> = {
   'video/webm': 'webm',
 }
 
-const ALLOWED_MIME_TYPES = new Set(Object.keys(MIME_TO_EXTENSION))
+const ALLOWED_MIME_TYPES: ReadonlySet<string> = new Set(Object.keys(MIME_TO_EXTENSION))
+
+// =============================================================================
+// S3 Client (Lazy Singleton)
+// =============================================================================
 
 let _s3Client: S3Client | null = null
+
 function getS3Client(): S3Client {
-  if (!_s3Client) {
-    _s3Client = new S3Client({ region: REGION })
-  }
+  _s3Client ??= new S3Client({ region: REGION })
   return _s3Client
 }
 
+// =============================================================================
+// Helpers
+// =============================================================================
+
+/**
+ * Maps a MIME type to its file extension.
+ *
+ * @param mimeType - The MIME type to look up
+ * @returns File extension string
+ * @throws If the MIME type is not in the allow list
+ */
 function deriveExtension(mimeType: string): string {
   const ext = MIME_TO_EXTENSION[mimeType]
   if (!ext) {
-    throw new Error(
+    throw new TypeError(
       `Unsupported file type: ${mimeType}. Allowed: ${Object.keys(MIME_TO_EXTENSION).join(', ')}`,
     )
   }
   return ext
 }
 
+// =============================================================================
+// Schemas
+// =============================================================================
+
+/** Validate that the incoming payload is a FormData instance */
+const formDataSchema = z.instanceof(FormData)
+
+// =============================================================================
+// Server Function
+// =============================================================================
+
+/**
+ * Uploads a media file (image or video) to S3.
+ *
+ * Receives a `FormData` payload with:
+ * - `file` — The binary file
+ * - `id` (optional) — A deterministic ID for content-addressed storage
+ *
+ * @returns Upload result with the public URL and S3 key
+ */
 export const uploadMediaFn = createServerFn({ method: 'POST' })
-  .inputValidator((d: any) => d)
-  .handler(async (ctx: any) => {
+  .inputValidator(formDataSchema)
+  .handler(async ({ data: formData }) => {
+    await requireAuth()
+
     if (!ASSETS_BUCKET_NAME) {
       throw new Error('ASSETS_BUCKET_NAME is not configured')
-    }
-
-    const formData = ctx.data
-
-    if (!(formData instanceof FormData)) {
-      throw new Error('Expected FormData payload')
     }
 
     const file = formData.get('file') as File | null
@@ -76,16 +122,14 @@ export const uploadMediaFn = createServerFn({ method: 'POST' })
 
     let s3Key: string
     if (id) {
-      const safeId = id.replace(/[^a-z0-9-]/gi, '-').toLowerCase()
+      const safeId = id.replaceAll(/[^a-z0-9-]/gi, '-').toLowerCase()
       s3Key = `${folder}/${safeId}.${ext}`
     } else {
-      const safeName = file.name.replace(/[^a-zA-Z0-9.-]/g, '_')
+      const safeName = file.name.replaceAll(/[^a-zA-Z0-9.-]/g, '_')
       s3Key = `${folder}/${Date.now()}-${safeName}`
     }
 
-    const s3Client = getS3Client()
-
-    await s3Client.send(
+    await getS3Client().send(
       new PutObjectCommand({
         Bucket: ASSETS_BUCKET_NAME,
         Key: s3Key,
@@ -104,3 +148,4 @@ export const uploadMediaFn = createServerFn({ method: 'POST' })
       id: id || undefined,
     }
   })
+

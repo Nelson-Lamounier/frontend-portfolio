@@ -1,14 +1,32 @@
+/**
+ * @format
+ * Pipeline action server functions for the admin dashboard.
+ *
+ * Provides status checks and trigger operations for the article
+ * publish pipeline and strategist coaching Lambda, all protected
+ * by JWT authentication via `requireAuth()`.
+ */
+
 import { createServerFn } from '@tanstack/react-start'
 import { z } from 'zod'
 import { S3Client, HeadObjectCommand } from '@aws-sdk/client-s3'
 import { DynamoDBClient, GetItemCommand } from '@aws-sdk/client-dynamodb'
 import { LambdaClient, InvokeCommand } from '@aws-sdk/client-lambda'
+import { requireAuth } from './auth-guard'
+
+// =============================================================================
+// Constants
+// =============================================================================
 
 const REGION = process.env.AWS_REGION || 'eu-west-1'
 const BUCKET_NAME = process.env.ASSETS_BUCKET_NAME || ''
 const TABLE_NAME = process.env.DYNAMODB_TABLE_NAME || ''
 const PUBLISH_LAMBDA_ARN = process.env.PUBLISH_LAMBDA_ARN || ''
 const STRATEGIST_LAMBDA_NAME = process.env.STRATEGIST_TRIGGER_LAMBDA_NAME || ''
+
+// =============================================================================
+// AWS Client Singletons (Lazy)
+// =============================================================================
 
 let _s3: S3Client | null = null
 let _dynamo: DynamoDBClient | null = null
@@ -29,8 +47,17 @@ function getLambda(): LambdaClient {
   return _lambda
 }
 
+// =============================================================================
+// Types
+// =============================================================================
+
 type PipelineState = 'pending' | 'processing' | 'review' | 'published' | 'rejected' | 'failed'
 
+// =============================================================================
+// Helpers
+// =============================================================================
+
+/** Checks whether an object exists in S3 without downloading it. */
 async function s3ObjectExists(bucket: string, key: string): Promise<boolean> {
   try {
     await getS3().send(new HeadObjectCommand({ Bucket: bucket, Key: key }))
@@ -40,6 +67,7 @@ async function s3ObjectExists(bucket: string, key: string): Promise<boolean> {
   }
 }
 
+/** Fetches DynamoDB article metadata for status derivation. */
 async function fetchDynamoMetadata(
   slug: string,
 ): Promise<Record<string, { S?: string }> | null> {
@@ -61,6 +89,7 @@ async function fetchDynamoMetadata(
   }
 }
 
+/** Derives the pipeline state from DynamoDB status and S3 review existence. */
 function derivePipelineState(
   dynamoStatus: string | undefined,
   s3ReviewExists: boolean,
@@ -78,10 +107,39 @@ function derivePipelineState(
   return 'failed'
 }
 
+// =============================================================================
+// Input Schemas
+// =============================================================================
+
+const slugSchema = z.string().min(1, 'Article slug is required')
+
+const pipelineActionSchema = z.object({
+  slug: z.string().min(1),
+  action: z.enum(['approve', 'reject']),
+})
+
+const strategistCoachSchema = z.object({
+  slug: z.string().min(1),
+  coachingType: z.enum(['GENERAL', 'TECHNICAL', 'BEHAVIOURAL', 'CULTURAL']),
+  targetCompany: z.string().min(1),
+  targetRole: z.string().min(1),
+  resumeId: z.string().optional(),
+})
+
+// =============================================================================
+// Server Functions
+// =============================================================================
+
+/**
+ * Retrieves the current pipeline status for an article.
+ *
+ * @param data - The article slug
+ * @returns Pipeline state, S3 availability flag, and metadata
+ */
 export const getPipelineStatusFn = createServerFn({ method: 'GET' })
-  .inputValidator((d: any) => d)
-  .handler(async (ctx: any) => {
-    const slug = z.string().parse(ctx.data)
+  .inputValidator(slugSchema)
+  .handler(async ({ data: slug }) => {
+    await requireAuth()
 
     if (!BUCKET_NAME || !TABLE_NAME) {
       throw new Error('Server misconfiguration: ASSETS_BUCKET_NAME and DYNAMODB_TABLE_NAME must be set')
@@ -118,13 +176,17 @@ export const getPipelineStatusFn = createServerFn({ method: 'GET' })
     }
   })
 
+/**
+ * Triggers the publish/reject Lambda for an article.
+ *
+ * @param data.slug - The article slug
+ * @param data.action - `'approve'` or `'reject'`
+ * @returns Success indicator with slug and action
+ */
 export const triggerPipelineActionFn = createServerFn({ method: 'POST' })
-  .inputValidator((d: any) => d)
-  .handler(async (ctx: any) => {
-    const data = z.object({
-      slug: z.string(),
-      action: z.enum(['approve', 'reject']),
-    }).parse(ctx.data)
+  .inputValidator(pipelineActionSchema)
+  .handler(async ({ data }) => {
+    await requireAuth()
 
     if (!PUBLISH_LAMBDA_ARN) {
       throw new Error('Server misconfiguration: PUBLISH_LAMBDA_ARN must be set')
@@ -155,16 +217,20 @@ export const triggerPipelineActionFn = createServerFn({ method: 'POST' })
     }
   })
 
+/**
+ * Triggers the strategist coaching Lambda for interview preparation.
+ *
+ * @param data.slug - Application slug
+ * @param data.coachingType - Type of coaching session
+ * @param data.targetCompany - Target company name
+ * @param data.targetRole - Target role title
+ * @param data.resumeId - Optional resume ID to include
+ * @returns Parsed Lambda response body
+ */
 export const triggerStrategistCoachFn = createServerFn({ method: 'POST' })
-  .inputValidator((d: any) => d)
-  .handler(async (ctx: any) => {
-    const data = z.object({
-      slug: z.string(),
-      coachingType: z.enum(['GENERAL', 'TECHNICAL', 'BEHAVIOURAL', 'CULTURAL']),
-      targetCompany: z.string(),
-      targetRole: z.string(),
-      resumeId: z.string().optional(),
-    }).parse(ctx.data)
+  .inputValidator(strategistCoachSchema)
+  .handler(async ({ data }) => {
+    await requireAuth()
 
     if (!STRATEGIST_LAMBDA_NAME) {
       throw new Error('Server misconfiguration: STRATEGIST_TRIGGER_LAMBDA_NAME must be set')
@@ -207,5 +273,5 @@ export const triggerStrategistCoachFn = createServerFn({ method: 'POST' })
       throw new Error('Empty response from Trigger Lambda')
     }
 
-    return JSON.parse(responsePayload.body)
+    return JSON.parse(responsePayload.body) as Record<string, object>
   })
