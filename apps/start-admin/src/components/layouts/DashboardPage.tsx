@@ -4,6 +4,8 @@ interface DashboardPageProps {
   readonly title: ReactNode
   readonly description?: ReactNode
   readonly actions?: ReactNode
+  readonly headerBottom?: ReactNode
+  readonly fullWidth?: boolean
   readonly children: ReactNode
 }
 
@@ -11,6 +13,8 @@ export function DashboardPage({
   title,
   description,
   actions,
+  headerBottom,
+  fullWidth = false,
   children,
 }: DashboardPageProps) {
   return (
@@ -32,7 +36,12 @@ export function DashboardPage({
           </div>
         )}
       </div>
-      <div className="mx-auto max-w-3xl">
+      {headerBottom && (
+        <div className="w-full">
+          {headerBottom}
+        </div>
+      )}
+      <div className="w-full">
         {children}
       </div>
     </div>

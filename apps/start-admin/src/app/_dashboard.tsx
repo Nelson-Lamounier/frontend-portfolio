@@ -1,4 +1,4 @@
-import { createFileRoute, Outlet, redirect } from '@tanstack/react-router'
+import { createFileRoute, Outlet, redirect, useMatches } from '@tanstack/react-router'
 import AppLayout from '../components/layouts/AppLayout'
 
 export const Route = createFileRoute('/_dashboard')({
@@ -16,8 +16,11 @@ export const Route = createFileRoute('/_dashboard')({
 })
 
 function DashboardLayout() {
+  const matches = useMatches()
+  const disableMainWrapper = matches.some((match) => (match.staticData as any)?.disableMainWrapper)
+
   return (
-    <AppLayout>
+    <AppLayout disableMainWrapper={disableMainWrapper}>
       <Outlet />
     </AppLayout>
   )

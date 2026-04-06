@@ -4,6 +4,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import type { RouterContext } from '../router'
 import { getUserSessionFn } from '../server/auth'
 import { Toaster } from '../components/ui/Toaster'
+import { initialiseFaroAdmin } from '../lib/observability/faro-admin'
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -73,6 +74,10 @@ function NotFoundComponent() {
 }
 
 function RootComponent() {
+  React.useEffect(() => {
+    initialiseFaroAdmin()
+  }, [])
+
   return (
     <QueryClientProvider client={queryClient}>
       <Outlet />

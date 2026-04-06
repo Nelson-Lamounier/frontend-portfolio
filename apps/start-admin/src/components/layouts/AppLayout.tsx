@@ -3,7 +3,6 @@
 import { useState } from 'react'
 import { Dialog, DialogBackdrop, DialogPanel, TransitionChild } from '@headlessui/react'
 import {
-  Bars3Icon,
   CalendarIcon,
   ChartPieIcon,
   DocumentDuplicateIcon,
@@ -11,8 +10,8 @@ import {
   FolderIcon,
   HomeIcon,
   XMarkIcon,
-  SparklesIcon,
   BriefcaseIcon,
+  BeakerIcon,
 } from '@heroicons/react/24/outline'
 import {
   BarChart3,
@@ -26,6 +25,7 @@ import {
   LogOut,
 } from 'lucide-react'
 import { Link } from '@tanstack/react-router'
+import { HeaderNav } from '../ui/HeaderNav'
 
 const navigation = [
   { name: 'Dashboard', href: '/', icon: HomeIcon },
@@ -34,9 +34,9 @@ const navigation = [
   { name: 'Articles', href: '/articles', icon: DocumentDuplicateIcon },
   { name: 'Resumes', href: '/resumes', icon: DocumentTextIcon },
   { name: 'Projects', href: '/projects', icon: FolderIcon },
-  { name: 'AI Agent', href: '/ai-agent', icon: SparklesIcon },
   { name: 'Calendar', href: '/calendar', icon: CalendarIcon },
   { name: 'Reports', href: '/reports', icon: ChartPieIcon },
+  { name: 'Test Components', href: '/test', icon: BeakerIcon },
 ]
 const observabilityLinks = [
   {
@@ -82,7 +82,7 @@ function classNames(...classes: (string | undefined | null | false)[]) {
 
 import avatarImage from '@/images/avatar.jpg'
 
-export default function AppLayout({ children }: { children: React.ReactNode }) {
+export default function AppLayout({ children, disableMainWrapper = false }: { children: React.ReactNode, disableMainWrapper?: boolean }) {
   const [sidebarOpen, setSidebarOpen] = useState(false)
 
   const handleSignOut = async () => {
@@ -133,11 +133,10 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
               {/* Sidebar component, swap this element with another sidebar if you like */}
               <div className="relative flex grow flex-col gap-y-5 overflow-y-auto bg-gray-900 px-6 pb-2 ring ring-white/10 before:pointer-events-none before:absolute before:inset-0 before:bg-black/10">
                 <div className="relative flex h-16 shrink-0 items-center">
-                  <img
-                    alt="Your Company"
-                    src="https://tailwindcss.com/plus-assets/img/logos/mark.svg?color=indigo&shade=500"
-                    className="h-8 w-auto"
-                  />
+                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 36 36" className="h-8 w-8" aria-label="NL Admin">
+                    <circle cx="18" cy="18" r="18" fill="#0d9488" />
+                    <text x="18" y="23" textAnchor="middle" fill="white" fontSize="14" fontWeight="bold" fontFamily="system-ui, sans-serif">NL</text>
+                  </svg>
                 </div>
                 <nav className="relative flex flex-1 flex-col">
                   <ul role="list" className="flex flex-1 flex-col gap-y-7">
@@ -236,11 +235,10 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
           {/* Sidebar component, swap this element with another sidebar if you like */}
           <div className="flex grow flex-col gap-y-5 overflow-y-auto border-r border-white/10 bg-black/10 px-6">
             <div className="flex h-16 shrink-0 items-center">
-              <img
-                alt="Your Company"
-                src="https://tailwindcss.com/plus-assets/img/logos/mark.svg?color=indigo&shade=500"
-                className="h-8 w-auto"
-              />
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 36 36" className="h-8 w-8" aria-label="NL Admin">
+                <circle cx="18" cy="18" r="18" fill="#0d9488" />
+                <text x="18" y="23" textAnchor="middle" fill="white" fontSize="14" fontWeight="bold" fontFamily="system-ui, sans-serif">NL</text>
+              </svg>
             </div>
             <nav className="flex flex-1 flex-col">
               <ul role="list" className="flex flex-1 flex-col gap-y-7">
@@ -332,29 +330,22 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
           </div>
         </div>
 
-        <div className="sticky top-0 z-40 flex items-center gap-x-6 bg-gray-900 px-4 py-4 after:pointer-events-none after:absolute after:inset-0 after:border-b after:border-white/10 after:bg-black/10 sm:px-6 lg:hidden">
-          <button
-            type="button"
-            onClick={() => setSidebarOpen(true)}
-            className="-m-2.5 p-2.5 text-gray-400 hover:text-white lg:hidden"
-          >
-            <span className="sr-only">Open sidebar</span>
-            <Bars3Icon aria-hidden="true" className="size-6" />
-          </button>
-          <div className="flex-1 text-sm/6 font-semibold text-white">Dashboard</div>
-          <button type="button" onClick={handleSignOut} className="flex items-center gap-x-4">
-            <span className="sr-only">Your profile</span>
-            <img
-              alt="Admin avatar"
-              src={avatarImage as any}
-              className="size-8 rounded-full bg-gray-800 outline -outline-offset-1 outline-white/10"
-            />
-          </button>
-        </div>
+        <div className="lg:pl-72 flex flex-col min-h-screen">
+          <HeaderNav 
+            onOpenSidebar={() => setSidebarOpen(true)}
+            onSignOut={handleSignOut}
+            userAvatar={avatarImage as any}
+            userEmail="admin@nelsonlamounier.com"
+          />
 
-        <main className="py-10 lg:pl-72">
-          <div className="px-4 sm:px-6 lg:px-8">{children}</div>
-        </main>
+          {disableMainWrapper ? (
+            children
+          ) : (
+            <main className="py-10 flex-1">
+              <div className="px-4 sm:px-6 lg:px-8">{children}</div>
+            </main>
+          )}
+        </div>
       </div>
     </>
   )

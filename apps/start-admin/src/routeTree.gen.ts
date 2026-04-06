@@ -13,14 +13,15 @@ import { Route as LoginRouteImport } from './app/login'
 import { Route as DashboardRouteImport } from './app/_dashboard'
 import { Route as DashboardIndexRouteImport } from './app/_dashboard.index'
 import { Route as AuthCallbackRouteImport } from './app/auth.callback'
+import { Route as DashboardTestRouteImport } from './app/_dashboard.test'
 import { Route as DashboardResumesRouteImport } from './app/_dashboard.resumes'
 import { Route as DashboardReportsRouteImport } from './app/_dashboard.reports'
 import { Route as DashboardCommentsRouteImport } from './app/_dashboard.comments'
+import { Route as DashboardCalendarRouteImport } from './app/_dashboard.calendar'
 import { Route as DashboardArticlesRouteImport } from './app/_dashboard.articles'
 import { Route as DashboardAiAgentRouteImport } from './app/_dashboard.ai-agent'
 import { Route as DashboardApplicationsIndexRouteImport } from './app/_dashboard.applications.index'
 import { Route as DashboardResumesNewRouteImport } from './app/_dashboard.resumes.new'
-import { Route as DashboardEditorSlugRouteImport } from './app/_dashboard.editor.$slug'
 import { Route as DashboardApplicationsNewRouteImport } from './app/_dashboard.applications.new'
 import { Route as DashboardApplicationsListRouteImport } from './app/_dashboard.applications.list'
 import { Route as DashboardApplicationsInterviewPrepRouteImport } from './app/_dashboard.applications.interview-prep'
@@ -46,6 +47,11 @@ const AuthCallbackRoute = AuthCallbackRouteImport.update({
   path: '/auth/callback',
   getParentRoute: () => rootRouteImport,
 } as any)
+const DashboardTestRoute = DashboardTestRouteImport.update({
+  id: '/test',
+  path: '/test',
+  getParentRoute: () => DashboardRoute,
+} as any)
 const DashboardResumesRoute = DashboardResumesRouteImport.update({
   id: '/resumes',
   path: '/resumes',
@@ -59,6 +65,11 @@ const DashboardReportsRoute = DashboardReportsRouteImport.update({
 const DashboardCommentsRoute = DashboardCommentsRouteImport.update({
   id: '/comments',
   path: '/comments',
+  getParentRoute: () => DashboardRoute,
+} as any)
+const DashboardCalendarRoute = DashboardCalendarRouteImport.update({
+  id: '/calendar',
+  path: '/calendar',
   getParentRoute: () => DashboardRoute,
 } as any)
 const DashboardArticlesRoute = DashboardArticlesRouteImport.update({
@@ -81,11 +92,6 @@ const DashboardResumesNewRoute = DashboardResumesNewRouteImport.update({
   id: '/new',
   path: '/new',
   getParentRoute: () => DashboardResumesRoute,
-} as any)
-const DashboardEditorSlugRoute = DashboardEditorSlugRouteImport.update({
-  id: '/editor/$slug',
-  path: '/editor/$slug',
-  getParentRoute: () => DashboardRoute,
 } as any)
 const DashboardApplicationsNewRoute =
   DashboardApplicationsNewRouteImport.update({
@@ -122,15 +128,16 @@ export interface FileRoutesByFullPath {
   '/login': typeof LoginRoute
   '/ai-agent': typeof DashboardAiAgentRoute
   '/articles': typeof DashboardArticlesRoute
+  '/calendar': typeof DashboardCalendarRoute
   '/comments': typeof DashboardCommentsRoute
   '/reports': typeof DashboardReportsRoute
   '/resumes': typeof DashboardResumesRouteWithChildren
+  '/test': typeof DashboardTestRoute
   '/auth/callback': typeof AuthCallbackRoute
   '/applications/$slug': typeof DashboardApplicationsSlugRoute
   '/applications/interview-prep': typeof DashboardApplicationsInterviewPrepRoute
   '/applications/list': typeof DashboardApplicationsListRoute
   '/applications/new': typeof DashboardApplicationsNewRoute
-  '/editor/$slug': typeof DashboardEditorSlugRoute
   '/resumes/new': typeof DashboardResumesNewRoute
   '/applications/': typeof DashboardApplicationsIndexRoute
   '/resumes/edit/$id': typeof DashboardResumesEditIdRoute
@@ -139,16 +146,17 @@ export interface FileRoutesByTo {
   '/login': typeof LoginRoute
   '/ai-agent': typeof DashboardAiAgentRoute
   '/articles': typeof DashboardArticlesRoute
+  '/calendar': typeof DashboardCalendarRoute
   '/comments': typeof DashboardCommentsRoute
   '/reports': typeof DashboardReportsRoute
   '/resumes': typeof DashboardResumesRouteWithChildren
+  '/test': typeof DashboardTestRoute
   '/auth/callback': typeof AuthCallbackRoute
   '/': typeof DashboardIndexRoute
   '/applications/$slug': typeof DashboardApplicationsSlugRoute
   '/applications/interview-prep': typeof DashboardApplicationsInterviewPrepRoute
   '/applications/list': typeof DashboardApplicationsListRoute
   '/applications/new': typeof DashboardApplicationsNewRoute
-  '/editor/$slug': typeof DashboardEditorSlugRoute
   '/resumes/new': typeof DashboardResumesNewRoute
   '/applications': typeof DashboardApplicationsIndexRoute
   '/resumes/edit/$id': typeof DashboardResumesEditIdRoute
@@ -159,16 +167,17 @@ export interface FileRoutesById {
   '/login': typeof LoginRoute
   '/_dashboard/ai-agent': typeof DashboardAiAgentRoute
   '/_dashboard/articles': typeof DashboardArticlesRoute
+  '/_dashboard/calendar': typeof DashboardCalendarRoute
   '/_dashboard/comments': typeof DashboardCommentsRoute
   '/_dashboard/reports': typeof DashboardReportsRoute
   '/_dashboard/resumes': typeof DashboardResumesRouteWithChildren
+  '/_dashboard/test': typeof DashboardTestRoute
   '/auth/callback': typeof AuthCallbackRoute
   '/_dashboard/': typeof DashboardIndexRoute
   '/_dashboard/applications/$slug': typeof DashboardApplicationsSlugRoute
   '/_dashboard/applications/interview-prep': typeof DashboardApplicationsInterviewPrepRoute
   '/_dashboard/applications/list': typeof DashboardApplicationsListRoute
   '/_dashboard/applications/new': typeof DashboardApplicationsNewRoute
-  '/_dashboard/editor/$slug': typeof DashboardEditorSlugRoute
   '/_dashboard/resumes/new': typeof DashboardResumesNewRoute
   '/_dashboard/applications/': typeof DashboardApplicationsIndexRoute
   '/_dashboard/resumes/edit/$id': typeof DashboardResumesEditIdRoute
@@ -180,15 +189,16 @@ export interface FileRouteTypes {
     | '/login'
     | '/ai-agent'
     | '/articles'
+    | '/calendar'
     | '/comments'
     | '/reports'
     | '/resumes'
+    | '/test'
     | '/auth/callback'
     | '/applications/$slug'
     | '/applications/interview-prep'
     | '/applications/list'
     | '/applications/new'
-    | '/editor/$slug'
     | '/resumes/new'
     | '/applications/'
     | '/resumes/edit/$id'
@@ -197,16 +207,17 @@ export interface FileRouteTypes {
     | '/login'
     | '/ai-agent'
     | '/articles'
+    | '/calendar'
     | '/comments'
     | '/reports'
     | '/resumes'
+    | '/test'
     | '/auth/callback'
     | '/'
     | '/applications/$slug'
     | '/applications/interview-prep'
     | '/applications/list'
     | '/applications/new'
-    | '/editor/$slug'
     | '/resumes/new'
     | '/applications'
     | '/resumes/edit/$id'
@@ -216,16 +227,17 @@ export interface FileRouteTypes {
     | '/login'
     | '/_dashboard/ai-agent'
     | '/_dashboard/articles'
+    | '/_dashboard/calendar'
     | '/_dashboard/comments'
     | '/_dashboard/reports'
     | '/_dashboard/resumes'
+    | '/_dashboard/test'
     | '/auth/callback'
     | '/_dashboard/'
     | '/_dashboard/applications/$slug'
     | '/_dashboard/applications/interview-prep'
     | '/_dashboard/applications/list'
     | '/_dashboard/applications/new'
-    | '/_dashboard/editor/$slug'
     | '/_dashboard/resumes/new'
     | '/_dashboard/applications/'
     | '/_dashboard/resumes/edit/$id'
@@ -267,6 +279,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthCallbackRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/_dashboard/test': {
+      id: '/_dashboard/test'
+      path: '/test'
+      fullPath: '/test'
+      preLoaderRoute: typeof DashboardTestRouteImport
+      parentRoute: typeof DashboardRoute
+    }
     '/_dashboard/resumes': {
       id: '/_dashboard/resumes'
       path: '/resumes'
@@ -286,6 +305,13 @@ declare module '@tanstack/react-router' {
       path: '/comments'
       fullPath: '/comments'
       preLoaderRoute: typeof DashboardCommentsRouteImport
+      parentRoute: typeof DashboardRoute
+    }
+    '/_dashboard/calendar': {
+      id: '/_dashboard/calendar'
+      path: '/calendar'
+      fullPath: '/calendar'
+      preLoaderRoute: typeof DashboardCalendarRouteImport
       parentRoute: typeof DashboardRoute
     }
     '/_dashboard/articles': {
@@ -315,13 +341,6 @@ declare module '@tanstack/react-router' {
       fullPath: '/resumes/new'
       preLoaderRoute: typeof DashboardResumesNewRouteImport
       parentRoute: typeof DashboardResumesRoute
-    }
-    '/_dashboard/editor/$slug': {
-      id: '/_dashboard/editor/$slug'
-      path: '/editor/$slug'
-      fullPath: '/editor/$slug'
-      preLoaderRoute: typeof DashboardEditorSlugRouteImport
-      parentRoute: typeof DashboardRoute
     }
     '/_dashboard/applications/new': {
       id: '/_dashboard/applications/new'
@@ -377,31 +396,33 @@ const DashboardResumesRouteWithChildren =
 interface DashboardRouteChildren {
   DashboardAiAgentRoute: typeof DashboardAiAgentRoute
   DashboardArticlesRoute: typeof DashboardArticlesRoute
+  DashboardCalendarRoute: typeof DashboardCalendarRoute
   DashboardCommentsRoute: typeof DashboardCommentsRoute
   DashboardReportsRoute: typeof DashboardReportsRoute
   DashboardResumesRoute: typeof DashboardResumesRouteWithChildren
+  DashboardTestRoute: typeof DashboardTestRoute
   DashboardIndexRoute: typeof DashboardIndexRoute
   DashboardApplicationsSlugRoute: typeof DashboardApplicationsSlugRoute
   DashboardApplicationsInterviewPrepRoute: typeof DashboardApplicationsInterviewPrepRoute
   DashboardApplicationsListRoute: typeof DashboardApplicationsListRoute
   DashboardApplicationsNewRoute: typeof DashboardApplicationsNewRoute
-  DashboardEditorSlugRoute: typeof DashboardEditorSlugRoute
   DashboardApplicationsIndexRoute: typeof DashboardApplicationsIndexRoute
 }
 
 const DashboardRouteChildren: DashboardRouteChildren = {
   DashboardAiAgentRoute: DashboardAiAgentRoute,
   DashboardArticlesRoute: DashboardArticlesRoute,
+  DashboardCalendarRoute: DashboardCalendarRoute,
   DashboardCommentsRoute: DashboardCommentsRoute,
   DashboardReportsRoute: DashboardReportsRoute,
   DashboardResumesRoute: DashboardResumesRouteWithChildren,
+  DashboardTestRoute: DashboardTestRoute,
   DashboardIndexRoute: DashboardIndexRoute,
   DashboardApplicationsSlugRoute: DashboardApplicationsSlugRoute,
   DashboardApplicationsInterviewPrepRoute:
     DashboardApplicationsInterviewPrepRoute,
   DashboardApplicationsListRoute: DashboardApplicationsListRoute,
   DashboardApplicationsNewRoute: DashboardApplicationsNewRoute,
-  DashboardEditorSlugRoute: DashboardEditorSlugRoute,
   DashboardApplicationsIndexRoute: DashboardApplicationsIndexRoute,
 }
 
