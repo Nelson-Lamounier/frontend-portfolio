@@ -1,6 +1,6 @@
 import { ChevronRightIcon } from '@heroicons/react/20/solid'
 import { PlusCircleIcon, DocumentTextIcon } from '@heroicons/react/24/outline'
-import { useResumeVersions } from '@/lib/hooks/use-resume-versions'
+import { useResumeVersions } from '../hooks/use-resume-versions'
 import { Link } from '@tanstack/react-router'
 import { Loader2 } from 'lucide-react'
 
