@@ -31,7 +31,7 @@ next-env.d.ts
 # Build outputs (TanStack Start apps only)
 # ======================
 # NOTE: .next/ folders are intentionally TRACKED — they are required
-# for the Docker container deployments on AWS (apps/admin, apps/site).
+# for the Docker container deployments on AWS (apps/site).
 dist/
 dist-ssr/
 *.tsbuildinfo
