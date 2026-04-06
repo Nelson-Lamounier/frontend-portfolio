@@ -2,7 +2,7 @@ import { Bot, Clock, Loader2, AlertCircle, FileText, CheckCircle, ExternalLink, 
 import { Link } from '@tanstack/react-router'
 import { PipelineStepper } from './PipelineStepper'
 import { PipelineActions } from './PipelineActions'
-import { usePipelineStatus } from '@/lib/hooks/use-pipeline-status'
+import { usePipelineStatus } from '../hooks/use-pipeline-status'
 
 interface PipelineModeProps {
   readonly pipelineSlug: string
