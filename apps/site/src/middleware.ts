@@ -1,8 +1,6 @@
 /** @format */
 
-import { auth } from '@/lib/auth'
-import { NextResponse } from 'next/server'
-import type { NextAuthRequest } from 'next-auth'
+import { type NextRequest, NextResponse } from 'next/server'
 
 // =============================================================================
 // Security Response Headers
@@ -32,9 +30,12 @@ const SECURITY_HEADERS: Record<string, string> = {
  * 1. Security headers: applied to every response
  * 2. Metrics tracking: request timing for Prometheus
  *
- * @param request - Incoming Next.js request, augmented with `.auth` by Auth.js
+ * Note: Authentication is handled exclusively by start-admin (TanStack Start).
+ * This public site has no login flow or protected routes.
+ *
+ * @param request - Incoming Next.js request
  */
-export default auth(async function middleware(request: NextAuthRequest) {
+export default async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl
 
   // ── Build response with security headers ──────────────────────────────
@@ -72,7 +73,7 @@ export default auth(async function middleware(request: NextAuthRequest) {
     })
 
   return response
-})
+}
 
 /**
  * Configure which routes to run middleware on.
