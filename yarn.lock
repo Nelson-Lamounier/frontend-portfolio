@@ -4579,7 +4579,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@mdx-js/mdx@npm:^3.0.0, @mdx-js/mdx@npm:^3.0.1":
+"@mdx-js/mdx@npm:^3.0.0, @mdx-js/mdx@npm:^3.0.1, @mdx-js/mdx@npm:^3.1.1":
   version: 3.1.1
   resolution: "@mdx-js/mdx@npm:3.1.1"
   dependencies:
@@ -19779,7 +19779,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"remark-gfm@npm:4":
+"remark-gfm@npm:4, remark-gfm@npm:^4.0.1":
   version: 4.0.1
   resolution: "remark-gfm@npm:4.0.1"
   dependencies:
@@ -20919,6 +20919,7 @@ __metadata:
     "@grafana/faro-web-tracing": "npm:^2.3.1"
     "@headlessui/react": "npm:^2.2.9"
     "@heroicons/react": "npm:^2.2.0"
+    "@mdx-js/mdx": "npm:^3.1.1"
     "@repo/shared": "workspace:*"
     "@tailwindcss/typography": "npm:^0.5.16"
     "@tailwindcss/vite": "npm:^4.2.2"
@@ -20947,6 +20948,7 @@ __metadata:
     next-themes: "npm:^0.4.6"
     react: "npm:^19.2.0"
     react-dom: "npm:^19.2.0"
+    remark-gfm: "npm:^4.0.1"
     tailwindcss: "npm:^4.2.2"
     typescript: "npm:^5.7.2"
     typescript-eslint: "npm:^8.32.1"

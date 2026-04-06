@@ -20,6 +20,7 @@
     "@grafana/faro-web-tracing": "^2.3.1",
     "@headlessui/react": "^2.2.9",
     "@heroicons/react": "^2.2.0",
+    "@mdx-js/mdx": "^3.1.1",
     "@repo/shared": "workspace:*",
     "@tailwindcss/vite": "^4.2.2",
     "@tanstack/react-devtools": "latest",
@@ -38,6 +39,7 @@
     "next-themes": "^0.4.6",
     "react": "^19.2.0",
     "react-dom": "^19.2.0",
+    "remark-gfm": "^4.0.1",
     "tailwindcss": "^4.2.2",
     "zod": "^3.23.8"
   },

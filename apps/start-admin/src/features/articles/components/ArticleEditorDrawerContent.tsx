@@ -4,6 +4,8 @@ import {
   useSaveContent,
 } from '@/hooks/use-admin-articles'
 import { useToastStore } from '@/lib/stores/toast-store'
+import { Tabs } from '#/components/ui/Tabs'
+import { MdxPreview } from './MdxPreview'
 
 interface ArticleEditorDrawerContentProps {
   /** The article slug to load content for */
@@ -40,6 +42,7 @@ export function ArticleEditorDrawerContent({
   const [content, setContent] = useState('')
   const [originalContent, setOriginalContent] = useState('')
   const [isInitialised, setIsInitialised] = useState(false)
+  const [activeTab, setActiveTab] = useState('Write')
   const textareaRef = useRef<HTMLTextAreaElement>(null)
 
   // Derived values
@@ -155,15 +158,33 @@ export function ArticleEditorDrawerContent({
             </div>
           </div>
 
-          {/* Textarea */}
-          <textarea
-            ref={textareaRef}
-            value={content}
-            onChange={(e) => setContent(e.target.value)}
-            spellCheck={false}
-            className="flex-1 resize-none rounded-xl border border-zinc-700 bg-zinc-900 p-4 font-mono text-sm leading-relaxed text-zinc-200 shadow-sm outline-none transition-colors focus:border-teal-500 focus:ring-2 focus:ring-teal-500/20"
-            placeholder="Article MDX content…"
-          />
+          {/* Action bar and Tab Toggle */}
+          <div className="flex-none">
+            <Tabs
+              tabs={[
+                { name: 'Write', current: activeTab === 'Write' },
+                { name: 'Preview', current: activeTab === 'Preview' },
+              ]}
+              onTabChange={setActiveTab}
+            />
+          </div>
+
+          <div className="flex-1 overflow-y-auto">
+            {activeTab === 'Write' ? (
+              <textarea
+                ref={textareaRef}
+                value={content}
+                onChange={(e) => setContent(e.target.value)}
+                spellCheck={false}
+                className="h-full w-full resize-none rounded-xl border border-zinc-700 bg-zinc-900 p-4 font-mono text-sm leading-relaxed text-zinc-200 shadow-sm outline-none transition-colors focus:border-teal-500 focus:ring-2 focus:ring-teal-500/20"
+                placeholder="Article MDX content…"
+              />
+            ) : (
+              <div className="h-full rounded-xl border border-zinc-700 bg-zinc-950 p-6 shadow-inner">
+                <MdxPreview content={content} />
+              </div>
+            )}
+          </div>
 
           {/* Action bar */}
           <div className="flex items-center justify-end gap-3 border-t border-white/10 pt-3">
