@@ -73,6 +73,7 @@ USER startadmin
 EXPOSE 5001
 ENV PORT=5001
 ENV HOST="0.0.0.0"
+ENV NODE_PATH="/app/root_node_modules"
 
 # Health check — TanStack Start SSR server
 HEALTHCHECK --interval=30s --timeout=3s --start-period=10s --retries=3 \
