@@ -1,32 +1,58 @@
 import { createFileRoute, redirect } from '@tanstack/react-router'
+import { z } from 'zod'
 import { handleAuthCallbackFn } from '../server/auth'
 
+/**
+ * Zod schema for the OAuth callback search parameters.
+ * State is mandatory — prevents CSRF attacks via OAuth state mismatch.
+ */
+const callbackSearchSchema = z.object({
+  code: z.string().optional(),
+  state: z.string().optional(),
+  error: z.string().optional(),
+})
+
 export const Route = createFileRoute('/auth/callback')({
-  validateSearch: (search: Record<string, unknown>) => {
-    return {
-      code: search.code as string,
-      state: search.state as string,
-      error: search.error as string,
-    }
-  },
+  validateSearch: callbackSearchSchema,
   beforeLoad: async ({ search }) => {
     if (search.error) {
-      console.error('Cognito OAuth Error:', search.error)
+      console.error('[auth-callback] Cognito OAuth error:', search.error)
       throw redirect({ to: '/login' })
     }
 
     if (!search.code) {
+      console.error('[auth-callback] Missing authorisation code in callback')
+      throw redirect({ to: '/login' })
+    }
+
+    if (!search.state) {
+      console.error('[auth-callback] Missing OAuth state parameter — potential CSRF')
       throw redirect({ to: '/login' })
     }
 
     try {
-      await (handleAuthCallbackFn as any)({ data: { code: search.code } })
-    } catch (err: any) {
-      if (err?.status === 307 || err?.status === 302 || err?.name === 'RedirectError' || (typeof err === 'object' && err !== null && 'redirect' in err)) {
-        throw err
+      await handleAuthCallbackFn({ data: { code: search.code, state: search.state } })
+    } catch (err: unknown) {
+      // Re-throw redirect errors from TanStack Router
+      if (
+        typeof err === 'object' &&
+        err !== null &&
+        ('status' in err || 'redirect' in err || 'name' in err)
+      ) {
+        const errObj = err as Record<string, unknown>
+        if (
+          errObj.status === 307 ||
+          errObj.status === 302 ||
+          errObj.name === 'RedirectError' ||
+          'redirect' in errObj
+        ) {
+          throw err
+        }
       }
-      console.error('Failed to exchange code:', err)
-      import('node:fs').then(fs => fs.writeFileSync('/tmp/auth-error.log', err instanceof Error ? err.message + '\n' + err.stack : String(err))).catch(() => {})
+
+      const message = err instanceof Error ? err.message : String(err)
+      const stack = err instanceof Error ? err.stack : undefined
+      console.error('[auth-callback] Token exchange failed:', { message, stack })
       throw redirect({ to: '/login' })
     }
 
