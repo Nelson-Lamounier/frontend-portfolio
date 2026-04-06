@@ -21,7 +21,7 @@ import { requireAuth } from './auth-guard'
 const REGION = process.env.AWS_REGION || 'eu-west-1'
 const BUCKET_NAME = process.env.ASSETS_BUCKET_NAME || ''
 const TABLE_NAME = process.env.DYNAMODB_TABLE_NAME || ''
-const PUBLISH_LAMBDA_ARN = process.env.ARTICLE_TRIGGER_ARN || process.env.PUBLISH_LAMBDA_ARN || ''
+const PUBLISH_LAMBDA_ARN = process.env.PUBLISH_LAMBDA_ARN || ''
 const STRATEGIST_TRIGGER_ARN = process.env.STRATEGIST_TRIGGER_ARN || process.env.STRATEGIST_TRIGGER_LAMBDA_NAME || ''
 
 // =============================================================================
