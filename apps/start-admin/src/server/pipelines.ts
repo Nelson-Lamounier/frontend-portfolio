@@ -21,8 +21,8 @@ import { requireAuth } from './auth-guard'
 const REGION = process.env.AWS_REGION || 'eu-west-1'
 const BUCKET_NAME = process.env.ASSETS_BUCKET_NAME || ''
 const TABLE_NAME = process.env.DYNAMODB_TABLE_NAME || ''
-const PUBLISH_LAMBDA_ARN = process.env.PUBLISH_LAMBDA_ARN || ''
-const STRATEGIST_LAMBDA_NAME = process.env.STRATEGIST_TRIGGER_LAMBDA_NAME || ''
+const PUBLISH_LAMBDA_ARN = process.env.ARTICLE_TRIGGER_ARN || process.env.PUBLISH_LAMBDA_ARN || ''
+const STRATEGIST_TRIGGER_ARN = process.env.STRATEGIST_TRIGGER_ARN || process.env.STRATEGIST_TRIGGER_LAMBDA_NAME || ''
 
 // =============================================================================
 // AWS Client Singletons (Lazy)
@@ -232,8 +232,8 @@ export const triggerStrategistCoachFn = createServerFn({ method: 'POST' })
   .handler(async ({ data }) => {
     await requireAuth()
 
-    if (!STRATEGIST_LAMBDA_NAME) {
-      throw new Error('Server misconfiguration: STRATEGIST_TRIGGER_LAMBDA_NAME must be set')
+    if (!STRATEGIST_TRIGGER_ARN) {
+      throw new Error('Server misconfiguration: STRATEGIST_TRIGGER_ARN must be set')
     }
 
     const payload = {
@@ -249,7 +249,7 @@ export const triggerStrategistCoachFn = createServerFn({ method: 'POST' })
 
     const result = await getLambda().send(
       new InvokeCommand({
-        FunctionName: STRATEGIST_LAMBDA_NAME,
+        FunctionName: STRATEGIST_TRIGGER_ARN,
         InvocationType: 'RequestResponse',
         Payload: new TextEncoder().encode(JSON.stringify(payload)),
       }),
@@ -274,4 +274,72 @@ export const triggerStrategistCoachFn = createServerFn({ method: 'POST' })
     }
 
     return JSON.parse(responsePayload.body) as Record<string, object>
+  })
+
+/**
+ * Triggers a new applications analysis pipeline (Research → Applications).
+ *
+ * @param data.jobDescription - Job description
+ * @param data.targetCompany - Target company
+ * @param data.targetRole - Target role
+ * @param data.interviewStage - Current interview stage
+ * @param data.resumeId - Optional specific resume ID
+ * @param data.includeCoverLetter - Whether to generate cover letter
+ * @returns Trigger response with pipelineId and slug
+ */
+const analyseTriggerSchema = z.object({
+  jobDescription: z.string(),
+  targetCompany: z.string(),
+  targetRole: z.string(),
+  interviewStage: z.enum([
+    'applied',
+    'phone-screen',
+    'technical',
+    'system-design',
+    'behavioural',
+    'bar-raiser',
+    'final',
+  ]).optional(),
+  resumeId: z.string().optional(),
+  includeCoverLetter: z.boolean().optional(),
+})
+
+export const triggerApplicationsAnalysisFn = createServerFn({ method: 'POST' })
+  .inputValidator(analyseTriggerSchema)
+  .handler(async ({ data }) => {
+    await requireAuth()
+
+    if (!STRATEGIST_TRIGGER_ARN) {
+      throw new Error('Server misconfiguration: STRATEGIST_TRIGGER_ARN must be set')
+    }
+
+    const payload = { ...data }
+
+    const result = await getLambda().send(
+      new InvokeCommand({
+        FunctionName: STRATEGIST_TRIGGER_ARN,
+        InvocationType: 'RequestResponse',
+        Payload: new TextEncoder().encode(JSON.stringify(payload)),
+      }),
+    )
+
+    if (result.FunctionError) {
+      const errorPayload = result.Payload
+        ? new TextDecoder().decode(result.Payload)
+        : 'Unknown Lambda error'
+      throw new Error(`Lambda execution failed: ${errorPayload}`)
+    }
+
+    const responsePayload = result.Payload
+      ? (JSON.parse(new TextDecoder().decode(result.Payload)) as {
+          statusCode?: number
+          body?: string
+        })
+      : null
+
+    if (!responsePayload?.body) {
+      throw new Error('Empty response from Trigger Lambda')
+    }
+
+    return JSON.parse(responsePayload.body) as import('@/lib/types/applications.types').TriggerResponse
   })
