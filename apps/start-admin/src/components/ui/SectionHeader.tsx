@@ -2,7 +2,7 @@ import type { ReactNode, KeyboardEvent } from 'react'
 
 interface SectionHeaderProps {
   readonly title: string
-  readonly description?: string
+  readonly description?: ReactNode
   readonly action?: ReactNode
   readonly onClick?: () => void
   readonly isExpanded?: boolean
@@ -60,9 +60,9 @@ export function SectionHeader({
               {title}
             </h3>
             {description && (
-              <p className={`mt-1 text-sm transition-colors ${isClickable ? 'text-gray-400 group-hover:text-gray-300' : 'text-gray-400'}`}>
+              <div className={`mt-1 text-sm transition-colors ${isClickable ? 'text-gray-400 group-hover:text-gray-300' : 'text-gray-400'}`}>
                 {description}
-              </p>
+              </div>
             )}
           </div>
         </div>

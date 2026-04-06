@@ -21,7 +21,7 @@ function cx(...classes: (string | undefined | null | false)[]) {
 export function Button({
   children,
   variant = 'primary',
-  size = 'md', // Retaining size prop for API compatibility, though we lean on variants for sizing now
+  size: _size = 'md', // Retaining size prop for API compatibility, though we lean on variants for sizing now
   fullWidth = false,
   className,
   ...props
