@@ -23,6 +23,7 @@ COPY package.json yarn.lock .yarnrc.yml ./
 # Copy all workspace package.json files so Yarn 4 can resolve the workspace graph
 COPY apps/site/package.json ./apps/site/package.json
 COPY apps/start-admin/package.json ./apps/start-admin/package.json
+COPY apps/start-site/package.json ./apps/start-site/package.json
 COPY packages/shared/package.json ./packages/shared/package.json
 
 RUN yarn install --immutable
