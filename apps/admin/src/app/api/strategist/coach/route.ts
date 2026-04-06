@@ -17,7 +17,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { LambdaClient, InvokeCommand } from '@aws-sdk/client-lambda'
 import { auth } from '@/lib/auth'
-import type { CoachTriggerBody, TriggerResponse } from '@/lib/types/strategist.types'
+import type { CoachTriggerBody, TriggerResponse } from '@/lib/types/applications.types'
 
 // ---------------------------------------------------------------------------
 // Constants

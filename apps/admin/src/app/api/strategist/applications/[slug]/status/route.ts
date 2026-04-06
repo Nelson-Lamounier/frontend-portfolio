@@ -22,7 +22,7 @@ import type {
   ApplicationStatus,
   StatusUpdateRequest,
   StatusUpdateResponse,
-} from '@/lib/types/strategist.types'
+} from '@/lib/types/applications.types'
 
 // ---------------------------------------------------------------------------
 // Constants

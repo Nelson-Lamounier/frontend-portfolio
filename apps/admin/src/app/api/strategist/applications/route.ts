@@ -20,7 +20,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { DynamoDBClient } from '@aws-sdk/client-dynamodb'
 import { DynamoDBDocumentClient, QueryCommand } from '@aws-sdk/lib-dynamodb'
 import { auth } from '@/lib/auth'
-import type { ApplicationSummary, ApplicationStatus } from '@/lib/types/strategist.types'
+import type { ApplicationSummary, ApplicationStatus } from '@/lib/types/applications.types'
 
 // ---------------------------------------------------------------------------
 // Constants

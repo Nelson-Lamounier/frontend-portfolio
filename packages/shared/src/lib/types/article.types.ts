@@ -36,6 +36,7 @@ export interface ArticleWithSlug extends Article {
   contentRef?: string
   aiSummary?: string
   version?: number
+  model?: string
 }
 
 export type ArticleStatus =
@@ -281,5 +282,6 @@ export function entityToArticle(
     contentRef: (e.contentRef as string) || '',
     aiSummary: (e.aiSummary as string) || undefined,
     version: (e.version as number) ?? 1,
+    model: (e.model as string) || undefined,
   }
 }

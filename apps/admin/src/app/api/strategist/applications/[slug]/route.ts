@@ -18,7 +18,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { DynamoDBClient } from '@aws-sdk/client-dynamodb'
 import { DynamoDBDocumentClient, QueryCommand } from '@aws-sdk/lib-dynamodb'
 import { auth } from '@/lib/auth'
-import type { ApplicationDetail, AnalysisMetadata, ResumeSuggestions } from '@/lib/types/strategist.types'
+import type { ApplicationDetail, AnalysisMetadata, ResumeSuggestions } from '@/lib/types/applications.types'
 import type { ResumeData } from '@/lib/resumes/resume-data'
 
 // ---------------------------------------------------------------------------

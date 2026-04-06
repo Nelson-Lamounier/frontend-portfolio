@@ -1,37 +1,71 @@
-import { useNavigate } from '@tanstack/react-router'
+'use client'
+
+import { Fragment, useState } from 'react'
+import { useNavigate, Link } from '@tanstack/react-router'
+import { Menu, MenuButton, MenuItem, MenuItems } from '@headlessui/react'
+import {
+  ArrowUpCircleIcon,
+  EllipsisHorizontalIcon,
+  PlusSmallIcon,
+} from '@heroicons/react/20/solid'
 import type { ArticleWithSlug } from '@/lib/types/article.types'
 import { useAdminArticles } from '@/hooks/use-admin-articles'
 import { useAdminComments } from '@/hooks/use-admin-comments'
 import { useQuery } from '@tanstack/react-query'
 import { getResumesFn } from '../../../server/resumes'
+import { finopsQueries, articlePipelineQueries } from '../../reports/queries'
+import { Stats } from '../../../components/ui/Stats'
 
 // =============================================================================
 // CONSTANTS
 // =============================================================================
 
-/** Maximum number of recent articles to display per section */
-const RECENT_ARTICLES_LIMIT = 3
+/** Maximum number of recent items to display per section */
+const RECENT_LIMIT = 5
+
+const statuses = {
+  published: 'bg-green-500/10 text-green-500 ring-green-500/10',
+  draft: 'bg-white/5 text-gray-400 ring-white/10',
+  review: 'bg-yellow-500/10 text-yellow-500 ring-yellow-500/10',
+  pending: 'bg-yellow-500/10 text-yellow-500 ring-yellow-500/10',
+  approved: 'bg-green-500/10 text-green-500 ring-green-500/10',
+}
+
+/**
+ * Join class names, filtering out falsy values.
+ *
+ * @param classes - CSS class strings
+ * @returns Joined class name string
+ */
+function classNames(...classes: (string | undefined | null | false)[]) {
+  return classes.filter(Boolean).join(' ')
+}
 
 // =============================================================================
 // PAGE COMPONENT
 // =============================================================================
 
 /**
- * Admin dashboard overview with stats cards and recent activity.
- * Data is fetched via TanStack Query hooks — loading/error states
- * are derived from hook status.
+ * Admin dashboard overview — matches the ReportContainer visual style
+ * but displays overall application metrics (articles, comments, resumes,
+ * AI automations) in a single aggregated view.
  *
  * @returns Dashboard overview page JSX
  */
 export function DashboardOverview() {
   const navigate = useNavigate()
+  const [activeSection, setActiveSection] = useState<'overview' | 'articles' | 'resumes'>('overview')
 
-  // TanStack Query hooks — cached, auto-refreshed
+  const sections = [
+    { id: 'overview', name: 'Platform Overview' },
+    { id: 'articles', name: 'Content Management' },
+    { id: 'resumes', name: 'Career Documents' },
+  ]
+
+  // ── TanStack Query hooks ────────────────────────────────────────────────
   const {
     data: articles,
     isLoading: loadingArticles,
-    error: articlesError,
-    refetch: refetchArticles,
   } = useAdminArticles()
   const {
     data: comments,
@@ -44,339 +78,452 @@ export function DashboardOverview() {
     queryKey: ['admin-resumes'],
     queryFn: () => getResumesFn(),
   })
+  const { data: pipelineArticles, isLoading: loadingPipeline } = useQuery(articlePipelineQueries.all())
+  const { data: chatbotUsage, isLoading: loadingChatbot } = useQuery(finopsQueries.chatbotUsage(7))
+  const { data: selfHealingUsage, isLoading: loadingSelfHealing } = useQuery(finopsQueries.selfHealingUsage(7))
 
-  // Derived state
-  const isLoading = loadingArticles || loadingComments || loadingResumes
-  const error = articlesError?.message ?? null
+  // ── Derived state ───────────────────────────────────────────────────────
+  const isLoading = loadingArticles || loadingComments || loadingResumes || loadingPipeline || loadingChatbot || loadingSelfHealing
 
-  // Computed stats
+  // Article counts
   const draftCount = articles?.draftCount ?? 0
   const publishedCount = articles?.publishedCount ?? 0
-  const pendingComments = comments?.length ?? 0
-  const totalResumes = resumes?.length ?? 0
-  const recentDrafts = articles?.drafts.slice(0, RECENT_ARTICLES_LIMIT) ?? []
-  const recentPublished = articles?.published.slice(0, RECENT_ARTICLES_LIMIT) ?? []
+  const totalArticles = draftCount + publishedCount
 
-  // ===========================================================================
+  // Comments
+  const pendingComments = comments?.length ?? 0
+
+  // Resumes
+  const totalResumes = resumes?.length ?? 0
+
+  // AI Metrics
+  const pipelineCount = pipelineArticles?.length ?? 0
+  const chatbotRequests = chatbotUsage?.invocationCount ?? 0
+  const shInputTokens = selfHealingUsage?.inputTokens ?? 0
+  const shOutputTokens = selfHealingUsage?.outputTokens ?? 0
+  const shTotalTokens = shInputTokens + shOutputTokens
+  const isAgentActive = shTotalTokens > 0
+
+  // ── Stats arrays ────────────────────────────────────────────────────────
+
+  const overviewStats = [
+    {
+      name: 'Total Articles',
+      value: isLoading ? '...' : totalArticles.toString(),
+      change: `${draftCount} drafts · ${publishedCount} published`,
+      changeType: 'positive',
+    },
+    {
+      name: 'Comments Pending',
+      value: isLoading ? '...' : pendingComments.toString(),
+      change: pendingComments > 0 ? 'Awaiting moderation' : 'All moderated',
+      changeType: pendingComments > 0 ? 'negative' : 'positive',
+    },
+    {
+      name: 'Resume Versions',
+      value: isLoading ? '...' : totalResumes.toString(),
+      change: 'Active managed documents',
+      changeType: 'positive',
+    },
+    {
+      name: 'AI Automations (7d)',
+      value: isLoading ? '...' : (pipelineCount + chatbotRequests + (isAgentActive ? 1 : 0)).toString(),
+      change: `${pipelineCount} Pipes · ${chatbotRequests} Chats · ${isAgentActive ? 'Agent Active' : 'No Incidents'}`,
+      changeType: 'positive',
+    },
+  ]
+
+  const articleStats = [
+    {
+      name: 'Published',
+      value: isLoading ? '...' : publishedCount.toString(),
+      change: 'Live on the portfolio',
+      changeType: 'positive',
+    },
+    {
+      name: 'Drafts',
+      value: isLoading ? '...' : draftCount.toString(),
+      change: 'Awaiting review & publish',
+      changeType: draftCount > 0 ? 'negative' : 'positive',
+    },
+    {
+      name: 'AI Generated',
+      value: loadingPipeline ? '...' : pipelineCount.toString(),
+      change: 'Multi-Agent Pipeline output',
+      changeType: 'positive',
+    },
+    {
+      name: 'Comments',
+      value: isLoading ? '...' : pendingComments.toString(),
+      change: pendingComments > 0 ? `${pendingComments} requiring moderation` : 'All comments moderated',
+      changeType: pendingComments > 0 ? 'negative' : 'positive',
+    },
+  ]
+
+  const resumeStats = [
+    {
+      name: 'Total Versions',
+      value: isLoading ? '...' : totalResumes.toString(),
+      change: 'PDF documents managed',
+      changeType: 'positive',
+    },
+    {
+      name: 'Active Applications',
+      value: '—',
+      change: 'Check Applications tab',
+      changeType: 'positive',
+    },
+    {
+      name: 'Interview Prep Items',
+      value: '—',
+      change: 'Company–specific prep kits',
+      changeType: 'positive',
+    },
+    {
+      name: 'Cover Letters',
+      value: '—',
+      change: 'AI–generated cover letters',
+      changeType: 'positive',
+    },
+  ]
+
+  // ── Recent articles list ────────────────────────────────────────────────
+  const recentDrafts = articles?.drafts.slice(0, RECENT_LIMIT) ?? []
+  const recentPublished = articles?.published.slice(0, RECENT_LIMIT) ?? []
+
+  const allRecent = [
+    ...recentPublished.map((a: ArticleWithSlug) => ({ ...a, _status: 'published' as const })),
+    ...recentDrafts.map((a: ArticleWithSlug) => ({ ...a, _status: 'draft' as const })),
+  ].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()).slice(0, 10)
+
+  const days = [
+    {
+      date: `Recent Activity (${allRecent.length} records)`,
+      dateTime: new Date().toISOString(),
+      transactions: allRecent.map((a) => ({
+        id: a.slug,
+        slug: a.slug,
+        status: a._status,
+        title: a.title,
+        description: a.description || a.aiSummary || 'No description',
+        category: a.category || 'Uncategorised',
+        date: new Date(a.date).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' }),
+        readingTime: a.readingTimeMinutes ? `${a.readingTimeMinutes} min` : '—',
+        icon: ArrowUpCircleIcon,
+      })),
+    },
+  ]
+
+  // ── Pipeline cards ──────────────────────────────────────────────────────
+  const pipelines = [
+    {
+      id: 1,
+      name: 'Drafts',
+      count: draftCount,
+      articles: recentDrafts.slice(0, 4).map((a: ArticleWithSlug) => ({
+        title: a.title,
+        detail: new Date(a.date).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }),
+        status: 'draft',
+      })),
+    },
+    {
+      id: 2,
+      name: 'Published',
+      count: publishedCount,
+      articles: recentPublished.slice(0, 4).map((a: ArticleWithSlug) => ({
+        title: a.title,
+        detail: new Date(a.date).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }),
+        status: 'published',
+      })),
+    },
+    {
+      id: 3,
+      name: 'AI Pipeline',
+      count: pipelineCount,
+      articles: (pipelineArticles ?? []).slice(0, 4).map((a: any) => ({
+        title: a.title || a.pk?.replace('ARTICLE#', '') || 'Untitled',
+        detail: a.updatedAt ? new Date(a.updatedAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }) : '—',
+        status: a.status || 'draft',
+      })),
+    },
+  ]
+
+  // ── Quick actions ───────────────────────────────────────────────────────
+  const quickActions = [
+    { label: 'New Article', href: '/editor/new', description: 'Open the article editor' },
+    { label: 'Moderate Comments', href: '/comments', description: `${pendingComments} pending` },
+    { label: 'Manage Resumes', href: '/resumes', description: `${totalResumes} version${totalResumes === 1 ? '' : 's'}` },
+    { label: 'AI Reports', href: '/reports', description: 'View AI metrics' },
+  ]
+
+  // =====================================================================
   // Render
-  // ===========================================================================
+  // =====================================================================
 
   return (
-    <div className="px-4 py-8 sm:px-6 lg:px-8">
-      {/* Page Header */}
-      <div className="mb-8">
-        <h1 className="text-2xl font-bold tracking-tight text-white">
-          Dashboard
-        </h1>
-        <p className="mt-1 text-sm text-gray-400">
-          Portfolio admin overview — articles, comments, and resume management.
-        </p>
-      </div>
+    <>
+      <main>
+        <div className="relative isolate overflow-hidden">
+          {/* Header */}
+          <header className="pt-6 pb-4 sm:pb-6">
+            <div className="mx-auto flex max-w-7xl flex-wrap items-center gap-6 px-4 sm:flex-nowrap sm:px-6 lg:px-8">
+              <h1 className="text-base/7 font-semibold text-white">Dashboard Overview</h1>
+              <div className="order-last flex w-full gap-x-8 text-sm/6 font-semibold sm:order-0 sm:w-auto sm:border-l sm:border-white/10 sm:pl-6 sm:text-sm/7">
+                {quickActions.map((action) => (
+                  <button
+                    key={action.label}
+                    onClick={() => navigate({ to: action.href } as any)}
+                    className="text-gray-300 hover:text-white"
+                  >
+                    {action.label}
+                  </button>
+                ))}
+              </div>
+              <Link
+                to="/ai-agent"
+                className="ml-auto flex items-center gap-x-1 rounded-md bg-indigo-500 px-3 py-2 text-sm font-semibold text-white hover:bg-indigo-400 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-500"
+              >
+                <PlusSmallIcon aria-hidden="true" className="-ml-1.5 size-5" />
+                New article
+              </Link>
+            </div>
+          </header>
 
-      {/* Loading State */}
-      {isLoading && (
-        <div className="flex items-center justify-center py-20">
-          <div className="flex items-center gap-3 text-zinc-500 dark:text-zinc-400">
-            <div className="h-6 w-6 animate-spin rounded-full border-2 border-zinc-300 border-t-teal-600" />
-            <span className="text-sm">Loading dashboard…</span>
-          </div>
-        </div>
-      )}
-
-      {/* Error State */}
-      {!isLoading && error && (
-        <div className="rounded-2xl border border-red-200 bg-red-50 p-6 text-center dark:border-red-800 dark:bg-red-900/20">
-          <p className="text-sm text-red-600 dark:text-red-400">{error}</p>
-          <button
-            type="button"
-            onClick={() => refetchArticles()}
-            className="mt-4 rounded-lg bg-red-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-red-500"
-          >
-            Retry
-          </button>
-        </div>
-      )}
-
-      {/* Ready State */}
-      {!isLoading && !error && (
-        <>
-          {/* ── Stats Cards ──────────────────────────────────────────── */}
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-            {/* Draft Articles */}
-            <StatsCard
-              label="Draft Articles"
-              value={draftCount}
-              description="Awaiting review & publish"
-              accentColour="amber"
-              onClick={() => navigate({ to: '/articles' })}
-            />
-
-            {/* Published Articles */}
-            <StatsCard
-              label="Published Articles"
-              value={publishedCount}
-              description="Live on the portfolio"
-              accentColour="teal"
-              onClick={() => navigate({ to: '/articles' })}
-            />
-
-            {/* Pending Comments */}
-            <StatsCard
-              label="Pending Comments"
-              value={pendingComments}
-              description="Awaiting moderation"
-              accentColour={pendingComments > 0 ? 'amber' : 'teal'}
-              onClick={() => navigate({ to: '/comments' })}
-            />
-
-            {/* Resume Versions */}
-            <StatsCard
-              label="Resume Versions"
-              value={totalResumes}
-              description="Managed versions"
-              accentColour="zinc"
-              onClick={() => navigate({ to: '/resumes' })}
-            />
-          </div>
-
-          {/* ── Quick Actions ────────────────────────────────────────── */}
-          <div className="mt-8">
-            <h2 className="text-lg font-semibold text-white">
-              Quick Actions
-            </h2>
-            <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-3">
-              <QuickActionButton
-                label="New Article"
-                description="Open the article editor"
-                onClick={() => navigate({ to: '/editor/new' } as any)}
-                icon={
-                  <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" d="m16.862 4.487 1.687-1.688a1.875 1.875 0 1 1 2.652 2.652L10.582 16.07a4.5 4.5 0 0 1-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 0 1 1.13-1.897l8.932-8.931Zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0 1 15.75 21H5.25A2.25 2.25 0 0 1 3 18.75V8.25A2.25 2.25 0 0 1 5.25 6H10" />
-                  </svg>
-                }
-              />
-              <QuickActionButton
-                label="Moderate Comments"
-                description={`${pendingComments} pending`}
-                onClick={() => navigate({ to: '/comments' })}
-                icon={
-                  <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M7.5 8.25h9m-9 3H12m-9.75 1.51c0 1.6 1.123 2.994 2.707 3.227 1.087.16 2.185.283 3.293.369V21l4.076-4.076a1.526 1.526 0 0 1 1.037-.443 48.282 48.282 0 0 0 5.68-.494c1.584-.233 2.707-1.626 2.707-3.228V6.741c0-1.602-1.123-2.995-2.707-3.228A48.394 48.394 0 0 0 12 3c-2.392 0-4.744.175-7.043.513C3.373 3.746 2.25 5.14 2.25 6.741v6.018Z" />
-                  </svg>
-                }
-              />
-              <QuickActionButton
-                label="Manage Resumes"
-                description={`${totalResumes} version${totalResumes === 1 ? '' : 's'}`}
-                onClick={() => navigate({ to: '/resumes' })}
-                icon={
-                  <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 0 0-3.375-3.375h-1.5A1.125 1.125 0 0 1 13.5 7.125v-1.5a3.375 3.375 0 0 0-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 0 0-9-9Z" />
-                  </svg>
-                }
-              />
+          {/* Tabs Navigation */}
+          <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 mt-12 mb-4">
+            <div className="flex flex-wrap gap-2 border-b border-white/10 pb-4">
+              {sections.map((section) => (
+                <button
+                  key={section.id}
+                  onClick={() => setActiveSection(section.id as any)}
+                  className={classNames(
+                    activeSection === section.id
+                      ? 'bg-indigo-500/10 text-indigo-400 border border-indigo-500/20'
+                      : 'text-gray-400 hover:text-gray-300 hover:bg-white/5 border border-transparent',
+                    'px-4 py-2 rounded-md text-sm font-medium transition-colors'
+                  )}
+                >
+                  {section.name}
+                </button>
+              ))}
             </div>
           </div>
 
-          {/* ── Recent Articles ───────────────────────────────────────── */}
-          <div className="mt-8 grid grid-cols-1 gap-6 lg:grid-cols-2">
-            {/* Recent Drafts */}
-            <RecentArticlesList
-              title="Recent Drafts"
-              articles={recentDrafts}
-              emptyMessage="No draft articles"
-              statusBadge="draft"
-            />
+          {/* Stats Grid */}
+          <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 space-y-12 mb-12">
+            {activeSection === 'overview' && (
+              <div>
+                <div className="mb-4">
+                  <h2 className="text-base/7 font-semibold text-indigo-400">Platform Metrics</h2>
+                </div>
+                <Stats stats={overviewStats} />
+              </div>
+            )}
 
-            {/* Recent Published */}
-            <RecentArticlesList
-              title="Recently Published"
-              articles={recentPublished}
-              emptyMessage="No published articles"
-              statusBadge="published"
+            {activeSection === 'articles' && (
+              <div>
+                <div className="mb-4">
+                  <h2 className="text-base/7 font-semibold text-indigo-400">Content Management</h2>
+                </div>
+                <Stats stats={articleStats} />
+              </div>
+            )}
+
+            {activeSection === 'resumes' && (
+              <div>
+                <div className="mb-4">
+                  <h2 className="text-base/7 font-semibold text-indigo-400">Career Documents</h2>
+                </div>
+                <Stats stats={resumeStats} />
+              </div>
+            )}
+          </div>
+
+          {/* Gradient background decoration */}
+          <div
+            aria-hidden="true"
+            className="absolute top-full left-0 -z-10 mt-96 origin-top-left translate-y-40 -rotate-90 transform-gpu opacity-10 blur-3xl sm:left-1/2 sm:-mt-10 sm:-ml-96 sm:translate-y-0 sm:rotate-0 sm:opacity-30"
+          >
+            <div
+              style={{
+                clipPath:
+                  'polygon(100% 38.5%, 82.6% 100%, 60.2% 37.7%, 52.4% 32.1%, 47.5% 41.8%, 45.2% 65.6%, 27.5% 23.4%, 0.1% 35.3%, 17.9% 0%, 27.7% 23.4%, 76.2% 2.5%, 74.2% 56%, 100% 38.5%)',
+              }}
+              className="aspect-1154/678 w-288.5 bg-linear-to-br from-[#FF80B5] to-[#9089FC]"
             />
           </div>
-        </>
-      )}
-    </div>
-  )
-}
+        </div>
 
-// =============================================================================
-// SUB-COMPONENTS
-// =============================================================================
-
-/** Accent colour options for stats cards */
-type AccentColour = 'teal' | 'amber' | 'zinc'
-
-/** Props for the StatsCard component */
-interface StatsCardProps {
-  readonly label: string
-  readonly value: number
-  readonly description: string
-  readonly accentColour: AccentColour
-  readonly onClick: () => void
-}
-
-/** Colour mappings for stats card accents */
-const ACCENT_STYLES: Record<AccentColour, { bg: string; text: string; ring: string }> = {
-  teal: {
-    bg: 'bg-teal-50 dark:bg-teal-950/30',
-    text: 'text-teal-700 dark:text-teal-300',
-    ring: 'ring-teal-200 dark:ring-teal-800',
-  },
-  amber: {
-    bg: 'bg-amber-50 dark:bg-amber-950/30',
-    text: 'text-amber-700 dark:text-amber-300',
-    ring: 'ring-amber-200 dark:ring-amber-800',
-  },
-  zinc: {
-    bg: 'bg-zinc-100 dark:bg-zinc-800/50',
-    text: 'text-zinc-700 dark:text-zinc-300',
-    ring: 'ring-zinc-200 dark:ring-zinc-700',
-  },
-}
-
-/**
- * Stats summary card with accent colour and click navigation.
- *
- * @param props - Card configuration
- * @returns Stats card JSX
- */
-function StatsCard({ label, value, description, accentColour, onClick }: StatsCardProps) {
-  const accent = ACCENT_STYLES[accentColour]
-
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      className={`group rounded-xl border border-zinc-200 bg-white p-5 text-left transition-all hover:shadow-md dark:border-zinc-700 dark:bg-zinc-800/50`}
-    >
-      <p className="text-sm font-medium text-zinc-500 dark:text-zinc-400">
-        {label}
-      </p>
-      <p className={`mt-2 text-3xl font-bold tracking-tight ${accent.text}`}>
-        {value}
-      </p>
-      <p className="mt-1 text-xs text-zinc-400 dark:text-zinc-500">
-        {description}
-      </p>
-    </button>
-  )
-}
-
-/** Props for the QuickActionButton component */
-interface QuickActionButtonProps {
-  readonly label: string
-  readonly description: string
-  readonly onClick: () => void
-  readonly icon: React.ReactNode
-}
-
-/**
- * Quick action navigation button.
- *
- * @param props - Button configuration
- * @returns Quick action button JSX
- */
-function QuickActionButton({ label, description, onClick, icon }: QuickActionButtonProps) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      className="group flex items-center gap-4 rounded-xl border border-zinc-200 bg-white p-4 text-left transition-all hover:border-teal-300 hover:shadow-md dark:border-zinc-700 dark:bg-zinc-800/50 dark:hover:border-teal-700"
-    >
-      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-teal-50 text-teal-600 transition-colors group-hover:bg-teal-100 dark:bg-teal-950/40 dark:text-teal-400 dark:group-hover:bg-teal-900/40">
-        {icon}
-      </div>
-      <div>
-        <p className="text-sm font-semibold text-zinc-900 dark:text-zinc-100">
-          {label}
-        </p>
-        <p className="text-xs text-zinc-500 dark:text-zinc-400">
-          {description}
-        </p>
-      </div>
-    </button>
-  )
-}
-
-/** Props for the RecentArticlesList component */
-interface RecentArticlesListProps {
-  readonly title: string
-  readonly articles: ArticleWithSlug[]
-  readonly emptyMessage: string
-  readonly statusBadge: 'draft' | 'published'
-}
-
-/**
- * Compact list of recent articles for the dashboard overview.
- *
- * @param props - List configuration
- * @returns Recent articles list JSX
- */
-function RecentArticlesList({
-  title,
-  articles,
-  emptyMessage,
-  statusBadge,
-}: RecentArticlesListProps) {
-  const badgeClasses =
-    statusBadge === 'draft'
-      ? 'bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-300'
-      : 'bg-teal-100 text-teal-800 dark:bg-teal-900/30 dark:text-teal-300'
-
-  return (
-    <div className="rounded-xl border border-zinc-200 bg-white p-5 dark:border-zinc-700 dark:bg-zinc-800/50">
-      <h3 className="text-sm font-semibold text-zinc-900 dark:text-zinc-100">
-        {title}
-      </h3>
-
-      {articles.length === 0 ? (
-        <p className="mt-4 text-sm text-zinc-400 dark:text-zinc-500">
-          {emptyMessage}
-        </p>
-      ) : (
-        <ul className="mt-3 divide-y divide-zinc-100 dark:divide-zinc-700/50">
-          {articles.map((article) => (
-            <li key={article.slug} className="py-3 first:pt-0 last:pb-0">
-              <div className="flex items-start justify-between gap-3">
-                <div className="min-w-0 flex-1">
-                  <a
-                    href={`/editor/${article.slug}`}
-                    className="text-sm font-medium text-zinc-900 transition-colors hover:text-teal-600 dark:text-zinc-100 dark:hover:text-teal-400"
-                  >
-                    {article.title}
-                  </a>
-                  <p className="mt-0.5 truncate text-xs text-zinc-500 dark:text-zinc-400">
-                    {article.description || article.aiSummary || 'No description'}
-                  </p>
+        <div className="space-y-16 py-16 xl:space-y-20">
+          {/* Recent Activity Table */}
+          <div>
+            <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+              <h2 className="mx-auto max-w-2xl text-base font-semibold text-white lg:mx-0 lg:max-w-none">
+                Recent Activity
+              </h2>
+            </div>
+            <div className="mt-6 overflow-hidden border-t border-white/5">
+              <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+                <div className="mx-auto max-w-2xl lg:mx-0 lg:max-w-none">
+                  <table className="w-full text-left">
+                    <thead className="sr-only">
+                      <tr>
+                        <th>Article</th>
+                        <th className="hidden sm:table-cell">Category</th>
+                        <th>More details</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {days.map((day) => (
+                        <Fragment key={day.dateTime}>
+                          <tr className="text-sm/6 text-white">
+                            <th scope="colgroup" colSpan={3} className="relative isolate py-2 font-semibold">
+                              <time dateTime={day.dateTime}>{day.date}</time>
+                              <div className="absolute inset-y-0 right-full -z-10 w-screen border-b border-white/10 bg-white/2.5" />
+                              <div className="absolute inset-y-0 left-0 -z-10 w-screen border-b border-white/10 bg-white/2.5" />
+                            </th>
+                          </tr>
+                          {day.transactions.map((transaction) => (
+                            <tr key={transaction.id}>
+                              <td className="relative py-5 pr-6">
+                                <div className="flex gap-x-6">
+                                  <transaction.icon
+                                    aria-hidden="true"
+                                    className="hidden h-6 w-5 flex-none text-gray-500 sm:block"
+                                  />
+                                  <div className="flex-auto">
+                                    <div className="text-sm/6 font-medium text-white">{transaction.title}</div>
+                                    <div className="mt-1 text-xs/5 text-gray-400">{transaction.description}</div>
+                                  </div>
+                                </div>
+                                <div className="absolute right-full bottom-0 h-px w-screen bg-white/5" />
+                                <div className="absolute bottom-0 left-0 h-px w-screen bg-white/5" />
+                              </td>
+                              <td className="hidden py-5 pr-6 sm:table-cell">
+                                <div className="flex items-start gap-x-3">
+                                  <div className="text-sm/6 text-white">{transaction.category}</div>
+                                  <div
+                                    className={classNames(
+                                      statuses[transaction.status as keyof typeof statuses] || statuses.draft,
+                                      'rounded-md px-2 py-1 text-xs font-medium ring-1 ring-inset',
+                                    )}
+                                  >
+                                    {transaction.status}
+                                  </div>
+                                </div>
+                                <div className="mt-1 flex gap-2 text-xs/5 text-gray-400">
+                                  <span>{transaction.date}</span>
+                                  <span>&middot;</span>
+                                  <span>{transaction.readingTime} read</span>
+                                </div>
+                              </td>
+                              <td className="py-5 text-right">
+                                <div className="flex justify-end">
+                                  <Link
+                                    to="/articles"
+                                    className="text-sm/6 font-medium text-indigo-400 hover:text-indigo-300"
+                                  >
+                                    View<span className="hidden sm:inline"> article</span>
+                                    <span className="sr-only">
+                                      , {transaction.title}
+                                    </span>
+                                  </Link>
+                                </div>
+                              </td>
+                            </tr>
+                          ))}
+                        </Fragment>
+                      ))}
+                    </tbody>
+                  </table>
                 </div>
-                <span
-                  className={`inline-flex shrink-0 items-center rounded-full px-2 py-0.5 text-[10px] font-medium ${badgeClasses}`}
+              </div>
+            </div>
+          </div>
+
+          {/* Pipeline Cards */}
+          <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+            <div className="mx-auto max-w-2xl lg:mx-0 lg:max-w-none">
+              <div className="flex items-center justify-between">
+                <h2 className="text-base/7 font-semibold text-white">Content Pipeline</h2>
+                <Link to="/articles" className="text-sm/6 font-semibold text-indigo-400 hover:text-indigo-300">
+                  View all articles &rarr;
+                </Link>
+              </div>
+              <ul role="list" className="mt-6 grid grid-cols-1 gap-x-6 gap-y-8 lg:grid-cols-3 xl:gap-x-8">
+                {pipelines.map((pipeline) => (
+                  <li key={pipeline.id} className="overflow-hidden rounded-xl outline -outline-offset-1 outline-white/10">
+                    <div className="flex items-center gap-x-4 border-b border-white/10 bg-gray-800/50 p-6">
+                      <div className="text-sm/6 font-semibold text-white">{pipeline.name}</div>
+                      <div className="ml-2 rounded-full bg-indigo-500/10 px-2 py-0.5 text-xs font-medium text-indigo-400 ring-1 ring-inset ring-indigo-500/20">
+                        {pipeline.count}
+                      </div>
+                      <Menu as="div" className="relative ml-auto">
+                        <MenuButton className="relative block text-gray-500 hover:text-white">
+                          <span className="absolute -inset-2.5" />
+                          <span className="sr-only">Open options</span>
+                          <EllipsisHorizontalIcon aria-hidden="true" className="size-5" />
+                        </MenuButton>
+                        <MenuItems
+                          transition
+                          className="absolute right-0 z-10 mt-0.5 w-32 origin-top-right rounded-md bg-gray-800 py-2 outline-1 -outline-offset-1 outline-white/10 transition data-closed:scale-95 data-closed:transform data-closed:opacity-0 data-enter:duration-100 data-enter:ease-out data-leave:duration-75 data-leave:ease-in"
+                        >
+                          <MenuItem>
+                            <Link
+                              to="/articles"
+                              className="block px-3 py-1 text-sm/6 text-white data-focus:bg-white/5 data-focus:outline-hidden"
+                            >
+                              View list
+                            </Link>
+                          </MenuItem>
+                        </MenuItems>
+                      </Menu>
+                    </div>
+                    <dl className="-my-3 divide-y divide-white/10 px-6 py-4 text-sm/6">
+                      {pipeline.articles.map((article) => (
+                        <div key={article.title} className="flex flex-col py-3">
+                          <dt className="text-sm/6 font-medium text-white truncate" title={article.title}>{article.title}</dt>
+                          <dd className="mt-1 flex justify-between gap-x-4 text-xs/5 text-gray-400">
+                            <span>{article.detail}</span>
+                            <span className="text-gray-300 font-medium">{article.status}</span>
+                          </dd>
+                        </div>
+                      ))}
+                    </dl>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          </div>
+
+          {/* Quick Actions */}
+          <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+            <h2 className="text-base/7 font-semibold text-white">Quick Actions</h2>
+            <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
+              {quickActions.map((action) => (
+                <button
+                  key={action.label}
+                  type="button"
+                  onClick={() => navigate({ to: action.href } as any)}
+                  className="group flex items-center gap-4 rounded-xl border border-white/10 bg-gray-800/50 p-4 text-left transition-all hover:border-indigo-500/30 hover:bg-white/5"
                 >
-                  {statusBadge}
-                </span>
-              </div>
-              <div className="mt-1 flex items-center gap-2 text-xs text-zinc-400 dark:text-zinc-500">
-                <time dateTime={article.date}>
-                  {new Date(article.date).toLocaleDateString('en-GB', {
-                    day: 'numeric',
-                    month: 'short',
-                    year: 'numeric',
-                  })}
-                </time>
-                {article.readingTimeMinutes && (
-                  <>
-                    <span>·</span>
-                    <span>{article.readingTimeMinutes} min read</span>
-                  </>
-                )}
-              </div>
-            </li>
-          ))}
-        </ul>
-      )}
-    </div>
+                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-indigo-500/10 text-indigo-400 ring-1 ring-inset ring-indigo-500/20">
+                    <PlusSmallIcon className="size-5" />
+                  </div>
+                  <div>
+                    <p className="text-sm font-semibold text-white">
+                      {action.label}
+                    </p>
+                    <p className="text-xs text-gray-400">
+                      {action.description}
+                    </p>
+                  </div>
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+      </main>
+    </>
   )
 }
