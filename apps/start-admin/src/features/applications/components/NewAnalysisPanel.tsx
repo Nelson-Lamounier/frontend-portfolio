@@ -6,7 +6,7 @@ import {
   Send,
 } from 'lucide-react'
 import { useForm } from '@tanstack/react-form'
-import { useApplicationsTrigger } from '@/lib/hooks/use-applications-trigger'
+import { useApplicationsTrigger } from '../hooks/use-applications-trigger'
 import type { InterviewStage } from '@/lib/types/applications.types'
 import { INTERVIEW_STAGE_OPTIONS, MIN_JD_LENGTH } from './ApplicationTypes'
 import { FormInput } from '../../../components/ui/Field'
