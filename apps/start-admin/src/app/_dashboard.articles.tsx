@@ -1,5 +1,5 @@
 import { createFileRoute } from '@tanstack/react-router'
-import { ArticlesPipeline } from '../features/articles/components/ArticlesPipeline'
+import { ArticleContainer } from '../features/articles/components/ArticleContainer'
 import { DashboardPage } from '../components/layouts/DashboardPage'
 
 export const Route = createFileRoute('/_dashboard/articles')({
@@ -12,7 +12,7 @@ function ArticlesPage() {
       title="Article Management"
       description="Review, edit, publish, and delete Bedrock-generated article versions."
     >
-      <ArticlesPipeline />
+      <ArticleContainer />
     </DashboardPage>
   )
 }
