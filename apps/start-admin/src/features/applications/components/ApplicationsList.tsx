@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useNavigate } from '@tanstack/react-router'
 import {
   Target,
@@ -6,7 +6,7 @@ import {
   Loader2,
   AlertCircle,
 } from 'lucide-react'
-import { useApplications } from '@/lib/hooks/use-applications'
+import { useApplications } from '@/hooks/use-admin-applications'
 import { useApplicationsStore } from '@/lib/stores/applications-store'
 import type { ApplicationStatus } from '@/lib/types/applications.types'
 import { STATUS_FILTER_OPTIONS } from './ApplicationTypes'

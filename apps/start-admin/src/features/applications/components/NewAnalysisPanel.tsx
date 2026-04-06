@@ -1,7 +1,6 @@
 import { useState, useEffect } from 'react'
 import {
   Sparkles,
-  FileText,
   AlertCircle,
   Loader2,
   Send,
@@ -14,7 +13,7 @@ import { FormInput } from '../../../components/ui/Field'
 import { Button } from '../../../components/ui/Button'
 import { ProgressBars } from './ProgressBars'
 
-function DraftSaver({ values }: { values: any }) {
+function DraftSaver({ values }: { readonly values: Record<string, unknown> }) {
   useEffect(() => {
     localStorage.setItem('application-form-draft', JSON.stringify(values))
   }, [values])
@@ -26,7 +25,7 @@ export interface NewAnalysisPanelProps {
   onSuccess?: () => void
 }
 
-export function NewAnalysisPanel({ preselectedResumeId, onSuccess }: NewAnalysisPanelProps) {
+export function NewAnalysisPanel({ preselectedResumeId, onSuccess: _onSuccess }: NewAnalysisPanelProps) {
   const trigger = useApplicationsTrigger()
   const [submittedSlug, setSubmittedSlug] = useState<string | null>(null)
 

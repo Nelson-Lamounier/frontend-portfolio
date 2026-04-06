@@ -8,8 +8,7 @@ import {
   Target,
   ArrowLeft
 } from 'lucide-react'
-import { useApplicationDetail } from '@/lib/hooks/use-application-detail'
-import { useApplicationCoach } from '@/lib/hooks/use-application-coach'
+import { useApplicationDetail, useApplicationCoach } from '@/hooks/use-admin-applications'
 import type { InterviewStage } from '@/lib/types/applications.types'
 import { STAGE_LABELS } from './ApplicationTypes'
 

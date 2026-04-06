@@ -9,8 +9,7 @@ import {
   Clock,
   GraduationCap,
 } from 'lucide-react'
-import { useApplicationDetail } from '@/lib/hooks/use-application-detail'
-import { useApplicationStatus } from '@/lib/hooks/use-application-status'
+import { useApplicationDetail, useApplicationStatus } from '@/hooks/use-admin-applications'
 import type { ApplicationStatus } from '@/lib/types/applications.types'
 import { ApplicationReviewDetail } from './ApplicationReviewDetail'
 import DropDownOptions from '../../../components/ui/DropDownOptions'

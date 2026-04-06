@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Link, useNavigate } from '@tanstack/react-router'
 import { CheckIcon } from '@heroicons/react/20/solid'
-import { useApplicationDetail } from '@/lib/hooks/use-application-detail'
+import { useApplicationDetail } from '@/hooks/use-admin-applications'
 import { Loader2 } from 'lucide-react'
 
 const FAKE_STEPS = [
@@ -18,7 +18,7 @@ function classNames(...classes: string[]) {
 
 export function ProgressBars({ slug }: { slug: string }) {
   const navigate = useNavigate()
-  const { data, timedOut } = useApplicationDetail(slug)
+  const { data } = useApplicationDetail(slug)
   const [currentStepIdx, setCurrentStepIdx] = useState(0)
 
   const isFinished = data && !['analysing', 'coaching'].includes(data.status)
