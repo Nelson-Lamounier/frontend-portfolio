@@ -1,201 +1,207 @@
-import { useAdminComments, useDeleteComment, useModerateComment } from '@/hooks/use-admin-comments'
+'use client'
+
+import { useState } from 'react'
 import { useToastStore } from '@/lib/stores/toast-store'
-import type { AdminComment } from '@/lib/api/admin-api'
+import {
+  useAdminComments,
+  useModerateComment,
+  useDeleteComment,
+} from '@/hooks/use-admin-comments'
 
-// ========================================
-// HELPERS
-// ========================================
+import { CommentInput } from './CommentInput'
+import { CommentItem } from './CommentItem'
+import { AnalyticsSidebar } from './AnalyticsSidebar'
 
-/**
- * Builds the composite ID for the moderation API.
- * Format: slug__COMMENT#timestamp#uuid
- *
- * @param comment - Comment to build the composite ID for
- * @returns Composite ID string
- */
-function buildCompositeId(comment: AdminComment): string {
-  return `${comment.articleSlug}__COMMENT#${comment.createdAt}#${comment.commentId}`
-}
-
-// ========================================
-// PAGE COMPONENT
-// ========================================
-
-/**
- * Admin page for moderating pending comments.
- * Data is fetched via TanStack Query — mutations automatically
- * invalidate the cache and update badge counts.
- *
- * @returns Comment moderation page JSX
- */
 export function CommentModeration() {
-  // TanStack Query state
-  const { data: comments, isLoading, error: queryError, refetch } = useAdminComments()
-  const moderateMutation = useModerateComment()
-  const deleteMutation = useDeleteComment()
   const { addToast } = useToastStore()
 
-  // Derived state
-  const error = queryError?.message ?? null
-  const isProcessing = moderateMutation.isPending || deleteMutation.isPending
+  const { data: comments, isLoading, error } = useAdminComments()
+  const { mutate: moderateComment, isPending: isModerating } = useModerateComment()
+  const { mutate: deleteComment, isPending: isDeleting } = useDeleteComment()
 
-  /**
-   * Approve or reject a comment.
-   *
-   * @param comment - Comment to moderate
-   * @param action - Moderation action
-   */
-  function handleModerate(comment: AdminComment, action: 'approve' | 'reject'): void {
-    const compositeId = buildCompositeId(comment)
-    moderateMutation.mutate(
-      { compositeId, action },
+  const [sortBy, setSortBy] = useState<'newest' | 'oldest' | 'top'>('newest')
+
+  const handleApprove = (comment: any) => {
+    const compositeId = `${comment.articleSlug}__COMMENT#${comment.createdAt}#${comment.commentId}`
+    moderateComment(
+      { compositeId, action: 'approve' },
       {
-        onSuccess: () => addToast('success', `Comment ${action}d successfully.`),
-        onError: (err) => addToast('error', err.message),
-      },
+        onSuccess: () => addToast('success', 'Comment approved.'),
+        onError: () => addToast('error', 'Failed to approve comment.'),
+      }
     )
   }
 
-  /**
-   * Permanently delete a comment after confirmation.
-   *
-   * @param comment - Comment to delete
-   */
-  function handleDelete(comment: AdminComment): void {
-    const confirmed = globalThis.window.confirm(
-      `Delete this comment from "${comment.name}"?\n\nThis action cannot be undone.`,
+  const handleReject = (comment: any) => {
+    const compositeId = `${comment.articleSlug}__COMMENT#${comment.createdAt}#${comment.commentId}`
+    moderateComment(
+      { compositeId, action: 'reject' },
+      {
+        onSuccess: () => addToast('success', 'Comment rejected.'),
+        onError: () => addToast('error', 'Failed to reject comment.'),
+      }
     )
-    if (!confirmed) return
+  }
 
-    const compositeId = buildCompositeId(comment)
-    deleteMutation.mutate(compositeId, {
+  const handleDelete = (comment: any) => {
+    if (!window.confirm('Are you sure you want to permanently delete this comment?')) {
+      return
+    }
+
+    const compositeId = `${comment.articleSlug}__COMMENT#${comment.createdAt}#${comment.commentId}`
+    deleteComment(compositeId, {
       onSuccess: () => addToast('success', 'Comment deleted.'),
-      onError: (err) => addToast('error', err.message),
+      onError: () => addToast('error', 'Failed to delete comment.'),
     })
   }
 
-  // =========================================================================
-  // Render
-  // =========================================================================
+  const handlePostNewComment = (_body: string) => {
+    addToast('info', 'Submitting comments from Admin is not implemented by the backend API.')
+  }
+
+  const handleReply = (_parentId: string, _body: string) => {
+    addToast('info', 'Threaded replies are not natively implemented in the current DynamoDB schema.')
+  }
+
+  const handleLike = (_id: string) => {
+    addToast('info', 'Liking comments as Admin is restricted.')
+  }
+
+  const handleFlag = (_id: string) => {
+    addToast('info', 'Flagging is a planned feature.')
+  }
+
+  if (isLoading) {
+    return (
+      <main>
+        <div className="mx-auto max-w-7xl px-4 py-16 sm:px-6 lg:px-8">
+          <p className="text-sm/6 text-gray-400">Loading comments...</p>
+        </div>
+      </main>
+    )
+  }
+
+  if (error) {
+    return (
+      <main>
+        <div className="mx-auto max-w-7xl px-4 py-16 sm:px-6 lg:px-8">
+          <p className="text-sm/6 text-red-500">Failed to load comments.</p>
+        </div>
+      </main>
+    )
+  }
+
+  // Derived state: sorted comments
+  const sortedComments = [...(comments ?? [])]
+  switch (sortBy) {
+    case 'newest':
+      sortedComments.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+      break
+    case 'oldest':
+      sortedComments.sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime())
+      break
+    case 'top':
+      // They don't have native likes, but sorting just keeps them stable.
+      break
+    default:
+      break
+  }
 
   return (
-    <div className="mx-auto max-w-4xl px-4 py-8 sm:px-6 lg:px-8">
-      {/* Header */}
-      <div>
-        <h1 className="text-2xl font-bold tracking-tight text-zinc-900 dark:text-zinc-100">
-          Comment Moderation
-        </h1>
-        <p className="mt-1 text-sm text-zinc-500 dark:text-zinc-400">
-          Review and approve or reject pending comments.
-        </p>
+    <main>
+      <div className="relative isolate overflow-hidden">
+        {/* Header */}
+        <header className="pt-6 pb-4 sm:pb-6">
+          <div className="mx-auto flex max-w-7xl flex-wrap items-center gap-6 px-4 sm:flex-nowrap sm:px-6 lg:px-8">
+            <div>
+              <h1 className="text-base/7 font-semibold text-white">Engagement Dashboard</h1>
+              <p className="mt-1 text-sm text-gray-400">
+                Monitor discussion sentiment, track engagement metrics, and join the conversation.
+              </p>
+            </div>
+            <div className="ml-auto">
+              <span className="inline-flex items-center rounded-md bg-yellow-500/10 px-2 pl-2.5 py-1 text-xs font-medium text-yellow-500 ring-1 ring-inset ring-yellow-500/20">
+                <span className="mr-1.5 h-1.5 w-1.5 rounded-full bg-yellow-500"></span>
+                {comments?.length ?? 0} Pending
+              </span>
+            </div>
+          </div>
+        </header>
+
+        {/* Gradient background decoration */}
+        <div
+          aria-hidden="true"
+          className="absolute top-full left-0 -z-10 mt-96 origin-top-left translate-y-40 -rotate-90 transform-gpu opacity-10 blur-3xl sm:left-1/2 sm:-mt-10 sm:-ml-96 sm:translate-y-0 sm:rotate-0 sm:opacity-30"
+        >
+          <div
+            style={{
+              clipPath:
+                'polygon(100% 38.5%, 82.6% 100%, 60.2% 37.7%, 52.4% 32.1%, 47.5% 41.8%, 45.2% 65.6%, 27.5% 23.4%, 0.1% 35.3%, 17.9% 0%, 27.7% 23.4%, 76.2% 2.5%, 74.2% 56%, 100% 38.5%)',
+            }}
+            className="aspect-1154/678 w-288.5 bg-linear-to-br from-[#FF80B5] to-[#9089FC]"
+          />
+        </div>
       </div>
 
-      {/* Error Banner */}
-      {error && (
-        <div className="mt-4 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800 dark:border-red-800 dark:bg-red-950/50 dark:text-red-300">
-          {error}
-          <button
-            type="button"
-            onClick={() => refetch()}
-            className="ml-2 font-medium underline"
-          >
-            Retry
-          </button>
-        </div>
-      )}
+      <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
+        <div className="grid grid-cols-1 gap-8 lg:grid-cols-3">
+          {/* Left Column: Engagement Panel (col-span 2) */}
+          <div className="lg:col-span-2 space-y-8">
+            {/* Post New Comment */}
+            <section>
+              <h2 className="mb-4 text-base font-semibold text-white">Join the Discussion</h2>
+              <CommentInput onSubmit={handlePostNewComment} />
+            </section>
 
-      {/* Loading */}
-      {isLoading && (
-        <div className="mt-12 flex justify-center">
-          <div className="h-8 w-8 animate-spin rounded-full border-2 border-zinc-300 border-t-teal-600" />
-        </div>
-      )}
-
-      {/* Empty State */}
-      {!isLoading && !error && comments?.length === 0 && (
-        <div className="mt-12 rounded-xl border-2 border-dashed border-zinc-300 p-12 text-center dark:border-zinc-700">
-          <svg className="mx-auto h-12 w-12 text-zinc-400" fill="none" viewBox="0 0 24 24" strokeWidth={1} stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75 11.25 15 15 9.75M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
-          </svg>
-          <h3 className="mt-4 text-lg font-semibold text-zinc-900 dark:text-zinc-100">
-            All caught up!
-          </h3>
-          <p className="mt-2 text-sm text-zinc-500 dark:text-zinc-400">
-            No pending comments to moderate.
-          </p>
-        </div>
-      )}
-
-      {/* Comment Cards */}
-      {!isLoading && !error && comments && comments.length > 0 && (
-        <div className="mt-6 space-y-4">
-          {comments.map((comment) => (
-            <div
-              key={comment.commentId}
-              className="rounded-xl border border-zinc-200 bg-white p-5 dark:border-zinc-700 dark:bg-zinc-800/50"
-            >
-              {/* Meta */}
-              <div className="flex items-start justify-between">
-                <div>
-                  <span className="text-sm font-semibold text-zinc-900 dark:text-zinc-100">
-                    {comment.name}
-                  </span>
-                  <span className="ml-2 text-xs text-zinc-500 dark:text-zinc-400">
-                    {comment.email}
-                  </span>
-                </div>
-                <div className="flex items-center gap-2 text-xs text-zinc-500 dark:text-zinc-400">
-                  <span className="rounded bg-zinc-100 px-2 py-0.5 font-mono text-xs dark:bg-zinc-700">
-                    {comment.articleSlug}
-                  </span>
-                  <time dateTime={comment.createdAt}>
-                    {new Date(comment.createdAt).toLocaleDateString('en-GB', {
-                      day: 'numeric',
-                      month: 'short',
-                      hour: '2-digit',
-                      minute: '2-digit',
-                    })}
-                  </time>
+            {/* Comment Thread */}
+            <section>
+              <div className="mb-6 flex items-center justify-between border-b border-white/5 pb-4">
+                <h2 className="text-base font-semibold text-white">Comments</h2>
+                <div className="flex items-center gap-2 text-sm text-gray-400">
+                  <span className="hidden sm:inline">Sort by:</span>
+                  <select
+                    value={sortBy}
+                    onChange={(e) => setSortBy(e.target.value as any)}
+                    className="rounded-md border-0 bg-white/5 py-1.5 pl-3 pr-8 text-sm text-white focus:ring-2 focus:ring-inset focus:ring-teal-500 sm:text-sm sm:leading-6"
+                  >
+                    <option value="newest">Newest</option>
+                    <option value="oldest">Oldest</option>
+                    <option value="top">Top Liked</option>
+                  </select>
                 </div>
               </div>
 
-              {/* Body */}
-              <p className="mt-3 text-sm leading-relaxed text-zinc-700 dark:text-zinc-300">
-                {comment.body}
-              </p>
-
-              {/* Actions */}
-              <div className="mt-4 flex items-center gap-2">
-                <button
-                  type="button"
-                  onClick={() => handleModerate(comment, 'approve')}
-                  disabled={isProcessing}
-                  className="rounded-lg bg-teal-600 px-3 py-1.5 text-xs font-medium text-white transition hover:bg-teal-500 disabled:opacity-50"
-                >
-                  {moderateMutation.isPending ? 'Processing…' : '✓ Approve'}
-                </button>
-                <button
-                  type="button"
-                  onClick={() => handleModerate(comment, 'reject')}
-                  disabled={isProcessing}
-                  className="rounded-lg border border-amber-300 px-3 py-1.5 text-xs font-medium text-amber-700 transition hover:bg-amber-50 disabled:opacity-50 dark:border-amber-700 dark:text-amber-400 dark:hover:bg-amber-950/30"
-                >
-                  ✗ Reject
-                </button>
-                <button
-                  type="button"
-                  onClick={() => handleDelete(comment)}
-                  disabled={isProcessing}
-                  className="rounded-lg border border-red-300 px-3 py-1.5 text-xs font-medium text-red-700 transition hover:bg-red-50 disabled:opacity-50 dark:border-red-700 dark:text-red-400 dark:hover:bg-red-950/30"
-                >
-                  Delete
-                </button>
+              <div className="space-y-6">
+                {sortedComments.length > 0 ? (
+                  sortedComments.map((comment) => (
+                    <CommentItem
+                      key={comment.commentId}
+                      comment={comment}
+                      onLike={handleLike}
+                      onReply={handleReply}
+                      onFlag={handleFlag}
+                      onApprove={handleApprove}
+                      onReject={handleReject}
+                      onDelete={handleDelete}
+                      isModerating={isModerating}
+                      isDeleting={isDeleting}
+                    />
+                  ))
+                ) : (
+                  <p className="text-center text-sm text-gray-500 py-8">
+                    No comments yet. Be the first to start the discussion!
+                  </p>
+                )}
               </div>
-            </div>
-          ))}
-        </div>
-      )}
+            </section>
+          </div>
 
-    </div>
+          {/* Right Sidebar: Analytics */}
+          <div className="lg:col-span-1">
+            <AnalyticsSidebar comments={comments ?? []} />
+          </div>
+        </div>
+      </div>
+    </main>
   )
 }
