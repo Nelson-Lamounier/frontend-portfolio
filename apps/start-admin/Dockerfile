@@ -62,9 +62,20 @@ RUN groupadd --system --gid 1001 nodejs && \
 # Copy the Vite SSR build output (client + server bundles)
 COPY --from=builder --chown=startadmin:nodejs /app/apps/start-admin/dist ./dist
 
-# Copy required node_modules for server runtime
+# Copy root node_modules to the standard resolution path (/app/node_modules).
+# NODE_PATH does NOT work with ESM imports — Node.js ESM resolver only walks
+# the directory hierarchy for node_modules folders. Placing them here means
+# `import "h3-v2"` from /app/dist/server/server.js resolves via /app/node_modules/h3-v2.
+COPY --from=builder --chown=startadmin:nodejs /app/node_modules ./node_modules
+
+# Overlay workspace-hoisted packages (eslint etc. not needed at runtime, but
+# any start-admin-specific deps that were hoisted into the workspace folder
+# need to be merged in).
 COPY --from=builder --chown=startadmin:nodejs /app/apps/start-admin/node_module[s] ./node_modules/
-COPY --from=builder --chown=startadmin:nodejs /app/node_modules ./root_node_modules
+
+# Ensure ESM resolution works — server.js uses `import` syntax, so Node.js
+# needs a package.json with "type": "module" in the resolution chain.
+RUN echo '{"type":"module"}' > /app/package.json && chown startadmin:nodejs /app/package.json
 
 # Switch to non-root user
 USER startadmin
@@ -73,11 +84,10 @@ USER startadmin
 EXPOSE 5001
 ENV PORT=5001
 ENV HOST="0.0.0.0"
-ENV NODE_PATH="/app/root_node_modules"
 
-# Health check — TanStack Start SSR server
+# Health check — TanStack Start SSR server (use import() for ESM compatibility)
 HEALTHCHECK --interval=30s --timeout=3s --start-period=10s --retries=3 \
-  CMD node -e "const port = process.env.PORT || 5001; require('http').get('http://localhost:' + port + '/admin/', (r) => {process.exit(r.statusCode < 500 ? 0 : 1)})" || exit 1
+  CMD node -e "import('http').then(h => h.default.get('http://localhost:' + (process.env.PORT || 5001) + '/admin/', r => process.exit(r.statusCode < 500 ? 0 : 1)))" || exit 1
 
 # Start the TanStack Start SSR server
 CMD ["node", "dist/server/server.js"]
