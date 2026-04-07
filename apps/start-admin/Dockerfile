@@ -21,7 +21,6 @@ WORKDIR /app
 COPY package.json yarn.lock .yarnrc.yml ./
 COPY apps/site/package.json ./apps/site/package.json
 COPY apps/start-admin/package.json ./apps/start-admin/package.json
-COPY apps/start-site/package.json ./apps/start-site/package.json
 COPY packages/shared/package.json ./packages/shared/package.json
 
 RUN yarn install --immutable
@@ -73,6 +72,9 @@ COPY --from=builder --chown=startadmin:nodejs /app/node_modules ./node_modules
 # need to be merged in).
 COPY --from=builder --chown=startadmin:nodejs /app/apps/start-admin/node_module[s] ./node_modules/
 
+# Copy the production server runner script
+COPY --from=builder --chown=startadmin:nodejs /app/apps/start-admin/server.js ./server.js
+
 # Ensure ESM resolution works — server.js uses `import` syntax, so Node.js
 # needs a package.json with "type": "module" in the resolution chain.
 RUN echo '{"type":"module"}' > /app/package.json && chown startadmin:nodejs /app/package.json
@@ -89,5 +91,5 @@ ENV HOST="0.0.0.0"
 HEALTHCHECK --interval=30s --timeout=3s --start-period=10s --retries=3 \
   CMD node -e "import('http').then(h => h.default.get('http://localhost:' + (process.env.PORT || 5001) + '/admin/', r => process.exit(r.statusCode < 500 ? 0 : 1)))" || exit 1
 
-# Start the TanStack Start SSR server
-CMD ["node", "dist/server/server.js"]
+# Start the TanStack Start SSR server wrapper
+CMD ["node", "server.js"]

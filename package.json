@@ -4,6 +4,7 @@
   "packageManager": "yarn@4.12.0",
   "workspaces": [
     "apps/*",
+    "!apps/start-site",
     "packages/*"
   ],
   "scripts": {
