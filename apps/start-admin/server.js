@@ -1,3 +1,4 @@
+/* eslint-disable no-undef, no-console */
 import { createServer } from 'http';
 import serverExport from './dist/server/server.js';
 
