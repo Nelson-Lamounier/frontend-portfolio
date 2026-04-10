@@ -30,7 +30,7 @@ export function ResumePreview() {
       try {
         const body = await getActiveResumeFn()
         if (body?.data) {
-          setResumeData(body.data)
+          setResumeData(body.data as unknown as ResumeData)
         }
       } catch {
         // Network error → keep fallback data
