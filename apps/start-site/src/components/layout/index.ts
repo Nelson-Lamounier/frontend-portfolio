@@ -1,6 +1,0 @@
-export { Container, ContainerOuter, ContainerInner } from './Container'
-export { Layout } from './Layout'
-export { Header } from './Header'
-export { Footer } from './Footer'
-export { Section } from './Section'
-export { SimpleLayout } from './SimpleLayout'
