@@ -43,7 +43,7 @@ export function useAdminArticles() {
     queryKey: adminKeys.articles.list('all'),
     queryFn: async (): Promise<AdminArticlesData> => {
       const items = await getArticlesFn({ data: { status: 'all' } })
-      const articles = (items as Record<string, unknown>[]).map(entityToArticle)
+      const articles = (items as unknown as Record<string, unknown>[]).map(entityToArticle)
 
       const drafts = articles.filter((a) => a.status === 'draft')
       const published = articles.filter((a) => a.status === 'published')

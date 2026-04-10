@@ -14,14 +14,15 @@
 
 import { createServerFn } from '@tanstack/react-start'
 import { z } from 'zod'
-import { getCookie } from 'vinxi/http'
+import { getCookie } from '@tanstack/react-start/server'
 import { requireAuth } from './auth-guard'
 
 // =============================================================================
 // Constants
 // =============================================================================
 
-const ADMIN_API_URL = process.env.ADMIN_API_URL || 'http://admin-api.admin-api:3002'
+const ADMIN_API_URL =
+  process.env['ADMIN_API_URL'] ?? 'http://admin-api.admin-api:3002'
 
 // =============================================================================
 // Types
@@ -56,14 +57,15 @@ export interface CostResultItem {
 /**
  * Returns the raw Cognito JWT from the `__session` cookie.
  *
- * @returns JWT string, or empty string if cookie is absent
+ * @returns JWT string
+ * @throws {Error} If the `__session` cookie is absent
  */
 function getSessionToken(): string {
-  try {
-    return getCookie('__session') ?? ''
-  } catch {
-    return ''
+  const token = getCookie('__session')
+  if (!token) {
+    throw new Error('Session cookie missing after auth guard — this should not happen')
   }
+  return token
 }
 
 /**

@@ -2,45 +2,114 @@
  * @format
  * Article management server functions for the admin dashboard.
  *
- * Provides CRUD operations for blog articles stored in DynamoDB,
- * all protected by JWT authentication via `requireAuth()`.
+ * All data operations are delegated to the `admin-api` BFF service via
+ * authenticated `fetch()` requests. The frontend pod carries no AWS SDK
+ * dependencies for this domain.
+ *
+ * The `requireAuth()` call acts as a fast-path guard — it rejects
+ * unauthenticated requests at the edge before the network hop to admin-api.
+ * The raw JWT is then forwarded as `Authorization: Bearer <token>` so
+ * admin-api can re-verify it with Cognito.
+ *
+ * @see admin-api/src/routes/articles.ts — upstream implementation
  */
 
 import { createServerFn } from '@tanstack/react-start'
+import { getCookie } from '@tanstack/react-start/server'
 import { z } from 'zod'
-import { DynamoDBClient } from '@aws-sdk/client-dynamodb'
-import {
-  DynamoDBDocumentClient,
-  QueryCommand,
-  GetCommand,
-  UpdateCommand,
-  DeleteCommand,
-} from '@aws-sdk/lib-dynamodb'
-import { fetchArticleContent, putArticleContent } from '@/lib/articles/s3-content'
 import { requireAuth } from './auth-guard'
 
 // =============================================================================
 // Constants
 // =============================================================================
 
-const REGION = process.env.AWS_REGION || 'eu-west-1'
-const TABLE_NAME = process.env.ARTICLES_TABLE_NAME || ''
-const GSI1_NAME = process.env.DYNAMODB_GSI1_NAME || 'gsi1-status-date'
+const ADMIN_API_URL =
+  process.env['ADMIN_API_URL'] ?? 'http://admin-api.admin-api:3002'
 
 // =============================================================================
-// DynamoDB Client (Lazy Singleton)
+// Helpers
 // =============================================================================
 
-let _docClient: DynamoDBDocumentClient | null = null
-
-function getDocClient(): DynamoDBDocumentClient {
-  if (!_docClient) {
-    const ddbClient = new DynamoDBClient({ region: REGION })
-    _docClient = DynamoDBDocumentClient.from(ddbClient, {
-      marshallOptions: { removeUndefinedValues: true },
-    })
+/**
+ * Returns the raw Cognito JWT from the `__session` cookie.
+ *
+ * The token is forwarded as-is to admin-api, which re-validates it
+ * against the Cognito JWKS endpoint.
+ *
+ * @returns JWT string
+ * @throws {Error} If the `__session` cookie is absent (should not occur after requireAuth())
+ */
+function getSessionToken(): string {
+  const token = getCookie('__session')
+  if (!token) {
+    throw new Error('Session cookie missing after auth guard — this should not happen')
   }
-  return _docClient
+  return token
+}
+
+/**
+ * Performs an authenticated fetch to the admin-api BFF.
+ *
+ * @param path - Path relative to `/api/admin` (e.g. `/articles`)
+ * @param init - Standard RequestInit options
+ * @returns Parsed JSON response body
+ * @throws {Error} If the response status is not OK
+ */
+async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> {
+  const token = getSessionToken()
+  const res = await fetch(`${ADMIN_API_URL}/api/admin${path}`, {
+    ...init,
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${token}`,
+      ...(init?.headers ?? {}),
+    },
+  })
+
+  if (!res.ok) {
+    let detail = ''
+    try {
+      const body = (await res.json()) as { error?: string }
+      detail = body.error ? ` — ${body.error}` : ''
+    } catch {
+      // ignore parse failures
+    }
+    throw new Error(
+      `admin-api ${init?.method ?? 'GET'} ${path} failed [${res.status}]${detail}`,
+    )
+  }
+
+  return res.json() as Promise<T>
+}
+
+// =============================================================================
+// Types
+// =============================================================================
+
+/** Response envelope returned by GET /articles and GET /articles/:slug. */
+interface ArticleSummary {
+  pk: string
+  sk?: string
+  title?: string
+  excerpt?: string
+  status?: string
+  author?: string
+  date?: string
+  publishedAt?: string
+  tags?: string[]
+  gsi1pk?: string
+  updatedAt?: string
+}
+
+interface ArticleDetail {
+  slug: string
+  title: string
+  description: string
+  status: string
+  author: string
+  date: string
+  contentRef: string
+  content: string
 }
 
 // =============================================================================
@@ -48,7 +117,7 @@ function getDocClient(): DynamoDBDocumentClient {
 // =============================================================================
 
 const getArticlesSchema = z
-  .object({ status: z.enum(['all', 'draft', 'published']).default('all') })
+  .object({ status: z.enum(['all', 'draft', 'review', 'published', 'rejected']).default('all') })
   .default({ status: 'all' })
 
 const slugSchema = z.string().min(1, 'Article slug is required')
@@ -65,7 +134,7 @@ const saveMetadataSchema = z.object({
   author: z.string().optional(),
   category: z.string().optional(),
   tags: z.array(z.string()).optional(),
-  status: z.enum(['draft', 'published']).optional(),
+  status: z.enum(['draft', 'review', 'published', 'rejected']).optional(),
   publishedAt: z.string().optional(),
   seo: z
     .object({
@@ -82,102 +151,21 @@ const saveMetadataSchema = z.object({
 /**
  * Lists articles, optionally filtered by publication status.
  *
- * @param data.status - `'all'` | `'draft'` | `'published'`
- * @returns Array of article summaries
+ * @param data.status - `'all'` | `'draft'` | `'review'` | `'published'` | `'rejected'`
+ * @returns Array of article summaries from admin-api
  */
 export const getArticlesFn = createServerFn({ method: 'GET' })
   .inputValidator(getArticlesSchema)
   .handler(async ({ data }) => {
     await requireAuth()
 
-    if (!TABLE_NAME) throw new Error('ARTICLES_TABLE_NAME must be set')
-
-    if (data.status === 'all') {
-      const result = await getDocClient().send(
-        new QueryCommand({
-          TableName: TABLE_NAME,
-          IndexName: GSI1_NAME,
-          KeyConditionExpression: 'gsi1pk = :gsi1pk',
-          ExpressionAttributeValues: { ':gsi1pk': 'STATUS#draft' },
-          ScanIndexForward: false,
-        }),
-      )
-      
-      const publishedResult = await getDocClient().send(
-        new QueryCommand({
-          TableName: TABLE_NAME,
-          IndexName: GSI1_NAME,
-          KeyConditionExpression: 'gsi1pk = :gsi1pk',
-          ExpressionAttributeValues: { ':gsi1pk': 'STATUS#published' },
-          ScanIndexForward: false,
-        }),
-      )
-      
-      const reviewResult = await getDocClient().send(
-        new QueryCommand({
-          TableName: TABLE_NAME,
-          IndexName: GSI1_NAME,
-          KeyConditionExpression: 'gsi1pk = :gsi1pk',
-          ExpressionAttributeValues: { ':gsi1pk': 'STATUS#review' },
-          ScanIndexForward: false,
-        }),
-      )
-
-      const allItems = [
-        ...(result.Items ?? []),
-        ...(reviewResult.Items ?? []),
-        ...(publishedResult.Items ?? [])
-      ]
-
-      return mergeArticleItems(allItems)
-    }
-
-    const command = new QueryCommand({
-      TableName: TABLE_NAME,
-      IndexName: GSI1_NAME,
-      KeyConditionExpression: 'gsi1pk = :gsi1pk',
-      ExpressionAttributeValues: { ':gsi1pk': `STATUS#${data.status}` },
-      ScanIndexForward: false,
-    })
-
-    const result = await getDocClient().send(command)
-    return mergeArticleItems(result.Items ?? [])
+    const qs = data.status !== 'all' ? `?status=${encodeURIComponent(data.status)}` : ''
+    const body = await apiFetch<{ articles: ArticleSummary[]; count: number }>(`/articles${qs}`)
+    return body.articles
   })
 
-function mergeArticleItems(items: Record<string, unknown>[]): Record<string, unknown>[] {
-  const mergedMap = new Map<string, Record<string, unknown>>()
-  for (const item of items) {
-    if (!item.pk) continue
-    
-    if (!item.status && typeof item.gsi1pk === 'string' && item.gsi1pk.startsWith('STATUS#')) {
-      item.status = item.gsi1pk.replace('STATUS#', '')
-    }
-
-    const existing = mergedMap.get(item.pk)
-    if (!existing) {
-      mergedMap.set(item.pk, { ...item })
-    } else {
-      const merged = { ...existing }
-      for (const key of Object.keys(item)) {
-        if (item[key] !== undefined && item[key] !== null && item[key] !== '') {
-          merged[key] = item[key]
-        } else if (existing[key] === undefined) {
-           merged[key] = item[key]
-        }
-      }
-      merged.sk = 'METADATA'
-      mergedMap.set(item.pk, merged)
-    }
-  }
-  return Array.from(mergedMap.values())
-}
-
 /**
- * Retrieves full article metadata from DynamoDB and the MDX body from S3.
- *
- * The DynamoDB METADATA record holds the `contentRef` pointer (e.g.
- * `s3://bucket/published/slug.mdx`) which is used to fetch the actual
- * content from S3 via the shared `fetchArticleContent` helper.
+ * Retrieves full article metadata from DynamoDB and the MDX body from S3 (via admin-api).
  *
  * @param data - The article slug
  * @returns Article metadata + content, or null if not found
@@ -187,68 +175,36 @@ export const getArticleContentFn = createServerFn({ method: 'GET' })
   .handler(async ({ data: slug }) => {
     await requireAuth()
 
-    if (!TABLE_NAME) throw new Error('ARTICLES_TABLE_NAME must be set')
-
-    // Step 1: Fetch the METADATA record from DynamoDB
-    const metadataResult = await getDocClient().send(
-      new GetCommand({
-        TableName: TABLE_NAME,
-        Key: { pk: `ARTICLE#${slug}`, sk: 'METADATA' },
-      }),
-    )
-
-    const metadata = metadataResult.Item
-    if (!metadata) return null
-
-    // Step 2: Use contentRef to fetch the actual MDX body from S3
-    const contentRef = metadata.contentRef as string | undefined
-    let content = ''
-
-    if (contentRef) {
-      const s3Content = await fetchArticleContent(contentRef)
-      content = s3Content?.content ?? ''
-    }
-
-    return {
-      slug,
-      title: (metadata.title as string) ?? slug,
-      description: (metadata.description as string) ?? '',
-      status: (metadata.status as string) ?? 'draft',
-      author: (metadata.author as string) ?? 'Nelson Lamounier',
-      date: (metadata.date as string) ?? '',
-      contentRef: contentRef ?? '',
-      content,
+    try {
+      const body = await apiFetch<{ article: ArticleDetail }>(
+        `/articles/${encodeURIComponent(slug)}`,
+      )
+      return body.article
+    } catch (err: unknown) {
+      if (err instanceof Error && err.message.includes('[404]')) {
+        return null
+      }
+      throw err
     }
   })
 
 /**
- * Publishes a draft article by setting its status to `'published'`.
+ * Publishes a draft article by invoking the Bedrock publish Lambda pipeline (async).
+ * The Lambda handles MDX processing, AI enrichment, and S3 upload.
  *
  * @param data - The article slug
- * @returns Success indicator
+ * @returns Success indicator with queued status
  */
 export const publishArticleFn = createServerFn({ method: 'POST' })
   .inputValidator(slugSchema)
   .handler(async ({ data: slug }) => {
     await requireAuth()
 
-    if (!TABLE_NAME) throw new Error('ARTICLES_TABLE_NAME must be set')
-
-    const now = new Date().toISOString()
-    const command = new UpdateCommand({
-      TableName: TABLE_NAME,
-      Key: { pk: `ARTICLE#${slug}`, sk: 'METADATA' },
-      UpdateExpression: 'SET #st = :status, publishedAt = :now, updatedAt = :now, gsi1pk = :gsi1pk',
-      ExpressionAttributeNames: { '#st': 'status' },
-      ExpressionAttributeValues: {
-        ':status': 'published',
-        ':now': now,
-        ':gsi1pk': 'STATUS#published',
-      },
-    })
-
-    await getDocClient().send(command)
-    return { success: true }
+    const body = await apiFetch<{ queued: boolean; slug: string }>(
+      `/articles/${encodeURIComponent(slug)}/publish`,
+      { method: 'POST' },
+    )
+    return { success: body.queued, slug: body.slug }
   })
 
 /**
@@ -262,21 +218,13 @@ export const unpublishArticleFn = createServerFn({ method: 'POST' })
   .handler(async ({ data: slug }) => {
     await requireAuth()
 
-    if (!TABLE_NAME) throw new Error('ARTICLES_TABLE_NAME must be set')
-
-    const command = new UpdateCommand({
-      TableName: TABLE_NAME,
-      Key: { pk: `ARTICLE#${slug}`, sk: 'METADATA' },
-      UpdateExpression: 'SET #st = :status, updatedAt = :now, gsi1pk = :gsi1pk',
-      ExpressionAttributeNames: { '#st': 'status' },
-      ExpressionAttributeValues: {
-        ':status': 'draft',
-        ':now': new Date().toISOString(),
-        ':gsi1pk': 'STATUS#draft',
+    await apiFetch<{ updated: boolean; slug: string }>(
+      `/articles/${encodeURIComponent(slug)}`,
+      {
+        method: 'PUT',
+        body: JSON.stringify({ status: 'draft' }),
       },
-    })
-
-    await getDocClient().send(command)
+    )
     return { success: true }
   })
 
@@ -291,32 +239,15 @@ export const deleteArticleFn = createServerFn({ method: 'POST' })
   .handler(async ({ data: slug }) => {
     await requireAuth()
 
-    if (!TABLE_NAME) throw new Error('ARTICLES_TABLE_NAME must be set')
-
-    // Delete both metadata and content records
-    await Promise.all([
-      getDocClient().send(
-        new DeleteCommand({
-          TableName: TABLE_NAME,
-          Key: { pk: `ARTICLE#${slug}`, sk: 'METADATA' },
-        }),
-      ),
-      getDocClient().send(
-        new DeleteCommand({
-          TableName: TABLE_NAME,
-          Key: { pk: `ARTICLE#${slug}`, sk: `CONTENT#${slug}` },
-        }),
-      ),
-    ])
-
+    await apiFetch<{ deleted: boolean; slug: string }>(
+      `/articles/${encodeURIComponent(slug)}`,
+      { method: 'DELETE' },
+    )
     return { success: true }
   })
 
 /**
- * Saves article markdown content to S3.
- *
- * Reads the METADATA record to resolve the `contentRef` pointer,
- * then writes the updated MDX body to the S3 location.
+ * Saves article markdown content via admin-api (which writes to S3).
  *
  * @param data.id - The article slug
  * @param data.content - Markdown content body
@@ -327,34 +258,14 @@ export const saveArticleContentFn = createServerFn({ method: 'POST' })
   .handler(async ({ data }) => {
     await requireAuth()
 
-    if (!TABLE_NAME) throw new Error('ARTICLES_TABLE_NAME must be set')
-
-    // Look up the contentRef from the METADATA record
-    const metadataResult = await getDocClient().send(
-      new GetCommand({
-        TableName: TABLE_NAME,
-        Key: { pk: `ARTICLE#${data.id}`, sk: 'METADATA' },
-      }),
+    // admin-api PUT /:slug accepts a `content` field and persists it to S3
+    await apiFetch<{ updated: boolean; slug: string }>(
+      `/articles/${encodeURIComponent(data.id)}`,
+      {
+        method: 'PUT',
+        body: JSON.stringify({ content: data.content }),
+      },
     )
-
-    const contentRef = metadataResult.Item?.contentRef as string | undefined
-    if (!contentRef) {
-      throw new Error(`Article "${data.id}" has no contentRef — cannot save content`)
-    }
-
-    // Write the updated content to S3
-    await putArticleContent(contentRef, data.content)
-
-    // Update the METADATA timestamp so lists reflect the edit
-    await getDocClient().send(
-      new UpdateCommand({
-        TableName: TABLE_NAME,
-        Key: { pk: `ARTICLE#${data.id}`, sk: 'METADATA' },
-        UpdateExpression: 'SET updatedAt = :now',
-        ExpressionAttributeValues: { ':now': new Date().toISOString() },
-      }),
-    )
-
     return { success: true }
   })
 
@@ -369,42 +280,14 @@ export const saveArticleMetadataFn = createServerFn({ method: 'POST' })
   .handler(async ({ data }) => {
     await requireAuth()
 
-    if (!TABLE_NAME) throw new Error('ARTICLES_TABLE_NAME must be set')
-
     const { slug, ...updates } = data
-    const now = new Date().toISOString()
 
-    const updateParts: string[] = ['updatedAt = :now']
-    const expressionValues: Record<string, unknown> = { ':now': now }
-    const expressionNames: Record<string, string> = {}
-
-    let i = 0
-    for (const [key, value] of Object.entries(updates)) {
-      if (value !== undefined) {
-        if (key === 'status') {
-          updateParts.push(`gsi1pk = :gsi1pk`)
-          expressionValues[':gsi1pk'] = `STATUS#${value}`
-        }
-
-        const attrName = `#k${i}`
-        const attrValue = `:v${i}`
-        expressionNames[attrName] = key
-        expressionValues[attrValue] = value
-        updateParts.push(`${attrName} = ${attrValue}`)
-        i++
-      }
-    }
-
-    const command = new UpdateCommand({
-      TableName: TABLE_NAME,
-      Key: { pk: `ARTICLE#${slug}`, sk: 'METADATA' },
-      UpdateExpression: `SET ${updateParts.join(', ')}`,
-      ExpressionAttributeValues: expressionValues,
-      ...(Object.keys(expressionNames).length > 0 && {
-        ExpressionAttributeNames: expressionNames,
-      }),
-    })
-
-    await getDocClient().send(command)
+    await apiFetch<{ updated: boolean; slug: string }>(
+      `/articles/${encodeURIComponent(slug)}`,
+      {
+        method: 'PUT',
+        body: JSON.stringify(updates),
+      },
+    )
     return { success: true }
   })

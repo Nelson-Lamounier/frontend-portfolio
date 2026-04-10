@@ -14,8 +14,6 @@
     "test": "vitest run"
   },
   "dependencies": {
-    "@aws-sdk/client-cloudwatch": "^3.1024.0",
-    "@aws-sdk/client-cost-explorer": "^3.1024.0",
     "@grafana/faro-web-sdk": "^2.3.1",
     "@grafana/faro-web-tracing": "^2.3.1",
     "@headlessui/react": "^2.2.9",

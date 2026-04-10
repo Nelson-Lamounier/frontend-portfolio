@@ -141,8 +141,8 @@ interface ResumeWithData extends ResumeSummary {
  */
 export const getResumesFn = createServerFn({ method: 'GET' }).handler(
   async () => {
-    const token = getSessionToken()
     await requireAuth()
+    const token = getSessionToken()
     const response = await apiFetch<{ resumes: ResumeSummary[]; count: number }>(
       '/api/admin/resumes',
       token,
@@ -160,8 +160,8 @@ export const getResumesFn = createServerFn({ method: 'GET' }).handler(
 export const getResumeFn = createServerFn({ method: 'GET' })
   .inputValidator(resumeIdSchema)
   .handler(async ({ data: resumeId }) => {
-    const token = getSessionToken()
     await requireAuth()
+    const token = getSessionToken()
     const response = await apiFetch<{ resume: ResumeWithData }>(
       `/api/admin/resumes/${resumeId}`,
       token,
@@ -179,8 +179,8 @@ export const getResumeFn = createServerFn({ method: 'GET' })
 export const createResumeFn = createServerFn({ method: 'POST' })
   .inputValidator(createResumeSchema)
   .handler(async ({ data }) => {
-    const token = getSessionToken()
     await requireAuth()
+    const token = getSessionToken()
     const response = await apiFetch<{ resume: ResumeWithData }>(
       '/api/admin/resumes',
       token,
@@ -203,8 +203,8 @@ export const createResumeFn = createServerFn({ method: 'POST' })
 export const updateResumeFn = createServerFn({ method: 'POST' })
   .inputValidator(updateResumeSchema)
   .handler(async ({ data }) => {
-    const token = getSessionToken()
     await requireAuth()
+    const token = getSessionToken()
     const response = await apiFetch<{ resume: ResumeWithData }>(
       `/api/admin/resumes/${data.resumeId}`,
       token,
@@ -226,8 +226,8 @@ export const updateResumeFn = createServerFn({ method: 'POST' })
 export const deleteResumeFn = createServerFn({ method: 'POST' })
   .inputValidator(resumeIdSchema)
   .handler(async ({ data: resumeId }) => {
-    const token = getSessionToken()
     await requireAuth()
+    const token = getSessionToken()
     await apiFetch<{ deleted: boolean; resumeId: string }>(
       `/api/admin/resumes/${resumeId}`,
       token,
@@ -246,8 +246,8 @@ export const deleteResumeFn = createServerFn({ method: 'POST' })
 export const setActiveResumeFn = createServerFn({ method: 'POST' })
   .inputValidator(resumeIdSchema)
   .handler(async ({ data: resumeId }) => {
-    const token = getSessionToken()
     await requireAuth()
+    const token = getSessionToken()
     const response = await apiFetch<{ resume: ResumeWithData }>(
       `/api/admin/resumes/${resumeId}/activate`,
       token,
@@ -263,8 +263,8 @@ export const setActiveResumeFn = createServerFn({ method: 'POST' })
  */
 export const getActiveResumeFn = createServerFn({ method: 'GET' }).handler(
   async () => {
-    const token = getSessionToken()
     await requireAuth()
+    const token = getSessionToken()
     try {
       const response = await apiFetch<{ resume: ResumeWithData }>(
         '/api/admin/resumes/active',

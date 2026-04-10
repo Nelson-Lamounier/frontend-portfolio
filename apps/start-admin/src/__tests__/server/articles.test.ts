@@ -2,15 +2,14 @@
  * @format
  * Unit tests for article management server functions.
  *
- * Mocks DynamoDB DocumentClient, S3 content helpers, and auth-guard
- * to verify:
- * - Article listing via GSI with status filtering
- * - Content retrieval (metadata from DynamoDB + body from S3)
- * - Publish/unpublish status transitions
- * - Article deletion (metadata + content)
+ * Mocks global.fetch and auth-guard to verify:
+ * - Proper URL construction for admin-api calls
+ * - Status query string filtering
+ * - 404 handling and null return
+ * - Correct HTTP verbs for publish/unpublish/delete/save
  */
 
-import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 
 // ---------------------------------------------------------------------------
 // Mock: @tanstack/react-start — createServerFn passthrough
@@ -26,7 +25,7 @@ vi.mock('@tanstack/react-start', () => ({
 }))
 
 // ---------------------------------------------------------------------------
-// Mock: @tanstack/react-start/server — cookie utilities (needed by auth-guard)
+// Mock: @tanstack/react-start/server — cookie utilities
 // ---------------------------------------------------------------------------
 vi.mock('@tanstack/react-start/server', () => ({
   getCookie: vi.fn(),
@@ -34,6 +33,9 @@ vi.mock('@tanstack/react-start/server', () => ({
   deleteCookie: vi.fn(),
   setResponseHeader: vi.fn(),
 }))
+
+import { getCookie } from '@tanstack/react-start/server'
+const mockGetCookie = getCookie as unknown as ReturnType<typeof vi.fn>
 
 // ---------------------------------------------------------------------------
 // Mock: auth-guard — always allow
@@ -50,41 +52,10 @@ vi.mock('../../server/auth-guard', () => ({
 }))
 
 // ---------------------------------------------------------------------------
-// Mock: S3 content helpers
+// Mock: global.fetch
 // ---------------------------------------------------------------------------
-const mockFetchArticleContent = vi.fn()
-const mockPutArticleContent = vi.fn()
-
-vi.mock('@/lib/articles/s3-content', () => ({
-  fetchArticleContent: (...args: unknown[]) => mockFetchArticleContent(...args),
-  putArticleContent: (...args: unknown[]) => mockPutArticleContent(...args),
-}))
-
-// ---------------------------------------------------------------------------
-// Mock: DynamoDB
-// ---------------------------------------------------------------------------
-const mockSend = vi.fn()
-
-vi.mock('@aws-sdk/client-dynamodb', () => ({
-  DynamoDBClient: vi.fn().mockImplementation(() => ({})),
-}))
-
-vi.mock('@aws-sdk/lib-dynamodb', () => ({
-  DynamoDBDocumentClient: {
-    from: () => ({ send: mockSend }),
-  },
-  QueryCommand: vi.fn().mockImplementation((input: unknown) => ({ input })),
-  GetCommand: vi.fn().mockImplementation((input: unknown) => ({ input })),
-  PutCommand: vi.fn().mockImplementation((input: unknown) => ({ input })),
-  UpdateCommand: vi.fn().mockImplementation((input: unknown) => ({ input })),
-  DeleteCommand: vi.fn().mockImplementation((input: unknown) => ({ input })),
-}))
-
-// ---------------------------------------------------------------------------
-// Environment setup
-// ---------------------------------------------------------------------------
-process.env.ARTICLES_TABLE_NAME = 'test-articles-table'
-process.env.AWS_REGION = 'eu-west-1'
+const fetchMock = vi.fn()
+vi.stubGlobal('fetch', fetchMock)
 
 // ---------------------------------------------------------------------------
 // Import SUT
@@ -95,170 +66,199 @@ import {
   publishArticleFn,
   unpublishArticleFn,
   deleteArticleFn,
+  saveArticleContentFn,
+  saveArticleMetadataFn,
 } from '../../server/articles'
 
+const EXPECTED_API_URL = 'http://admin-api.admin-api:3002/api/admin'
+
 // ---------------------------------------------------------------------------
-// Test data — mirrors real DynamoDB GSI schema
+// Helpers
 // ---------------------------------------------------------------------------
+
+function mockResponse(data: unknown, ok = true, status = 200) {
+  fetchMock.mockResolvedValueOnce({
+    ok,
+    status,
+    statusText: ok ? 'OK' : 'Error',
+    json: async () => data,
+    text: async () => JSON.stringify(data),
+  })
+}
+
 const DRAFT_ARTICLE = {
   pk: 'ARTICLE#my-draft',
-  sk: 'METADATA',
-  gsi1pk: 'STATUS#draft',
-  gsi1sk: '2026-01-11T10:00:00Z',
   title: 'Draft Article',
-  slug: 'my-draft',
   status: 'draft',
-  createdAt: '2026-01-10T10:00:00Z',
   updatedAt: '2026-01-11T10:00:00Z',
 }
 
-const PUBLISHED_ARTICLE = {
-  pk: 'ARTICLE#my-published',
-  sk: 'METADATA',
-  gsi1pk: 'STATUS#published',
-  gsi1sk: '2026-01-12T10:00:00Z',
-  title: 'Published Article',
-  slug: 'my-published',
-  status: 'published',
-  publishedAt: '2026-01-12T10:00:00Z',
-  createdAt: '2026-01-10T10:00:00Z',
-  updatedAt: '2026-01-12T10:00:00Z',
-}
-
-const DRAFT_CONTENT_REF = 's3://test-bucket/drafts/my-draft.mdx'
-const DRAFT_CONTENT_BODY = '# My Draft Article\n\nThis is the content.'
-
-const METADATA_WITH_CONTENT_REF = {
-  pk: 'ARTICLE#my-draft',
-  sk: 'METADATA',
-  title: 'Draft Article',
+const ARTICLE_DETAIL = {
   slug: 'my-draft',
+  title: 'Draft Article',
+  description: 'Test',
   status: 'draft',
-  contentRef: DRAFT_CONTENT_REF,
-  createdAt: '2026-01-10T10:00:00Z',
-  updatedAt: '2026-01-11T10:00:00Z',
+  author: 'Test Author',
+  date: '2026-01-10',
+  contentRef: 's3://bucket/key.mdx',
+  content: '# My Draft Article\n\nThis is the content.',
 }
 
 // ---------------------------------------------------------------------------
 // Tests
 // ---------------------------------------------------------------------------
 
-describe('getArticlesFn', () => {
+describe('articles server functions', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    mockGetCookie.mockReturnValue('mock-jwt-token')
   })
 
-  it('should return all articles when status is "all"', async () => {
-    // The handler makes 3 GSI queries: draft, published, review
-    mockSend
-      .mockResolvedValueOnce({ Items: [DRAFT_ARTICLE] })
-      .mockResolvedValueOnce({ Items: [PUBLISHED_ARTICLE] })
-      .mockResolvedValueOnce({ Items: [] })
-
-    const handler = getArticlesFn as (input: { data: { status: string } }) => Promise<unknown[]>
-    const result = await handler({ data: { status: 'all' } })
-
-    expect(result).toHaveLength(2)
-    expect(mockSend).toHaveBeenCalledTimes(3)
+  afterEach(() => {
+    vi.resetAllMocks()
   })
 
-  it('should filter by draft status', async () => {
-    // Single GSI query for STATUS#draft
-    mockSend.mockResolvedValue({ Items: [DRAFT_ARTICLE] })
+  describe('getArticlesFn', () => {
+    it('should list all articles without a status filter', async () => {
+      mockResponse({ articles: [DRAFT_ARTICLE], count: 1 })
 
-    const handler = getArticlesFn as (input: { data: { status: string } }) => Promise<unknown[]>
-    const result = await handler({ data: { status: 'draft' } })
+      const handler = getArticlesFn as (i: { data: { status: string } }) => Promise<unknown[]>
+      const result = await handler({ data: { status: 'all' } })
 
-    expect(result).toHaveLength(1)
-    expect((result[0] as Record<string, unknown>).slug).toBe('my-draft')
+      expect(fetchMock).toHaveBeenCalledWith(
+        `${EXPECTED_API_URL}/articles`,
+        expect.objectContaining({
+          headers: expect.objectContaining({ Authorization: 'Bearer mock-jwt-token' }),
+        }),
+      )
+      expect(result).toEqual([DRAFT_ARTICLE])
+    })
+
+    it('should append status to the query string when not "all"', async () => {
+      mockResponse({ articles: [DRAFT_ARTICLE], count: 1 })
+
+      const handler = getArticlesFn as (i: { data: { status: string } }) => Promise<unknown[]>
+      await handler({ data: { status: 'draft' } })
+
+      expect(fetchMock).toHaveBeenCalledWith(
+        `${EXPECTED_API_URL}/articles?status=draft`,
+        expect.anything(),
+      )
+    })
   })
 
-  it('should filter by published status', async () => {
-    // Single GSI query for STATUS#published
-    mockSend.mockResolvedValue({ Items: [PUBLISHED_ARTICLE] })
+  describe('getArticleContentFn', () => {
+    it('should fetch article content from admin-api', async () => {
+      mockResponse({ article: ARTICLE_DETAIL })
 
-    const handler = getArticlesFn as (input: { data: { status: string } }) => Promise<unknown[]>
-    const result = await handler({ data: { status: 'published' } })
+      const handler = getArticleContentFn as (i: { data: string }) => Promise<unknown>
+      const result = await handler({ data: 'my-draft' })
 
-    expect(result).toHaveLength(1)
-    expect((result[0] as Record<string, unknown>).slug).toBe('my-published')
-  })
-})
+      expect(fetchMock).toHaveBeenCalledWith(
+        `${EXPECTED_API_URL}/articles/my-draft`,
+        expect.anything(),
+      )
+      expect(result).toEqual(ARTICLE_DETAIL)
+    })
 
-describe('getArticleContentFn', () => {
-  beforeEach(() => {
-    vi.clearAllMocks()
-  })
+    it('should return null when article is not found (404)', async () => {
+      mockResponse({ error: 'Article not found' }, false, 404)
 
-  it('should return content when it exists', async () => {
-    // DynamoDB returns the METADATA record with a contentRef pointer
-    mockSend.mockResolvedValue({ Item: METADATA_WITH_CONTENT_REF })
-    // S3 helper returns the actual MDX body
-    mockFetchArticleContent.mockResolvedValue({ content: DRAFT_CONTENT_BODY })
+      const handler = getArticleContentFn as (i: { data: string }) => Promise<unknown>
+      const result = await handler({ data: 'nonexistent' })
 
-    const handler = getArticleContentFn as (input: { data: string }) => Promise<Record<string, unknown> | null>
-    const result = await handler({ data: 'my-draft' })
-
-    expect(result).not.toBeNull()
-    expect(result?.content).toContain('# My Draft Article')
-    expect(mockFetchArticleContent).toHaveBeenCalledWith(DRAFT_CONTENT_REF)
+      expect(result).toBeNull()
+    })
   })
 
-  it('should return null when content does not exist', async () => {
-    mockSend.mockResolvedValue({ Item: undefined })
+  describe('publishArticleFn', () => {
+    it('should call POST /:slug/publish and return success', async () => {
+      mockResponse({ queued: true, slug: 'my-draft' })
 
-    const handler = getArticleContentFn as (input: { data: string }) => Promise<Record<string, unknown> | null>
-    const result = await handler({ data: 'nonexistent' })
+      const handler = publishArticleFn as (i: { data: string }) => Promise<{ success: boolean }>
+      const result = await handler({ data: 'my-draft' })
 
-    expect(result).toBeNull()
-  })
-})
-
-describe('publishArticleFn', () => {
-  beforeEach(() => {
-    vi.clearAllMocks()
-  })
-
-  it('should update article status to published', async () => {
-    mockSend.mockResolvedValue({})
-
-    const handler = publishArticleFn as (input: { data: string }) => Promise<{ success: boolean }>
-    const result = await handler({ data: 'my-draft' })
-
-    expect(result.success).toBe(true)
-    expect(mockSend).toHaveBeenCalledTimes(1)
-  })
-})
-
-describe('unpublishArticleFn', () => {
-  beforeEach(() => {
-    vi.clearAllMocks()
+      expect(fetchMock).toHaveBeenCalledWith(
+        `${EXPECTED_API_URL}/articles/my-draft/publish`,
+        expect.objectContaining({ method: 'POST' }),
+      )
+      expect(result.success).toBe(true)
+    })
   })
 
-  it('should update article status to draft', async () => {
-    mockSend.mockResolvedValue({})
+  describe('unpublishArticleFn', () => {
+    it('should call PUT /:slug with status draft', async () => {
+      mockResponse({ updated: true, slug: 'my-published' })
 
-    const handler = unpublishArticleFn as (input: { data: string }) => Promise<{ success: boolean }>
-    const result = await handler({ data: 'my-published' })
+      const handler = unpublishArticleFn as (i: { data: string }) => Promise<{ success: boolean }>
+      const result = await handler({ data: 'my-published' })
 
-    expect(result.success).toBe(true)
-    expect(mockSend).toHaveBeenCalledTimes(1)
+      expect(fetchMock).toHaveBeenCalledWith(
+        `${EXPECTED_API_URL}/articles/my-published`,
+        expect.objectContaining({
+          method: 'PUT',
+          body: JSON.stringify({ status: 'draft' }),
+        }),
+      )
+      expect(result.success).toBe(true)
+    })
   })
-})
 
-describe('deleteArticleFn', () => {
-  beforeEach(() => {
-    vi.clearAllMocks()
+  describe('deleteArticleFn', () => {
+    it('should call DELETE /:slug and return success', async () => {
+      mockResponse({ deleted: true, slug: 'my-draft' })
+
+      const handler = deleteArticleFn as (i: { data: string }) => Promise<{ success: boolean }>
+      const result = await handler({ data: 'my-draft' })
+
+      expect(fetchMock).toHaveBeenCalledWith(
+        `${EXPECTED_API_URL}/articles/my-draft`,
+        expect.objectContaining({
+          method: 'DELETE',
+          headers: expect.objectContaining({ Authorization: 'Bearer mock-jwt-token' }),
+        }),
+      )
+      expect(result.success).toBe(true)
+    })
   })
 
-  it('should delete both metadata and content records', async () => {
-    mockSend.mockResolvedValue({})
+  describe('saveArticleContentFn', () => {
+    it('should call PUT /:slug with content body', async () => {
+      mockResponse({ updated: true, slug: 'my-draft' })
 
-    const handler = deleteArticleFn as (input: { data: string }) => Promise<{ success: boolean }>
-    const result = await handler({ data: 'my-draft' })
+      const handler = saveArticleContentFn as (
+        i: { data: { id: string; content: string } },
+      ) => Promise<{ success: boolean }>
+      const result = await handler({ data: { id: 'my-draft', content: '# Updated content' } })
 
-    expect(result.success).toBe(true)
-    // Should call send twice: once for metadata delete, once for content delete
-    expect(mockSend).toHaveBeenCalledTimes(2)
+      expect(fetchMock).toHaveBeenCalledWith(
+        `${EXPECTED_API_URL}/articles/my-draft`,
+        expect.objectContaining({
+          method: 'PUT',
+          body: JSON.stringify({ content: '# Updated content' }),
+        }),
+      )
+      expect(result.success).toBe(true)
+    })
+  })
+
+  describe('saveArticleMetadataFn', () => {
+    it('should call PUT /:slug with metadata fields', async () => {
+      mockResponse({ updated: true, slug: 'my-draft' })
+
+      const handler = saveArticleMetadataFn as (
+        i: { data: { slug: string; title?: string } },
+      ) => Promise<{ success: boolean }>
+      const result = await handler({ data: { slug: 'my-draft', title: 'New Title' } })
+
+      expect(fetchMock).toHaveBeenCalledWith(
+        `${EXPECTED_API_URL}/articles/my-draft`,
+        expect.objectContaining({
+          method: 'PUT',
+          body: JSON.stringify({ title: 'New Title' }),
+        }),
+      )
+      expect(result.success).toBe(true)
+    })
   })
 })

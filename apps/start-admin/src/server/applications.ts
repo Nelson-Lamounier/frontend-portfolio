@@ -14,7 +14,7 @@
 
 import { createServerFn } from '@tanstack/react-start'
 import { z } from 'zod'
-import { getCookie } from 'vinxi/http'
+import { getCookie } from '@tanstack/react-start/server'
 import type {
   ApplicationSummary,
   ApplicationStatus,
@@ -26,7 +26,8 @@ import { requireAuth } from './auth-guard'
 // Constants
 // =============================================================================
 
-const ADMIN_API_URL = process.env.ADMIN_API_URL || 'http://admin-api.admin-api:3002'
+const ADMIN_API_URL =
+  process.env['ADMIN_API_URL'] ?? 'http://admin-api.admin-api:3002'
 
 // =============================================================================
 // Helpers
@@ -38,14 +39,15 @@ const ADMIN_API_URL = process.env.ADMIN_API_URL || 'http://admin-api.admin-api:3
  * The token is forwarded as-is to admin-api, which re-validates it
  * against the Cognito JWKS endpoint.
  *
- * @returns JWT string, or empty string if cookie is absent
+ * @returns JWT string
+ * @throws {Error} If the `__session` cookie is absent (should not occur after requireAuth())
  */
 function getSessionToken(): string {
-  try {
-    return getCookie('__session') ?? ''
-  } catch {
-    return ''
+  const token = getCookie('__session')
+  if (!token) {
+    throw new Error('Session cookie missing after auth guard — this should not happen')
   }
+  return token
 }
 
 /**

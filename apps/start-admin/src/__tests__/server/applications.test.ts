@@ -26,14 +26,14 @@ vi.mock('@tanstack/react-start', () => ({
 // ---------------------------------------------------------------------------
 // Mock: @tanstack/react-start/server — cookie utilities
 // ---------------------------------------------------------------------------
-vi.mock('vinxi/http', () => ({
+vi.mock('@tanstack/react-start/server', () => ({
   getCookie: vi.fn(),
   setCookie: vi.fn(),
   deleteCookie: vi.fn(),
   setResponseHeader: vi.fn(),
 }))
 
-import { getCookie } from 'vinxi/http'
+import { getCookie } from '@tanstack/react-start/server'
 const mockGetCookie = getCookie as unknown as ReturnType<typeof vi.fn>
 
 // ---------------------------------------------------------------------------

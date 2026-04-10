@@ -2,13 +2,20 @@
  * @format
  * Media upload server function for the admin dashboard.
  *
- * Handles file uploads to S3 with MIME type validation,
- * size limits, and content-addressed key derivation.
+ * All upload operations are delegated to the `admin-api` BFF service via
+ * the pre-signed URL pattern: admin-api generates a signed S3 PUT URL,
+ * and the binary content is uploaded directly from the pod to S3.
+ *
+ * This avoids routing binary content through the Kubernetes pod, reducing
+ * memory pressure and upload latency.
+ *
  * Protected by JWT authentication via `requireAuth()`.
+ *
+ * @see admin-api/src/routes/assets.ts — upstream presign + delete implementation
  */
 
 import { createServerFn } from '@tanstack/react-start'
-import { S3Client, PutObjectCommand } from '@aws-sdk/client-s3'
+import { getCookie } from '@tanstack/react-start/server'
 import { requireAuth } from './auth-guard'
 import { z } from 'zod'
 
@@ -16,8 +23,9 @@ import { z } from 'zod'
 // Constants
 // =============================================================================
 
-const ASSETS_BUCKET_NAME = process.env.ASSETS_BUCKET_NAME || ''
-const REGION = process.env.AWS_REGION || 'eu-west-1'
+const ADMIN_API_URL =
+  process.env['ADMIN_API_URL'] ?? 'http://admin-api.admin-api:3002'
+
 const PRODUCTION_DOMAIN = 'https://nelsonlamounier.com'
 
 /** Maximum upload size: 50 MB */
@@ -28,6 +36,7 @@ const MIME_TO_EXTENSION: Readonly<Record<string, string>> = {
   'image/png': 'png',
   'image/webp': 'webp',
   'image/gif': 'gif',
+  'image/svg+xml': 'svg',
   'video/mp4': 'mp4',
   'video/webm': 'webm',
 }
@@ -35,26 +44,64 @@ const MIME_TO_EXTENSION: Readonly<Record<string, string>> = {
 const ALLOWED_MIME_TYPES: ReadonlySet<string> = new Set(Object.keys(MIME_TO_EXTENSION))
 
 // =============================================================================
-// S3 Client (Lazy Singleton)
-// =============================================================================
-
-let _s3Client: S3Client | null = null
-
-function getS3Client(): S3Client {
-  _s3Client ??= new S3Client({ region: REGION })
-  return _s3Client
-}
-
-// =============================================================================
 // Helpers
 // =============================================================================
+
+/**
+ * Returns the raw Cognito JWT from the `__session` cookie.
+ *
+ * @returns JWT string
+ * @throws {Error} If the `__session` cookie is absent
+ */
+function getSessionToken(): string {
+  const token = getCookie('__session')
+  if (!token) {
+    throw new Error('Session cookie missing after auth guard — this should not happen')
+  }
+  return token
+}
+
+/**
+ * Performs an authenticated fetch to the admin-api BFF.
+ *
+ * @param path - Full path on admin-api (e.g. `/api/admin/assets/presign`)
+ * @param init - Standard RequestInit options
+ * @returns Parsed JSON response body
+ * @throws {Error} If the response status is not OK
+ */
+async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> {
+  const token = getSessionToken()
+  const res = await fetch(`${ADMIN_API_URL}${path}`, {
+    ...init,
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${token}`,
+      ...(init?.headers ?? {}),
+    },
+  })
+
+  if (!res.ok) {
+    let detail = ''
+    try {
+      const body = (await res.json()) as { error?: string }
+      detail = body.error ? ` — ${body.error}` : ''
+    } catch {
+      // ignore parse failures
+    }
+    throw new Error(
+      `admin-api ${init?.method ?? 'GET'} ${path} failed [${res.status}]${detail}`,
+    )
+  }
+
+  return res.json() as Promise<T>
+}
 
 /**
  * Maps a MIME type to its file extension.
  *
  * @param mimeType - The MIME type to look up
  * @returns File extension string
- * @throws If the MIME type is not in the allow list
+ * @throws {TypeError} If the MIME type is not in the allow list
  */
 function deriveExtension(mimeType: string): string {
   const ext = MIME_TO_EXTENSION[mimeType]
@@ -78,7 +125,13 @@ const formDataSchema = z.instanceof(FormData)
 // =============================================================================
 
 /**
- * Uploads a media file (image or video) to S3.
+ * Uploads a media file (image or video) to S3 via admin-api pre-signed URLs.
+ *
+ * Flow:
+ *   1. Validates the file type and size locally
+ *   2. Requests a pre-signed PUT URL from admin-api
+ *   3. Uploads the binary directly to S3 using the signed URL
+ *   4. Returns the public CDN URL and S3 key
  *
  * Receives a `FormData` payload with:
  * - `file` — The binary file
@@ -90,10 +143,6 @@ export const uploadMediaFn = createServerFn({ method: 'POST' })
   .inputValidator(formDataSchema)
   .handler(async ({ data: formData }) => {
     await requireAuth()
-
-    if (!ASSETS_BUCKET_NAME) {
-      throw new Error('ASSETS_BUCKET_NAME is not configured')
-    }
 
     const file = formData.get('file') as File | null
     const id = formData.get('id') as string | null
@@ -114,9 +163,7 @@ export const uploadMediaFn = createServerFn({ method: 'POST' })
       )
     }
 
-    const buffer = Buffer.from(await file.arrayBuffer())
     const ext = deriveExtension(file.type)
-
     const isVideo = file.type.startsWith('video/')
     const folder = isVideo ? 'videos/articles' : 'images/articles'
 
@@ -129,23 +176,40 @@ export const uploadMediaFn = createServerFn({ method: 'POST' })
       s3Key = `${folder}/${Date.now()}-${safeName}`
     }
 
-    await getS3Client().send(
-      new PutObjectCommand({
-        Bucket: ASSETS_BUCKET_NAME,
-        Key: s3Key,
-        Body: buffer,
-        ContentType: file.type,
-        CacheControl: 'public, max-age=86400, must-revalidate',
+    // Step 1: Request a pre-signed PUT URL from admin-api
+    const presignResponse = await apiFetch<{
+      url: string
+      key: string
+      expiresIn: number
+    }>('/api/admin/assets/presign', {
+      method: 'POST',
+      body: JSON.stringify({
+        key: s3Key,
+        contentType: file.type,
+        contentLength: file.size,
       }),
-    )
+    })
 
-    const absoluteUrl = `${PRODUCTION_DOMAIN}/${s3Key}`
+    // Step 2: Upload binary directly to S3 using the signed URL
+    const uploadRes = await fetch(presignResponse.url, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': file.type,
+        'Content-Length': String(file.size),
+      },
+      body: await file.arrayBuffer(),
+    })
+
+    if (!uploadRes.ok) {
+      throw new Error(`S3 direct upload failed [${uploadRes.status}]: ${uploadRes.statusText}`)
+    }
+
+    const absoluteUrl = `${PRODUCTION_DOMAIN}/${presignResponse.key}`
 
     return {
       success: true,
       url: absoluteUrl,
-      key: s3Key,
-      id: id || undefined,
+      key: presignResponse.key,
+      id: id ?? undefined,
     }
   })
-

@@ -2,50 +2,31 @@
  * @format
  * Pipeline action server functions for the admin dashboard.
  *
- * Provides status checks and trigger operations for the article
- * publish pipeline and strategist coaching Lambda, all protected
- * by JWT authentication via `requireAuth()`.
+ * All data operations are delegated to the `admin-api` BFF service via
+ * authenticated `fetch()` requests. The frontend pod carries no AWS SDK
+ * dependencies (S3, DynamoDB, Lambda) for this domain.
+ *
+ * The `requireAuth()` call acts as a fast-path guard — it rejects
+ * unauthenticated requests at the edge before the network hop to admin-api.
+ * The raw JWT is forwarded as `Authorization: Bearer <token>` so admin-api
+ * can re-verify it with Cognito.
+ *
+ * @see admin-api/src/routes/pipelines.ts — upstream implementation
+ * @see admin-api/src/routes/articles.ts  — publish route (POST /:slug/publish)
  */
 
 import { createServerFn } from '@tanstack/react-start'
+import { getCookie } from '@tanstack/react-start/server'
 import { z } from 'zod'
-import { S3Client, HeadObjectCommand } from '@aws-sdk/client-s3'
-import { DynamoDBClient, GetItemCommand } from '@aws-sdk/client-dynamodb'
-import { LambdaClient, InvokeCommand } from '@aws-sdk/client-lambda'
 import { requireAuth } from './auth-guard'
+import type { TriggerResponse } from '@/lib/types/applications.types'
 
 // =============================================================================
 // Constants
 // =============================================================================
 
-const REGION = process.env.AWS_REGION || 'eu-west-1'
-const BUCKET_NAME = process.env.ASSETS_BUCKET_NAME || ''
-const TABLE_NAME = process.env.DYNAMODB_TABLE_NAME || ''
-const PUBLISH_LAMBDA_ARN = process.env.PUBLISH_LAMBDA_ARN || ''
-const STRATEGIST_TRIGGER_ARN = process.env.STRATEGIST_TRIGGER_ARN || process.env.STRATEGIST_TRIGGER_LAMBDA_NAME || ''
-
-// =============================================================================
-// AWS Client Singletons (Lazy)
-// =============================================================================
-
-let _s3: S3Client | null = null
-let _dynamo: DynamoDBClient | null = null
-let _lambda: LambdaClient | null = null
-
-function getS3(): S3Client {
-  _s3 ??= new S3Client({ region: REGION })
-  return _s3
-}
-
-function getDynamo(): DynamoDBClient {
-  _dynamo ??= new DynamoDBClient({ region: REGION })
-  return _dynamo
-}
-
-function getLambda(): LambdaClient {
-  _lambda ??= new LambdaClient({ region: REGION })
-  return _lambda
-}
+const ADMIN_API_URL =
+  process.env['ADMIN_API_URL'] ?? 'http://admin-api.admin-api:3002'
 
 // =============================================================================
 // Types
@@ -57,54 +38,53 @@ type PipelineState = 'pending' | 'processing' | 'review' | 'published' | 'reject
 // Helpers
 // =============================================================================
 
-/** Checks whether an object exists in S3 without downloading it. */
-async function s3ObjectExists(bucket: string, key: string): Promise<boolean> {
-  try {
-    await getS3().send(new HeadObjectCommand({ Bucket: bucket, Key: key }))
-    return true
-  } catch {
-    return false
+/**
+ * Returns the raw Cognito JWT from the `__session` cookie.
+ *
+ * @returns JWT string
+ * @throws {Error} If the `__session` cookie is absent
+ */
+function getSessionToken(): string {
+  const token = getCookie('__session')
+  if (!token) {
+    throw new Error('Session cookie missing after auth guard — this should not happen')
   }
+  return token
 }
 
-/** Fetches DynamoDB article metadata for status derivation. */
-async function fetchDynamoMetadata(
-  slug: string,
-): Promise<Record<string, { S?: string }> | null> {
-  try {
-    const result = await getDynamo().send(
-      new GetItemCommand({
-        TableName: TABLE_NAME,
-        Key: {
-          pk: { S: `ARTICLE#${slug}` },
-          sk: { S: 'METADATA' },
-        },
-        ProjectionExpression: '#s, title, updatedAt',
-        ExpressionAttributeNames: { '#s': 'status' },
-      }),
+/**
+ * Performs an authenticated fetch to the admin-api BFF.
+ *
+ * @param path - Path relative to admin-api base URL (e.g. `/api/admin/pipelines/article`)
+ * @param init - Standard RequestInit options
+ * @returns Parsed JSON response body
+ * @throws {Error} If the response status is not OK
+ */
+async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> {
+  const token = getSessionToken()
+  const res = await fetch(`${ADMIN_API_URL}${path}`, {
+    ...init,
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${token}`,
+      ...(init?.headers ?? {}),
+    },
+  })
+
+  if (!res.ok) {
+    let detail = ''
+    try {
+      const body = (await res.json()) as { error?: string }
+      detail = body.error ? ` — ${body.error}` : ''
+    } catch {
+      // ignore parse failures
+    }
+    throw new Error(
+      `admin-api ${init?.method ?? 'GET'} ${path} failed [${res.status}]${detail}`,
     )
-    return (result.Item as Record<string, { S?: string }>) ?? null
-  } catch {
-    return null
   }
-}
 
-/** Derives the pipeline state from DynamoDB status and S3 review existence. */
-function derivePipelineState(
-  dynamoStatus: string | undefined,
-  s3ReviewExists: boolean,
-): PipelineState {
-  if (dynamoStatus === 'published') return 'published'
-  if (dynamoStatus === 'rejected') return 'rejected'
-  if (dynamoStatus === 'failed') return 'failed'
-  if (dynamoStatus === 'review') return 'review'
-
-  if (dynamoStatus === 'processing' && s3ReviewExists) return 'review'
-  if (dynamoStatus === 'processing') return 'processing'
-  if (dynamoStatus === 'draft' && s3ReviewExists) return 'review'
-  if (!dynamoStatus) return 'pending'
-
-  return 'failed'
+  return res.json() as Promise<T>
 }
 
 // =============================================================================
@@ -126,6 +106,25 @@ const strategistCoachSchema = z.object({
   resumeId: z.string().optional(),
 })
 
+const analyseTriggerSchema = z.object({
+  jobDescription: z.string(),
+  targetCompany: z.string(),
+  targetRole: z.string(),
+  interviewStage: z
+    .enum([
+      'applied',
+      'phone-screen',
+      'technical',
+      'system-design',
+      'behavioural',
+      'bar-raiser',
+      'final',
+    ])
+    .optional(),
+  resumeId: z.string().optional(),
+  includeCoverLetter: z.boolean().optional(),
+})
+
 // =============================================================================
 // Server Functions
 // =============================================================================
@@ -133,40 +132,59 @@ const strategistCoachSchema = z.object({
 /**
  * Retrieves the current pipeline status for an article.
  *
+ * Delegates to `GET /api/admin/articles/:slug` on admin-api, which returns
+ * the DynamoDB metadata record including the `status` field used to derive
+ * pipeline state.
+ *
  * @param data - The article slug
- * @returns Pipeline state, S3 availability flag, and metadata
+ * @returns Pipeline state and metadata
  */
 export const getPipelineStatusFn = createServerFn({ method: 'GET' })
   .inputValidator(slugSchema)
   .handler(async ({ data: slug }) => {
     await requireAuth()
 
-    if (!BUCKET_NAME || !TABLE_NAME) {
-      throw new Error('Server misconfiguration: ASSETS_BUCKET_NAME and DYNAMODB_TABLE_NAME must be set')
-    }
-
     try {
-      const [dynamoItem, s3ReviewExists] = await Promise.all([
-        fetchDynamoMetadata(slug),
-        s3ObjectExists(BUCKET_NAME, `review/${slug}.mdx`),
-      ])
+      const body = await apiFetch<{
+        article: {
+          status?: string
+          title?: string
+          updatedAt?: string
+        }
+      }>(`/api/admin/articles/${encodeURIComponent(slug)}`)
 
-      const dynamoStatus = dynamoItem?.status?.S
-      const title = dynamoItem?.title?.S
-      const updatedAt = dynamoItem?.updatedAt?.S
+      const article = body.article
+      const dynamoStatus = article.status
 
-      const pipelineState = derivePipelineState(dynamoStatus, s3ReviewExists)
+      // Derive pipeline state from article status
+      const pipelineState = ((): PipelineState => {
+        if (dynamoStatus === 'published') return 'published'
+        if (dynamoStatus === 'rejected') return 'rejected'
+        if (dynamoStatus === 'review') return 'review'
+        if (dynamoStatus === 'processing') return 'processing'
+        if (dynamoStatus === 'draft') return 'pending'
+        if (!dynamoStatus) return 'pending'
+        return 'failed'
+      })()
 
       return {
         slug,
         pipelineState,
-        s3ReviewExists,
-        dynamoMetadata: dynamoItem !== null,
-        title,
-        updatedAt,
+        s3ReviewExists: pipelineState === 'review',
+        dynamoMetadata: true,
+        title: article.title,
+        updatedAt: article.updatedAt,
         statusRaw: dynamoStatus,
       }
-    } catch {
+    } catch (err: unknown) {
+      if (err instanceof Error && err.message.includes('[404]')) {
+        return {
+          slug,
+          pipelineState: 'pending' as PipelineState,
+          s3ReviewExists: false,
+          dynamoMetadata: false,
+        }
+      }
       return {
         slug,
         pipelineState: 'failed' as PipelineState,
@@ -177,7 +195,10 @@ export const getPipelineStatusFn = createServerFn({ method: 'GET' })
   })
 
 /**
- * Triggers the publish/reject Lambda for an article.
+ * Triggers the publish/reject Lambda for an article via admin-api.
+ *
+ * Routes to `POST /api/admin/articles/:slug/publish` (approve) or
+ * `PUT /api/admin/articles/:slug` with `{ status: 'rejected' }` (reject).
  *
  * @param data.slug - The article slug
  * @param data.action - `'approve'` or `'reject'`
@@ -188,26 +209,19 @@ export const triggerPipelineActionFn = createServerFn({ method: 'POST' })
   .handler(async ({ data }) => {
     await requireAuth()
 
-    if (!PUBLISH_LAMBDA_ARN) {
-      throw new Error('Server misconfiguration: PUBLISH_LAMBDA_ARN must be set')
-    }
-
-    const payload = JSON.stringify({ slug: data.slug, action: data.action })
-
-    const result = await getLambda().send(
-      new InvokeCommand({
-        FunctionName: PUBLISH_LAMBDA_ARN,
-        Payload: new TextEncoder().encode(payload),
-        InvocationType: 'RequestResponse',
-      }),
-    )
-
-    if (result.FunctionError) {
-      const errorPayload = result.Payload
-        ? JSON.parse(new TextDecoder().decode(result.Payload)) as { errorMessage?: string }
-        : { errorMessage: 'Unknown Lambda error' }
-
-      throw new Error(errorPayload.errorMessage ?? 'Unknown Lambda error')
+    if (data.action === 'approve') {
+      await apiFetch<{ queued: boolean; slug: string }>(
+        `/api/admin/articles/${encodeURIComponent(data.slug)}/publish`,
+        { method: 'POST' },
+      )
+    } else {
+      await apiFetch<{ updated: boolean; slug: string }>(
+        `/api/admin/articles/${encodeURIComponent(data.slug)}`,
+        {
+          method: 'PUT',
+          body: JSON.stringify({ status: 'rejected' }),
+        },
+      )
     }
 
     return {
@@ -218,66 +232,42 @@ export const triggerPipelineActionFn = createServerFn({ method: 'POST' })
   })
 
 /**
- * Triggers the strategist coaching Lambda for interview preparation.
+ * Triggers the strategist coaching Lambda for interview preparation via admin-api.
  *
  * @param data.slug - Application slug
  * @param data.coachingType - Type of coaching session
  * @param data.targetCompany - Target company name
  * @param data.targetRole - Target role title
  * @param data.resumeId - Optional resume ID to include
- * @returns Parsed Lambda response body
+ * @returns Parsed Lambda response body from admin-api
  */
 export const triggerStrategistCoachFn = createServerFn({ method: 'POST' })
   .inputValidator(strategistCoachSchema)
   .handler(async ({ data }) => {
     await requireAuth()
 
-    if (!STRATEGIST_TRIGGER_ARN) {
-      throw new Error('Server misconfiguration: STRATEGIST_TRIGGER_ARN must be set')
-    }
-
-    const payload = {
-      pipelineId: `COACH-${Date.now()}`,
-      slug: data.slug,
-      context: {
-        coachingType: data.coachingType,
-        targetCompany: data.targetCompany,
-        targetRole: data.targetRole,
-        resumeId: data.resumeId,
+    const body = await apiFetch<Record<string, object>>(
+      '/api/admin/pipelines/strategist',
+      {
+        method: 'POST',
+        body: JSON.stringify({
+          pipelineId: `COACH-${Date.now()}`,
+          slug: data.slug,
+          context: {
+            coachingType: data.coachingType,
+            targetCompany: data.targetCompany,
+            targetRole: data.targetRole,
+            resumeId: data.resumeId,
+          },
+        }),
       },
-    }
-
-    const result = await getLambda().send(
-      new InvokeCommand({
-        FunctionName: STRATEGIST_TRIGGER_ARN,
-        InvocationType: 'RequestResponse',
-        Payload: new TextEncoder().encode(JSON.stringify(payload)),
-      }),
     )
 
-    if (result.FunctionError) {
-      const errorPayload = result.Payload
-        ? new TextDecoder().decode(result.Payload)
-        : 'Unknown Lambda error'
-      throw new Error(`Lambda execution failed: ${errorPayload}`)
-    }
-
-    const responsePayload = result.Payload
-      ? JSON.parse(new TextDecoder().decode(result.Payload)) as {
-          statusCode?: number
-          body?: string
-        }
-      : null
-
-    if (!responsePayload?.body) {
-      throw new Error('Empty response from Trigger Lambda')
-    }
-
-    return JSON.parse(responsePayload.body) as Record<string, object>
+    return body
   })
 
 /**
- * Triggers a new applications analysis pipeline (Research → Applications).
+ * Triggers a new applications analysis pipeline (Research → Applications) via admin-api.
  *
  * @param data.jobDescription - Job description
  * @param data.targetCompany - Target company
@@ -287,59 +277,18 @@ export const triggerStrategistCoachFn = createServerFn({ method: 'POST' })
  * @param data.includeCoverLetter - Whether to generate cover letter
  * @returns Trigger response with pipelineId and slug
  */
-const analyseTriggerSchema = z.object({
-  jobDescription: z.string(),
-  targetCompany: z.string(),
-  targetRole: z.string(),
-  interviewStage: z.enum([
-    'applied',
-    'phone-screen',
-    'technical',
-    'system-design',
-    'behavioural',
-    'bar-raiser',
-    'final',
-  ]).optional(),
-  resumeId: z.string().optional(),
-  includeCoverLetter: z.boolean().optional(),
-})
-
 export const triggerApplicationsAnalysisFn = createServerFn({ method: 'POST' })
   .inputValidator(analyseTriggerSchema)
   .handler(async ({ data }) => {
     await requireAuth()
 
-    if (!STRATEGIST_TRIGGER_ARN) {
-      throw new Error('Server misconfiguration: STRATEGIST_TRIGGER_ARN must be set')
-    }
-
-    const payload = { ...data }
-
-    const result = await getLambda().send(
-      new InvokeCommand({
-        FunctionName: STRATEGIST_TRIGGER_ARN,
-        InvocationType: 'RequestResponse',
-        Payload: new TextEncoder().encode(JSON.stringify(payload)),
-      }),
+    const body = await apiFetch<TriggerResponse>(
+      '/api/admin/pipelines/strategist',
+      {
+        method: 'POST',
+        body: JSON.stringify(data),
+      },
     )
 
-    if (result.FunctionError) {
-      const errorPayload = result.Payload
-        ? new TextDecoder().decode(result.Payload)
-        : 'Unknown Lambda error'
-      throw new Error(`Lambda execution failed: ${errorPayload}`)
-    }
-
-    const responsePayload = result.Payload
-      ? (JSON.parse(new TextDecoder().decode(result.Payload)) as {
-          statusCode?: number
-          body?: string
-        })
-      : null
-
-    if (!responsePayload?.body) {
-      throw new Error('Empty response from Trigger Lambda')
-    }
-
-    return JSON.parse(responsePayload.body) as import('@/lib/types/applications.types').TriggerResponse
+    return body
   })
