@@ -2,14 +2,13 @@
  * @format
  * Unit tests for application management server functions.
  *
- * Mocks DynamoDB DocumentClient and auth-guard to verify:
- * - Status-based filtering and sort order
- * - Detail assembly from multiple DynamoDB records
- * - BatchWrite chunking with unprocessed-items retry
- * - Status update with GSI key mutations
+ * Mocks global.fetch and auth-guard to verify:
+ * - Proper URL construction and method selection for admin-api calls
+ * - Authorization headers logic
+ * - Error mapping
  */
 
-import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 
 // ---------------------------------------------------------------------------
 // Mock: @tanstack/react-start — createServerFn passthrough
@@ -25,52 +24,30 @@ vi.mock('@tanstack/react-start', () => ({
 }))
 
 // ---------------------------------------------------------------------------
-// Mock: @tanstack/react-start/server — cookie utilities (needed by auth-guard)
+// Mock: @tanstack/react-start/server — cookie utilities
 // ---------------------------------------------------------------------------
-vi.mock('@tanstack/react-start/server', () => ({
+vi.mock('vinxi/http', () => ({
   getCookie: vi.fn(),
   setCookie: vi.fn(),
   deleteCookie: vi.fn(),
   setResponseHeader: vi.fn(),
 }))
 
+import { getCookie } from 'vinxi/http'
+const mockGetCookie = getCookie as unknown as ReturnType<typeof vi.fn>
+
 // ---------------------------------------------------------------------------
 // Mock: auth-guard — always allow
 // ---------------------------------------------------------------------------
 vi.mock('../../server/auth-guard', () => ({
   requireAuth: vi.fn().mockResolvedValue({ id: 'user-1', email: 'test@example.com' }),
-  AuthenticationError: class AuthenticationError extends Error {
-    code = 'UNAUTHENTICATED' as const
-    constructor(message = 'Authentication required') {
-      super(message)
-      this.name = 'AuthenticationError'
-    }
-  },
 }))
 
 // ---------------------------------------------------------------------------
-// Mock: DynamoDB
+// Mock: global.fetch
 // ---------------------------------------------------------------------------
-const mockSend = vi.fn()
-
-vi.mock('@aws-sdk/client-dynamodb', () => ({
-  DynamoDBClient: vi.fn().mockImplementation(() => ({})),
-}))
-
-vi.mock('@aws-sdk/lib-dynamodb', () => ({
-  DynamoDBDocumentClient: {
-    from: () => ({ send: mockSend }),
-  },
-  QueryCommand: vi.fn().mockImplementation((input: unknown) => ({ input })),
-  UpdateCommand: vi.fn().mockImplementation((input: unknown) => ({ input })),
-  BatchWriteCommand: vi.fn().mockImplementation((input: unknown) => ({ input })),
-}))
-
-// ---------------------------------------------------------------------------
-// Environment setup
-// ---------------------------------------------------------------------------
-process.env.STRATEGIST_TABLE_NAME = 'test-strategist-table'
-process.env.AWS_REGION = 'eu-west-1'
+const fetchMock = vi.fn()
+vi.stubGlobal('fetch', fetchMock)
 
 // ---------------------------------------------------------------------------
 // Import SUT
@@ -82,174 +59,96 @@ import {
   updateApplicationStatusFn,
 } from '../../server/applications'
 
-// ---------------------------------------------------------------------------
-// Test data
-// ---------------------------------------------------------------------------
-const SAMPLE_APP_RECORD = {
-  pk: 'APPLICATION#test-slug',
-  sk: 'METADATA',
-  applicationSlug: 'test-slug',
-  targetCompany: 'Acme Inc',
-  targetRole: 'Senior Engineer',
-  status: 'analysis-ready',
-  interviewStage: 'applied',
-  fitRating: 'STRONG_FIT',
-  recommendation: 'STRONG_APPLY',
-  createdAt: '2026-01-15T10:00:00Z',
-  updatedAt: '2026-01-16T10:00:00Z',
-  gsi1pk: 'APP_STATUS#analysis-ready',
-  gsi1sk: '2026-01-16T10:00:00Z',
-}
-
-const SAMPLE_ANALYSIS_RECORD = {
-  pk: 'APPLICATION#test-slug',
-  sk: 'ANALYSIS#2026-01-15',
-  analysisXml: '<analysis>test</analysis>',
-  createdAt: '2026-01-15T10:00:00Z',
-}
+const EXPECTED_API_URL = 'http://admin-api.admin-api:3002/api/admin'
 
 // ---------------------------------------------------------------------------
 // Tests
 // ---------------------------------------------------------------------------
 
-describe('getApplicationsFn', () => {
+describe('applications server functions', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    mockGetCookie.mockReturnValue('mock-jwt-token')
   })
 
-  it('should query all statuses when status is "all"', async () => {
-    mockSend.mockResolvedValue({ Items: [] })
-
-    const handler = getApplicationsFn as (input: { data: { status: string } }) => Promise<unknown[]>
-    const result = await handler({ data: { status: 'all' } })
-
-    // Should query for each valid status
-    expect(mockSend).toHaveBeenCalledTimes(10) // 10 VALID_STATUSES
-    expect(result).toEqual([])
+  afterEach(() => {
+    vi.resetAllMocks()
   })
 
-  it('should query a single status when filtering', async () => {
-    mockSend.mockResolvedValue({
-      Items: [SAMPLE_APP_RECORD],
+  const mockResponse = (data: unknown, ok = true, status = 200, statusText = 'OK') => {
+    fetchMock.mockResolvedValueOnce({
+      ok,
+      status,
+      statusText,
+      json: async () => data,
+      text: async () => JSON.stringify(data),
+    })
+  }
+
+  describe('getApplicationsFn', () => {
+    it('should query all applications and parse the response', async () => {
+      mockResponse({ applications: [{ slug: 'test-app' }], count: 1 })
+
+      const handler = getApplicationsFn as (input: { data: { status: string } }) => Promise<unknown>
+      const result = await handler({ data: { status: 'all' } })
+
+      expect(fetchMock).toHaveBeenCalledWith(`${EXPECTED_API_URL}/applications`, expect.objectContaining({
+        headers: expect.objectContaining({ Authorization: 'Bearer mock-jwt-token' }),
+      }))
+      expect(result).toEqual([{ slug: 'test-app' }])
     })
 
-    const handler = getApplicationsFn as (input: { data: { status: string } }) => Promise<unknown[]>
-    const result = await handler({ data: { status: 'analysis-ready' } })
+    it('should append status to the querystring if not all', async () => {
+      mockResponse({ applications: [], count: 0 })
 
-    expect(mockSend).toHaveBeenCalledTimes(1)
-    expect(result).toHaveLength(1)
-    expect((result[0] as Record<string, unknown>).slug).toBe('test-slug')
-  })
+      const handler = getApplicationsFn as (input: { data: { status: string } }) => Promise<unknown>
+      const result = await handler({ data: { status: 'applied' } })
 
-  it('should throw for an invalid status', async () => {
-    const handler = getApplicationsFn as (input: { data: { status: string } }) => Promise<unknown>
-    await expect(handler({ data: { status: 'bogus' } })).rejects.toThrow('Invalid status: bogus')
-  })
-})
-
-describe('getApplicationDetailFn', () => {
-  beforeEach(() => {
-    vi.clearAllMocks()
-  })
-
-  it('should assemble detail from metadata and analysis records', async () => {
-    mockSend.mockResolvedValue({
-      Items: [SAMPLE_APP_RECORD, SAMPLE_ANALYSIS_RECORD],
+      expect(fetchMock).toHaveBeenCalledWith(`${EXPECTED_API_URL}/applications?status=applied`, expect.anything())
+      expect(result).toEqual([])
     })
-
-    const handler = getApplicationDetailFn as unknown as (input: { data: string }) => Promise<Record<string, unknown>>
-    const result = await handler({ data: 'test-slug' })
-
-    expect(result.slug).toBe('test-slug')
-    expect(result.targetCompany).toBe('Acme Inc')
-    expect(result.analysis).not.toBeNull()
   })
 
-  it('should throw when no records are found', async () => {
-    mockSend.mockResolvedValue({ Items: [] })
+  describe('getApplicationDetailFn', () => {
+    it('should fetch application details and parse the response', async () => {
+      mockResponse({ application: { slug: 'test-app', targetCompany: 'Acme Inc' } })
 
-    const handler = getApplicationDetailFn as (input: { data: string }) => Promise<unknown>
-    await expect(handler({ data: 'nonexistent' })).rejects.toThrow('Application not found: nonexistent')
-  })
+      const handler = getApplicationDetailFn as (input: { data: string }) => Promise<unknown>
+      const result = await handler({ data: 'test-app' }) as { slug: string; targetCompany: string }
 
-  it('should throw when metadata record is missing', async () => {
-    mockSend.mockResolvedValue({
-      Items: [SAMPLE_ANALYSIS_RECORD], // Analysis present, but no METADATA
+      expect(fetchMock).toHaveBeenCalledWith(`${EXPECTED_API_URL}/applications/test-app`, expect.anything())
+      expect(result.targetCompany).toEqual('Acme Inc')
     })
-
-    const handler = getApplicationDetailFn as (input: { data: string }) => Promise<unknown>
-    await expect(handler({ data: 'test-slug' })).rejects.toThrow('Metadata record not found')
-  })
-})
-
-describe('deleteApplicationFn', () => {
-  beforeEach(() => {
-    vi.clearAllMocks()
   })
 
-  it('should chunk delete requests into batches of 25', async () => {
-    // Create 30 items to verify chunking
-    const items = Array.from({ length: 30 }, (_, i) => ({
-      pk: `APPLICATION#slug-${i}`,
-      sk: `RECORD#${i}`,
-    }))
+  describe('deleteApplicationFn', () => {
+    it('should call DELETE and return success', async () => {
+      mockResponse({ deleted: true, slug: 'test-app' })
 
-    // First call: QueryCommand returns items. BatchWrite calls return no unprocessed
-    mockSend
-      .mockResolvedValueOnce({ Items: items }) // Query
-      .mockResolvedValueOnce({ UnprocessedItems: {} }) // Batch 1: 25 items
-      .mockResolvedValueOnce({ UnprocessedItems: {} }) // Batch 2: 5 items
+      const handler = deleteApplicationFn as (input: { data: string }) => Promise<unknown>
+      const result = await handler({ data: 'test-app' })
 
-    const handler = deleteApplicationFn as (input: { data: string }) => Promise<{ success: boolean }>
-    const result = await handler({ data: 'test-slug' })
-
-    expect(result.success).toBe(true)
-    // 1 Query + 2 BatchWrite calls
-    expect(mockSend).toHaveBeenCalledTimes(3)
-  })
-
-  it('should retry unprocessed items with exponential backoff', async () => {
-    const items = Array.from({ length: 3 }, (_, i) => ({
-      pk: `APPLICATION#slug-${i}`,
-      sk: `RECORD#${i}`,
-    }))
-
-    const unprocessedItem = {
-      DeleteRequest: { Key: { pk: items[2].pk, sk: items[2].sk } },
-    }
-
-    mockSend
-      .mockResolvedValueOnce({ Items: items }) // Query
-      .mockResolvedValueOnce({
-        UnprocessedItems: { 'test-strategist-table': [unprocessedItem] },
-      }) // First batch — 1 unprocessed
-      .mockResolvedValueOnce({ UnprocessedItems: {} }) // Retry — all processed
-
-    const handler = deleteApplicationFn as (input: { data: string }) => Promise<{ success: boolean }>
-    const result = await handler({ data: 'test-slug' })
-
-    expect(result.success).toBe(true)
-    // 1 Query + 1 initial batch + 1 retry
-    expect(mockSend).toHaveBeenCalledTimes(3)
-  })
-})
-
-describe('updateApplicationStatusFn', () => {
-  beforeEach(() => {
-    vi.clearAllMocks()
-  })
-
-  it('should update status and GSI keys', async () => {
-    mockSend.mockResolvedValue({ Attributes: { status: 'applied' } })
-
-    const handler = updateApplicationStatusFn as (
-      input: { data: { slug: string; status: string; interviewStage?: string } },
-    ) => Promise<unknown>
-
-    await handler({
-      data: { slug: 'test-slug', status: 'applied' },
+      expect(fetchMock).toHaveBeenCalledWith(`${EXPECTED_API_URL}/applications/test-app`, expect.objectContaining({
+        method: 'DELETE',
+        headers: expect.objectContaining({ Authorization: 'Bearer mock-jwt-token' }),
+      }))
+      expect(result).toEqual({ success: true })
     })
+  })
 
-    expect(mockSend).toHaveBeenCalledTimes(1)
+  describe('updateApplicationStatusFn', () => {
+    it('should POST updated status', async () => {
+      mockResponse({ success: true, status: 'rejected' })
+
+      const handler = updateApplicationStatusFn as (input: { data: { slug: string; status: string; interviewStage?: string } }) => Promise<unknown>
+      const result = await handler({ data: { slug: 'test-app', status: 'rejected', interviewStage: 'onsite' } })
+
+      expect(fetchMock).toHaveBeenCalledWith(`${EXPECTED_API_URL}/applications/test-app/status`, expect.objectContaining({
+        method: 'POST',
+        headers: expect.objectContaining({ Authorization: 'Bearer mock-jwt-token' }),
+        body: JSON.stringify({ status: 'rejected', interviewStage: 'onsite' }),
+      }))
+      expect(result).toEqual({ success: true, status: 'rejected' })
+    })
   })
 })

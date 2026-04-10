@@ -42,7 +42,7 @@ interface AdminComment {
 }
 
 /** Moderated comment returned after approve/reject. */
-interface ModeratedComment extends AdminComment {}
+type ModeratedComment = AdminComment
 
 // =============================================================================
 // Helpers

@@ -144,8 +144,8 @@ export const getArticlesFn = createServerFn({ method: 'GET' })
     return mergeArticleItems(result.Items ?? [])
   })
 
-function mergeArticleItems(items: Record<string, any>[]): Record<string, any>[] {
-  const mergedMap = new Map<string, any>()
+function mergeArticleItems(items: Record<string, unknown>[]): Record<string, unknown>[] {
+  const mergedMap = new Map<string, Record<string, unknown>>()
   for (const item of items) {
     if (!item.pk) continue
     
