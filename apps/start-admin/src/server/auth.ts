@@ -55,6 +55,10 @@ export const getUserSessionFn = createServerFn({ method: 'GET' })
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : String(err)
       console.error('[auth] JWT verification failed:', message)
+      // Clear the stale cookie so the browser stops sending it on every request.
+      // Without this, an expired token causes this error to repeat indefinitely
+      // until the cookie's own maxAge (24 h) elapses.
+      deleteCookie('__session', { path: '/' })
       return null
     }
   },

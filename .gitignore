@@ -36,6 +36,7 @@ node_modules/
 dist/
 dist-ssr/
 *.tsbuildinfo
+apps/start-admin/server.js
 
 
 # ======================
