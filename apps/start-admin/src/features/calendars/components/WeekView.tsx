@@ -5,29 +5,29 @@ import { Link } from '@tanstack/react-router'
 export default function Example() {
   return (
     <div className="flex h-full flex-col">
-      <header className="flex flex-none items-center justify-between border-b border-white/15 bg-zinc-800/50 px-6 py-4">
-        <h1 className="text-base font-semibold text-white">
+      <header className="flex flex-none items-center justify-between border-b border-zinc-200 dark:border-white/15 bg-white dark:bg-zinc-800/50 px-6 py-4">
+        <h1 className="text-base font-semibold text-zinc-900 dark:text-white">
           <time dateTime="2022-01">January 2022</time>
         </h1>
         <div className="flex items-center">
-          <div className="relative flex items-center rounded-md bg-white/10 outline -outline-offset-1 outline-white/5 md:items-stretch">
+          <div className="relative flex items-center rounded-md bg-zinc-100 dark:bg-white/10 outline -outline-offset-1 outline-zinc-300 dark:outline-white/5 md:items-stretch">
             <button
               type="button"
-              className="flex h-9 w-12 items-center justify-center rounded-l-md pr-1 text-zinc-400 hover:text-white focus:relative md:w-9 md:pr-0 md:hover:bg-white/10"
+              className="flex h-9 w-12 items-center justify-center rounded-l-md pr-1 text-zinc-500 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white focus:relative md:w-9 md:pr-0 md:hover:bg-zinc-200 dark:md:hover:bg-white/10"
             >
               <span className="sr-only">Previous week</span>
               <ChevronLeftIcon aria-hidden="true" className="size-5" />
             </button>
             <button
               type="button"
-              className="hidden px-3.5 text-sm font-semibold text-white hover:bg-white/10 focus:relative md:block"
+              className="hidden px-3.5 text-sm font-semibold text-zinc-700 dark:text-white hover:bg-zinc-200 dark:hover:bg-white/10 focus:relative md:block"
             >
               Today
             </button>
-            <span className="relative -mx-px h-5 w-px bg-white/10 md:hidden" />
+            <span className="relative -mx-px h-5 w-px bg-zinc-300 dark:bg-white/10 md:hidden" />
             <button
               type="button"
-              className="flex h-9 w-12 items-center justify-center rounded-r-md pl-1 text-zinc-400 hover:text-white focus:relative md:w-9 md:pl-0 md:hover:bg-white/10"
+              className="flex h-9 w-12 items-center justify-center rounded-r-md pl-1 text-zinc-500 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white focus:relative md:w-9 md:pl-0 md:hover:bg-zinc-200 dark:md:hover:bg-white/10"
             >
               <span className="sr-only">Next week</span>
               <ChevronRightIcon aria-hidden="true" className="size-5" />
@@ -37,7 +37,7 @@ export default function Example() {
             <Menu as="div" className="relative">
               <MenuButton
                 type="button"
-                className="flex items-center gap-x-1.5 rounded-md bg-white/10 px-3 py-2 text-sm font-semibold text-white inset-ring inset-ring-white/5 hover:bg-white/20"
+                className="flex items-center gap-x-1.5 rounded-md bg-zinc-100 dark:bg-white/10 px-3 py-2 text-sm font-semibold text-zinc-700 dark:text-white inset-ring inset-ring-zinc-300 dark:inset-ring-white/5 hover:bg-zinc-200 dark:hover:bg-white/20"
               >
                 Week view
                 <ChevronDownIcon aria-hidden="true" className="-mr-1 size-5 text-zinc-500" />
@@ -45,14 +45,14 @@ export default function Example() {
 
               <MenuItems
                 transition
-                className="absolute right-0 z-10 mt-3 w-36 origin-top-right overflow-hidden rounded-md bg-zinc-800 shadow-lg outline-1 -outline-offset-1 outline-white/10 transition data-closed:scale-95 data-closed:transform data-closed:opacity-0 data-enter:duration-100 data-enter:ease-out data-leave:duration-75 data-leave:ease-in"
+                className="absolute right-0 z-10 mt-3 w-36 origin-top-right overflow-hidden rounded-md bg-white dark:bg-zinc-800 shadow-lg ring-1 ring-zinc-200 dark:ring-white/10 transition data-closed:scale-95 data-closed:transform data-closed:opacity-0 data-enter:duration-100 data-enter:ease-out data-leave:duration-75 data-leave:ease-in"
               >
                 <div className="py-1">
                   <MenuItem>
                     <Link
                       to="/calendar"
                       search={{ view: 'day' }}
-                      className="block px-4 py-2 text-sm text-zinc-300 data-focus:bg-white/5 data-focus:text-white data-focus:outline-hidden"
+                      className="block px-4 py-2 text-sm text-zinc-600 dark:text-zinc-300 data-focus:bg-zinc-50 dark:data-focus:bg-white/5 data-focus:text-zinc-900 dark:data-focus:text-white data-focus:outline-hidden"
                     >
                       Day view
                     </Link>
@@ -61,7 +61,7 @@ export default function Example() {
                     <Link
                       to="/calendar"
                       search={{ view: 'week' }}
-                      className="block px-4 py-2 text-sm text-zinc-300 data-focus:bg-white/5 data-focus:text-white data-focus:outline-hidden"
+                      className="block px-4 py-2 text-sm text-zinc-600 dark:text-zinc-300 data-focus:bg-zinc-50 dark:data-focus:bg-white/5 data-focus:text-zinc-900 dark:data-focus:text-white data-focus:outline-hidden"
                     >
                       Week view
                     </Link>
@@ -70,7 +70,7 @@ export default function Example() {
                     <Link
                       to="/calendar"
                       search={{ view: 'month' }}
-                      className="block px-4 py-2 text-sm text-zinc-300 data-focus:bg-white/5 data-focus:text-white data-focus:outline-hidden"
+                      className="block px-4 py-2 text-sm text-zinc-600 dark:text-zinc-300 data-focus:bg-zinc-50 dark:data-focus:bg-white/5 data-focus:text-zinc-900 dark:data-focus:text-white data-focus:outline-hidden"
                     >
                       Month view
                     </Link>
@@ -79,7 +79,7 @@ export default function Example() {
                     <Link
                       to="/calendar"
                       search={{ view: 'year' }}
-                      className="block px-4 py-2 text-sm text-zinc-300 data-focus:bg-white/5 data-focus:text-white data-focus:outline-hidden"
+                      className="block px-4 py-2 text-sm text-zinc-600 dark:text-zinc-300 data-focus:bg-zinc-50 dark:data-focus:bg-white/5 data-focus:text-zinc-900 dark:data-focus:text-white data-focus:outline-hidden"
                     >
                       Year view
                     </Link>
@@ -87,10 +87,10 @@ export default function Example() {
                 </div>
               </MenuItems>
             </Menu>
-            <div className="ml-6 h-6 w-px bg-white/10" />
+            <div className="ml-6 h-6 w-px bg-zinc-200 dark:bg-white/10" />
             <button
               type="button"
-              className="ml-6 rounded-md bg-indigo-500 px-3 py-2 text-sm font-semibold text-white hover:bg-indigo-400 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-500"
+              className="ml-6 rounded-md bg-teal-600 px-3 py-2 text-sm font-semibold text-white hover:bg-teal-500 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-teal-500"
             >
               Add event
             </button>
@@ -105,13 +105,13 @@ export default function Example() {
 
               <MenuItems
                 transition
-                className="absolute right-0 z-10 mt-3 w-36 origin-top-right divide-y divide-white/10 overflow-hidden rounded-md bg-zinc-800 shadow-lg outline-1 -outline-offset-1 outline-white/10 transition data-closed:scale-95 data-closed:transform data-closed:opacity-0 data-enter:duration-100 data-enter:ease-out data-leave:duration-75 data-leave:ease-in"
+                className="absolute right-0 z-10 mt-3 w-36 origin-top-right divide-y divide-zinc-100 dark:divide-white/10 overflow-hidden rounded-md bg-white dark:bg-zinc-800 shadow-lg ring-1 ring-zinc-200 dark:ring-white/10 transition data-closed:scale-95 data-closed:transform data-closed:opacity-0 data-enter:duration-100 data-enter:ease-out data-leave:duration-75 data-leave:ease-in"
               >
                 <div className="py-1">
                   <MenuItem>
                     <a
                       href="#"
-                      className="block px-4 py-2 text-sm text-zinc-300 data-focus:bg-white/5 data-focus:text-white data-focus:outline-hidden"
+                      className="block px-4 py-2 text-sm text-zinc-600 dark:text-zinc-300 data-focus:bg-zinc-50 dark:data-focus:bg-white/5 data-focus:text-zinc-900 dark:data-focus:text-white data-focus:outline-hidden"
                     >
                       Create event
                     </a>
@@ -121,7 +121,7 @@ export default function Example() {
                   <MenuItem>
                     <a
                       href="#"
-                      className="block px-4 py-2 text-sm text-zinc-300 data-focus:bg-white/5 data-focus:text-white data-focus:outline-hidden"
+                      className="block px-4 py-2 text-sm text-zinc-600 dark:text-zinc-300 data-focus:bg-zinc-50 dark:data-focus:bg-white/5 data-focus:text-zinc-900 dark:data-focus:text-white data-focus:outline-hidden"
                     >
                       Go to today
                     </a>
@@ -132,7 +132,7 @@ export default function Example() {
                     <Link
                       to="/calendar"
                       search={{ view: 'day' }}
-                      className="block px-4 py-2 text-sm text-zinc-300 data-focus:bg-white/5 data-focus:text-white data-focus:outline-hidden"
+                      className="block px-4 py-2 text-sm text-zinc-600 dark:text-zinc-300 data-focus:bg-zinc-50 dark:data-focus:bg-white/5 data-focus:text-zinc-900 dark:data-focus:text-white data-focus:outline-hidden"
                     >
                       Day view
                     </Link>
@@ -141,7 +141,7 @@ export default function Example() {
                     <Link
                       to="/calendar"
                       search={{ view: 'week' }}
-                      className="block px-4 py-2 text-sm text-zinc-300 data-focus:bg-white/5 data-focus:text-white data-focus:outline-hidden"
+                      className="block px-4 py-2 text-sm text-zinc-600 dark:text-zinc-300 data-focus:bg-zinc-50 dark:data-focus:bg-white/5 data-focus:text-zinc-900 dark:data-focus:text-white data-focus:outline-hidden"
                     >
                       Week view
                     </Link>
@@ -150,7 +150,7 @@ export default function Example() {
                     <Link
                       to="/calendar"
                       search={{ view: 'month' }}
-                      className="block px-4 py-2 text-sm text-zinc-300 data-focus:bg-white/5 data-focus:text-white data-focus:outline-hidden"
+                      className="block px-4 py-2 text-sm text-zinc-600 dark:text-zinc-300 data-focus:bg-zinc-50 dark:data-focus:bg-white/5 data-focus:text-zinc-900 dark:data-focus:text-white data-focus:outline-hidden"
                     >
                       Month view
                     </Link>
@@ -159,7 +159,7 @@ export default function Example() {
                     <Link
                       to="/calendar"
                       search={{ view: 'year' }}
-                      className="block px-4 py-2 text-sm text-zinc-300 data-focus:bg-white/5 data-focus:text-white data-focus:outline-hidden"
+                      className="block px-4 py-2 text-sm text-zinc-600 dark:text-zinc-300 data-focus:bg-zinc-50 dark:data-focus:bg-white/5 data-focus:text-zinc-900 dark:data-focus:text-white data-focus:outline-hidden"
                     >
                       Year view
                     </Link>
@@ -170,19 +170,19 @@ export default function Example() {
           </div>
         </div>
       </header>
-      <div className="isolate flex flex-auto flex-col overflow-auto bg-zinc-900">
+        <div className="isolate flex flex-auto flex-col overflow-auto bg-white dark:bg-zinc-900">
         <div style={{ width: '165%' }} className="flex max-w-full flex-none flex-col sm:max-w-none md:max-w-full">
-          <div className="sticky top-0 z-30 flex-none bg-zinc-900 ring-1 ring-white/20 sm:pr-8">
-            <div className="grid grid-cols-7 text-sm/6 text-zinc-400 sm:hidden">
+            <div className="sticky top-0 z-30 flex-none bg-white dark:bg-zinc-900 ring-1 ring-zinc-200 dark:ring-white/20 sm:pr-8">
+              <div className="grid grid-cols-7 text-sm/6 text-zinc-500 dark:text-zinc-400 sm:hidden">
               <button type="button" className="flex flex-col items-center pt-2 pb-3">
-                M <span className="mt-1 flex size-8 items-center justify-center font-semibold text-white">10</span>
+                 <span className="mt-1 flex size-8 items-center justify-center font-semibold text-zinc-900 dark:text-white">10</span>
               </button>
               <button type="button" className="flex flex-col items-center pt-2 pb-3">
                 T <span className="mt-1 flex size-8 items-center justify-center font-semibold text-white">11</span>
               </button>
               <button type="button" className="flex flex-col items-center pt-2 pb-3">
                 W{' '}
-                <span className="mt-1 flex size-8 items-center justify-center rounded-full bg-indigo-500 font-semibold text-white">
+                <span className="mt-1 flex size-8 items-center justify-center rounded-full bg-teal-600 font-semibold text-white">
                   12
                 </span>
               </button>
@@ -200,11 +200,11 @@ export default function Example() {
               </button>
             </div>
 
-            <div className="-mr-px hidden grid-cols-7 divide-x divide-white/10 border-r border-white/10 text-sm/6 text-zinc-400 sm:grid">
+              <div className="-mr-px hidden grid-cols-7 divide-x divide-zinc-200 dark:divide-white/10 border-r border-zinc-200 dark:border-white/10 text-sm/6 text-zinc-500 dark:text-zinc-400 sm:grid">
               <div className="col-end-1 w-14" />
               <div className="flex items-center justify-center py-3">
                 <span>
-                  Mon <span className="items-center justify-center font-semibold text-white">10</span>
+                   <span className="items-center justify-center font-semibold text-zinc-900 dark:text-white">10</span>
                 </span>
               </div>
               <div className="flex items-center justify-center py-3">
@@ -215,7 +215,7 @@ export default function Example() {
               <div className="flex items-center justify-center py-3">
                 <span className="flex items-baseline">
                   Wed{' '}
-                  <span className="ml-1.5 flex size-8 items-center justify-center rounded-full bg-indigo-500 font-semibold text-white">
+                  <span className="ml-1.5 flex size-8 items-center justify-center rounded-full bg-teal-600 font-semibold text-white">
                     12
                   </span>
                 </span>
@@ -243,12 +243,12 @@ export default function Example() {
             </div>
           </div>
           <div className="flex flex-auto">
-            <div className="sticky left-0 z-10 w-14 flex-none bg-zinc-900 ring-1 ring-white/5" />
+            <div className="sticky left-0 z-10 w-14 flex-none bg-white dark:bg-zinc-900 ring-1 ring-zinc-200 dark:ring-white/5" />
             <div className="grid flex-auto grid-cols-1 grid-rows-1">
               {/* Horizontal lines */}
               <div
                 style={{ gridTemplateRows: 'repeat(48, minmax(3.5rem, 1fr))' }}
-                className="col-start-1 col-end-2 row-start-1 grid divide-y divide-white/5"
+                className="col-start-1 col-end-2 row-start-1 grid divide-y divide-zinc-100 dark:divide-white/5"
               >
                 <div className="row-end-1 h-7" />
                 <div>
@@ -398,7 +398,7 @@ export default function Example() {
               </div>
 
               {/* Vertical lines */}
-              <div className="col-start-1 col-end-2 row-start-1 hidden grid-rows-1 divide-x divide-white/5 sm:grid sm:grid-cols-7">
+              <div className="col-start-1 col-end-2 row-start-1 hidden grid-rows-1 divide-x divide-zinc-100 dark:divide-white/5 sm:grid sm:grid-cols-7">
                 <div className="col-start-1 row-span-full" />
                 <div className="col-start-2 row-span-full" />
                 <div className="col-start-3 row-span-full" />
@@ -416,7 +416,7 @@ export default function Example() {
               >
                 <li
                   style={{ gridRow: '74 / span 12' }}
-                  className="relative mt-px flex before:pointer-events-none before:absolute before:inset-1 before:z-0 before:rounded-lg before:bg-zinc-900 sm:col-start-3"
+                  className="relative mt-px flex before:pointer-events-none before:absolute before:inset-1 before:z-0 before:rounded-lg before:bg-white dark:before:bg-zinc-900 sm:col-start-3"
                 >
                   <a
                     href="#"
@@ -430,7 +430,7 @@ export default function Example() {
                 </li>
                 <li
                   style={{ gridRow: '92 / span 30' }}
-                  className="relative mt-px flex before:pointer-events-none before:absolute before:inset-1 before:z-0 before:rounded-lg before:bg-zinc-900 sm:col-start-3"
+                  className="relative mt-px flex before:pointer-events-none before:absolute before:inset-1 before:z-0 before:rounded-lg before:bg-white dark:before:bg-zinc-900 sm:col-start-3"
                 >
                   <a
                     href="#"
