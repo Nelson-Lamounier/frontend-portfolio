@@ -4,20 +4,20 @@ import { EllipsisVerticalIcon } from '@heroicons/react/20/solid'
 export default function Example() {
   return (
     <Menu as="div" className="relative inline-block">
-      <MenuButton className="flex items-center rounded-full text-gray-400 hover:text-gray-300 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-500">
+      <MenuButton className="flex items-center rounded-full text-zinc-400 hover:text-zinc-300 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-500">
         <span className="sr-only">Open options</span>
         <EllipsisVerticalIcon aria-hidden="true" className="size-5" />
       </MenuButton>
 
       <MenuItems
         transition
-        className="absolute right-0 z-10 mt-2 w-56 origin-top-right rounded-md bg-gray-800 outline-1 -outline-offset-1 outline-white/10 transition data-closed:scale-95 data-closed:transform data-closed:opacity-0 data-enter:duration-100 data-enter:ease-out data-leave:duration-75 data-leave:ease-in"
+        className="absolute right-0 z-10 mt-2 w-56 origin-top-right rounded-md bg-zinc-800 outline-1 -outline-offset-1 outline-white/10 transition data-closed:scale-95 data-closed:transform data-closed:opacity-0 data-enter:duration-100 data-enter:ease-out data-leave:duration-75 data-leave:ease-in"
       >
         <div className="py-1">
           <MenuItem>
             <a
               href="#"
-              className="block px-4 py-2 text-sm text-gray-300 data-focus:bg-white/5 data-focus:text-white data-focus:outline-hidden"
+              className="block px-4 py-2 text-sm text-zinc-300 data-focus:bg-white/5 data-focus:text-white data-focus:outline-hidden"
             >
               Account settings
             </a>
@@ -25,7 +25,7 @@ export default function Example() {
           <MenuItem>
             <a
               href="#"
-              className="block px-4 py-2 text-sm text-gray-300 data-focus:bg-white/5 data-focus:text-white data-focus:outline-hidden"
+              className="block px-4 py-2 text-sm text-zinc-300 data-focus:bg-white/5 data-focus:text-white data-focus:outline-hidden"
             >
               Support
             </a>
@@ -33,7 +33,7 @@ export default function Example() {
           <MenuItem>
             <a
               href="#"
-              className="block px-4 py-2 text-sm text-gray-300 data-focus:bg-white/5 data-focus:text-white data-focus:outline-hidden"
+              className="block px-4 py-2 text-sm text-zinc-300 data-focus:bg-white/5 data-focus:text-white data-focus:outline-hidden"
             >
               License
             </a>
@@ -42,7 +42,7 @@ export default function Example() {
             <MenuItem>
               <button
                 type="submit"
-                className="block w-full px-4 py-2 text-left text-sm text-gray-300 data-focus:bg-white/5 data-focus:text-white data-focus:outline-hidden"
+                className="block w-full px-4 py-2 text-left text-sm text-zinc-300 data-focus:bg-white/5 data-focus:text-white data-focus:outline-hidden"
               >
                 Sign out
               </button>

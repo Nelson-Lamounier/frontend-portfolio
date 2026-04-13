@@ -39,7 +39,7 @@ export default function Example() {
 
         <ListboxOptions
           transition
-          className="absolute right-0 z-10 mt-2 w-72 origin-top-right divide-y divide-white/10 overflow-hidden rounded-md bg-gray-800 outline-1 -outline-offset-1 outline-white/10 data-leave:transition data-leave:duration-100 data-leave:ease-in data-closed:data-leave:opacity-0"
+          className="absolute right-0 z-10 mt-2 w-72 origin-top-right divide-y divide-white/10 overflow-hidden rounded-md bg-zinc-800 outline-1 -outline-offset-1 outline-white/10 data-leave:transition data-leave:duration-100 data-leave:ease-in data-closed:data-leave:opacity-0"
         >
           {publishingOptions.map((option) => (
             <ListboxOption
@@ -54,7 +54,7 @@ export default function Example() {
                     <CheckIcon aria-hidden="true" className="size-5" />
                   </span>
                 </div>
-                <p className="mt-2 text-gray-400 group-data-focus:text-indigo-100">{option.description}</p>
+                <p className="mt-2 text-zinc-400 group-data-focus:text-indigo-100">{option.description}</p>
               </div>
             </ListboxOption>
           ))}

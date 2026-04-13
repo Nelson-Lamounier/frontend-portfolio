@@ -28,7 +28,7 @@ interface FormInputProps extends React.InputHTMLAttributes<HTMLInputElement> {
 export function FormInput({ label, field, className = '', ...props }: FormInputProps) {
   return (
     <div>
-      <label htmlFor={field.name} className="block text-sm/6 font-medium text-white">
+      <label htmlFor={field.name} className="block text-sm/6 font-medium text-zinc-700 dark:text-zinc-200">
         {label}
       </label>
       <div className="mt-2">
@@ -38,7 +38,7 @@ export function FormInput({ label, field, className = '', ...props }: FormInputP
           value={field.state.value}
           onBlur={field.handleBlur}
           onChange={(e) => field.handleChange(e.target.value)}
-          className={`p-2 block w-full rounded-md border-0 bg-white/5 py-1.5 text-white shadow-sm ring-1 ring-inset ring-white/10 focus:ring-2 focus:ring-inset focus:ring-indigo-500 sm:text-sm/6 ${className}`}
+          className={`p-2 block w-full rounded-md border-0 bg-zinc-100 dark:bg-zinc-800 py-1.5 text-zinc-900 dark:text-zinc-100 shadow-sm ring-1 ring-inset ring-zinc-300 dark:ring-zinc-700 focus:ring-2 focus:ring-inset focus:ring-teal-500 sm:text-sm/6 placeholder:text-zinc-400 dark:placeholder:text-zinc-500 ${className}`}
           {...props}
         />
       </div>
@@ -65,7 +65,7 @@ export function FormTextarea({ label, field, className = '', ...props }: FormTex
           value={field.state.value}
           onBlur={field.handleBlur}
           onChange={(e) => field.handleChange(e.target.value)}
-          className={`block p-2 w-full rounded-md border-0 bg-white/5 py-1.5 text-white shadow-sm ring-1 ring-inset ring-white/10 focus:ring-2 focus:ring-inset focus:ring-indigo-500 sm:text-sm/6 ${className}`}
+          className={`block p-2 w-full rounded-md border-0 bg-zinc-100 dark:bg-zinc-800 py-1.5 text-zinc-900 dark:text-zinc-100 shadow-sm ring-1 ring-inset ring-zinc-300 dark:ring-zinc-700 focus:ring-2 focus:ring-inset focus:ring-teal-500 sm:text-sm/6 placeholder:text-zinc-400 dark:placeholder:text-zinc-500 ${className}`}
           {...props}
         />
       </div>

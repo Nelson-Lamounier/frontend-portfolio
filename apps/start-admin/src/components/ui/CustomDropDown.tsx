@@ -28,13 +28,13 @@ export function CustomDropDown({ label, options, value, onChange, disabled }: Cu
           <span className="col-start-1 row-start-1 truncate pr-6">{selected?.label}</span>
           <ChevronUpDownIcon
             aria-hidden="true"
-            className="col-start-1 row-start-1 size-5 self-center justify-self-end text-gray-400 sm:size-4"
+            className="col-start-1 row-start-1 size-5 self-center justify-self-end text-zinc-400 sm:size-4"
           />
         </ListboxButton>
 
         <ListboxOptions
           transition
-          className="absolute z-10 mt-1 max-h-60 w-full min-w-max overflow-auto rounded-md bg-gray-800 py-1 text-base outline-1 -outline-offset-1 outline-white/10 data-leave:transition data-leave:duration-100 data-leave:ease-in data-closed:data-leave:opacity-0 sm:text-sm"
+          className="absolute z-10 mt-1 max-h-60 w-full min-w-max overflow-auto rounded-md bg-zinc-800 py-1 text-base outline-1 -outline-offset-1 outline-white/10 data-leave:transition data-leave:duration-100 data-leave:ease-in data-closed:data-leave:opacity-0 sm:text-sm"
         >
           {options.map((option) => (
             <ListboxOption

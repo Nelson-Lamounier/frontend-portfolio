@@ -43,7 +43,7 @@ export function Button({
     warning:
       'px-3 py-1 text-xs font-medium text-amber-500 border border-amber-500/30 bg-amber-500/10 rounded hover:bg-amber-500/20',
     ghost:
-      'px-3 py-1 text-xs font-medium text-gray-300 border border-white/10 rounded hover:bg-white/5',
+      'px-3 py-1 text-xs font-medium text-zinc-300 dark:text-zinc-400 border border-zinc-300 dark:border-zinc-700 rounded hover:bg-zinc-100 dark:hover:bg-zinc-800',
   }
 
   return (
@@ -78,7 +78,7 @@ export function RemoveButton({ onClick, title = "Remove item" }: { onClick: () =
     <button
       type="button"
       onClick={onClick}
-      className="rounded-md bg-white/5 p-1.5 text-gray-400 hover:bg-red-500/10 hover:text-red-400 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-red-500 transition-colors"
+      className="rounded-md bg-zinc-100 dark:bg-zinc-800 p-1.5 text-zinc-500 dark:text-zinc-400 hover:bg-red-500/10 hover:text-red-400 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-red-500 transition-colors"
       title={title}
     >
       <TrashIcon className="size-4" aria-hidden="true" />
@@ -88,7 +88,7 @@ export function RemoveButton({ onClick, title = "Remove item" }: { onClick: () =
 
 export function AddSubItemButton({ onClick, children }: { onClick: () => void, children: React.ReactNode }) {
   return (
-    <button type="button" onClick={onClick} className="mt-3 text-sm font-medium text-indigo-400 hover:text-indigo-300">
+    <button type="button" onClick={onClick} className="mt-3 text-sm font-medium text-teal-500 dark:text-teal-400 hover:text-teal-600 dark:hover:text-teal-300">
       + {children}
     </button>
   )
@@ -99,7 +99,7 @@ export function RemoveSubItemButton({ onClick, title = "Remove item" }: { onClic
     <button
       type="button"
       onClick={onClick}
-      className="mt-1 text-gray-500 hover:text-red-400 transition-colors"
+      className="mt-1 text-zinc-500 dark:text-zinc-400 hover:text-red-400 transition-colors"
       title={title}
     >
       <TrashIcon className="size-4" aria-hidden="true" />

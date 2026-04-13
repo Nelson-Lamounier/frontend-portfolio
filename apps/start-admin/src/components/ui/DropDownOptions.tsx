@@ -52,7 +52,7 @@ export default function DropDownOptions({
         className="inline-flex w-full items-center justify-center gap-x-1.5 rounded-md bg-white/10 px-3 py-2 text-sm font-semibold text-white inset-ring-1 inset-ring-white/5 hover:bg-white/20 disabled:opacity-50"
       >
         {label}
-        <ChevronDownIcon aria-hidden="true" className="-mr-1 size-5 text-gray-400" />
+        <ChevronDownIcon aria-hidden="true" className="-mr-1 size-5 text-zinc-400" />
       </MenuButton>
 
       <MenuItems
@@ -67,7 +67,7 @@ export default function DropDownOptions({
                   type="button"
                   onClick={() => onSelect?.(opt.value)}
                   className={`group flex w-full items-center justify-between px-4 py-2 text-sm data-focus:bg-white/5 data-focus:outline-hidden ${
-                    selectedValue === opt.value ? 'text-violet-400 bg-white/5 font-medium' : 'text-gray-300'
+                    selectedValue === opt.value ? 'text-violet-400 bg-white/5 font-medium' : 'text-zinc-300'
                   }`}
                 >
                   {opt.label}
@@ -87,11 +87,11 @@ export default function DropDownOptions({
                 <button
                   type="button"
                   onClick={onEditResume}
-                  className="group flex w-full items-center px-4 py-2 text-sm text-gray-300 data-focus:bg-white/5 data-focus:text-white data-focus:outline-hidden"
+                  className="group flex w-full items-center px-4 py-2 text-sm text-zinc-300 data-focus:bg-white/5 data-focus:text-white data-focus:outline-hidden"
                 >
                   <PencilSquareIcon
                     aria-hidden="true"
-                    className="mr-3 size-5 text-gray-500 group-data-focus:text-white"
+                    className="mr-3 size-5 text-zinc-500 group-data-focus:text-white"
                   />
                   Edit Resume
                 </button>
@@ -102,11 +102,11 @@ export default function DropDownOptions({
                 <button
                   type="button"
                   onClick={onEditCoverLetter}
-                  className="group flex w-full items-center px-4 py-2 text-sm text-gray-300 data-focus:bg-white/5 data-focus:text-white data-focus:outline-hidden"
+                  className="group flex w-full items-center px-4 py-2 text-sm text-zinc-300 data-focus:bg-white/5 data-focus:text-white data-focus:outline-hidden"
                 >
                   <PencilSquareIcon
                     aria-hidden="true"
-                    className="mr-3 size-5 text-gray-500 group-data-focus:text-white"
+                    className="mr-3 size-5 text-zinc-500 group-data-focus:text-white"
                   />
                   Edit Cover Letter
                 </button>
@@ -117,11 +117,11 @@ export default function DropDownOptions({
                 <button
                   type="button"
                   onClick={onPreviewResume}
-                  className="group flex w-full items-center px-4 py-2 text-sm text-gray-300 data-focus:bg-white/5 data-focus:text-white data-focus:outline-hidden"
+                  className="group flex w-full items-center px-4 py-2 text-sm text-zinc-300 data-focus:bg-white/5 data-focus:text-white data-focus:outline-hidden"
                 >
                   <DocumentTextIcon
                     aria-hidden="true"
-                    className="mr-3 size-5 text-gray-500 group-data-focus:text-white"
+                    className="mr-3 size-5 text-zinc-500 group-data-focus:text-white"
                   />
                   Preview Resume
                 </button>
@@ -132,11 +132,11 @@ export default function DropDownOptions({
                 <button
                   type="button"
                   onClick={onPreviewCoverLetter}
-                  className="group flex w-full items-center px-4 py-2 text-sm text-gray-300 data-focus:bg-white/5 data-focus:text-white data-focus:outline-hidden"
+                  className="group flex w-full items-center px-4 py-2 text-sm text-zinc-300 data-focus:bg-white/5 data-focus:text-white data-focus:outline-hidden"
                 >
                   <EnvelopeIcon
                     aria-hidden="true"
-                    className="mr-3 size-5 text-gray-500 group-data-focus:text-white"
+                    className="mr-3 size-5 text-zinc-500 group-data-focus:text-white"
                   />
                   Preview Cover Letter
                 </button>
@@ -147,11 +147,11 @@ export default function DropDownOptions({
                 <button
                   type="button"
                   onClick={onPublish}
-                  className="group flex w-full items-center px-4 py-2 text-sm text-gray-300 data-focus:bg-white/5 data-focus:text-white data-focus:outline-hidden"
+                  className="group flex w-full items-center px-4 py-2 text-sm text-zinc-300 data-focus:bg-white/5 data-focus:text-white data-focus:outline-hidden"
                 >
                   <PaperAirplaneIcon
                     aria-hidden="true"
-                    className="mr-3 size-5 text-gray-500 group-data-focus:text-white"
+                    className="mr-3 size-5 text-zinc-500 group-data-focus:text-white"
                   />
                   Publish
                 </button>
@@ -162,11 +162,11 @@ export default function DropDownOptions({
                 <button
                   type="button"
                   onClick={onUnpublish}
-                  className="group flex w-full items-center px-4 py-2 text-sm text-gray-300 data-focus:bg-white/5 data-focus:text-white data-focus:outline-hidden"
+                  className="group flex w-full items-center px-4 py-2 text-sm text-zinc-300 data-focus:bg-white/5 data-focus:text-white data-focus:outline-hidden"
                 >
                   <PaperAirplaneIcon
                     aria-hidden="true"
-                    className="mr-3 size-5 text-gray-500 group-data-focus:text-white rotate-180"
+                    className="mr-3 size-5 text-zinc-500 group-data-focus:text-white rotate-180"
                   />
                   Unpublish
                 </button>
@@ -177,11 +177,11 @@ export default function DropDownOptions({
                 <button
                   type="button"
                   onClick={onPreviewArticle}
-                  className="group flex w-full items-center px-4 py-2 text-sm text-gray-300 data-focus:bg-white/5 data-focus:text-white data-focus:outline-hidden"
+                  className="group flex w-full items-center px-4 py-2 text-sm text-zinc-300 data-focus:bg-white/5 data-focus:text-white data-focus:outline-hidden"
                 >
                   <DocumentTextIcon
                     aria-hidden="true"
-                    className="mr-3 size-5 text-gray-500 group-data-focus:text-white"
+                    className="mr-3 size-5 text-zinc-500 group-data-focus:text-white"
                   />
                   Preview
                 </button>
@@ -192,11 +192,11 @@ export default function DropDownOptions({
                 <button
                   type="button"
                   onClick={onEditArticle}
-                  className="group flex w-full items-center px-4 py-2 text-sm text-gray-300 data-focus:bg-white/5 data-focus:text-white data-focus:outline-hidden"
+                  className="group flex w-full items-center px-4 py-2 text-sm text-zinc-300 data-focus:bg-white/5 data-focus:text-white data-focus:outline-hidden"
                 >
                   <PencilSquareIcon
                     aria-hidden="true"
-                    className="mr-3 size-5 text-gray-500 group-data-focus:text-white"
+                    className="mr-3 size-5 text-zinc-500 group-data-focus:text-white"
                   />
                   Edit
                 </button>
