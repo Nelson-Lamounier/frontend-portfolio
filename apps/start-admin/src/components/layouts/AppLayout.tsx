@@ -120,7 +120,7 @@ export default function AppLayout({ children, disableMainWrapper = false }: AppL
           {/* Backdrop */}
           <DialogBackdrop
             transition
-            className="fixed inset-0 bg-zinc-900/80 dark:bg-zinc-950/80 transition-opacity duration-300 ease-linear data-closed:opacity-0"
+            className="fixed inset-0 bg-zinc-800/80 transition-opacity duration-300 ease-linear data-closed:opacity-0"
           />
 
           <div className="fixed inset-0 flex">
@@ -143,7 +143,7 @@ export default function AppLayout({ children, disableMainWrapper = false }: AppL
               </TransitionChild>
 
               {/* Mobile sidebar panel */}
-              <div className="relative flex grow flex-col gap-y-5 overflow-y-auto bg-zinc-900 dark:bg-zinc-950 px-6 pb-2 ring ring-zinc-700/50">
+              <div className="relative flex grow flex-col gap-y-5 overflow-y-auto bg-white dark:bg-zinc-900 px-6 pb-2 ring ring-zinc-200 dark:ring-zinc-700/50">
                 {/* Logo */}
                 <div className="relative flex h-16 shrink-0 items-center">
                   <SidebarLogo />
@@ -163,8 +163,8 @@ export default function AppLayout({ children, disableMainWrapper = false }: AppL
         {/* =========================================================
             Desktop Fixed Sidebar
            ========================================================= */}
-        <div className="hidden bg-zinc-900 dark:bg-zinc-950 lg:fixed lg:inset-y-0 lg:z-50 lg:flex lg:w-72 lg:flex-col">
-          <div className="flex grow flex-col gap-y-5 overflow-y-auto border-r border-zinc-700/50 dark:border-zinc-800 px-6">
+        <div className="hidden bg-white dark:bg-zinc-900 lg:fixed lg:inset-y-0 lg:z-50 lg:flex lg:w-72 lg:flex-col">
+          <div className="flex grow flex-col gap-y-5 overflow-y-auto border-r border-zinc-200 dark:border-zinc-700/50 px-6">
             {/* Logo */}
             <div className="flex h-16 shrink-0 items-center">
               <SidebarLogo />
@@ -237,9 +237,9 @@ function SidebarNavList() {
             <li key={item.name}>
               <Link
                 to={item.href as string}
-                activeProps={{ className: 'bg-zinc-800 text-white' }}
+                activeProps={{ className: 'bg-zinc-100 dark:bg-zinc-800 text-zinc-900 dark:text-white' }}
                 inactiveProps={{
-                  className: 'text-zinc-400 hover:bg-zinc-800 hover:text-white',
+                  className: 'text-zinc-600 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-800 hover:text-zinc-900 dark:hover:text-white',
                 }}
                 className="group flex gap-x-3 rounded-md p-2 text-sm/6 font-semibold transition-colors"
               >
@@ -248,7 +248,7 @@ function SidebarNavList() {
                     <item.icon
                       aria-hidden="true"
                       className={classNames(
-                        isActive ? 'text-teal-400' : 'text-zinc-400 group-hover:text-teal-400',
+                        isActive ? 'text-teal-600 dark:text-teal-400' : 'text-zinc-400 dark:text-zinc-400 group-hover:text-teal-600 dark:group-hover:text-teal-400',
                         'size-6 shrink-0 transition-colors',
                       )}
                     />
@@ -268,7 +268,7 @@ function SidebarNavList() {
 function SidebarObservability() {
   return (
     <li className="mt-auto">
-      <div className="text-xs/6 font-semibold text-zinc-500 uppercase tracking-wider mb-2">Observability</div>
+      <div className="text-xs/6 font-semibold text-zinc-400 dark:text-zinc-500 uppercase tracking-wider mb-2">Observability</div>
       <ul role="list" className="-mx-2 space-y-1">
         {observabilityLinks.map((link) => (
           <li key={link.name}>
@@ -277,14 +277,14 @@ function SidebarObservability() {
               target="_blank"
               rel="noopener noreferrer"
               className={classNames(
-                'text-zinc-400 hover:bg-zinc-800 hover:text-white',
+                'text-zinc-600 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-800 hover:text-zinc-900 dark:hover:text-white',
                 'group flex gap-x-3 rounded-md p-2 text-sm/6 font-semibold transition-colors',
               )}
             >
               <span
                 className={classNames(
-                  'border-zinc-700 text-zinc-400 group-hover:border-zinc-600 group-hover:text-teal-400',
-                  'flex size-6 shrink-0 items-center justify-center rounded-lg border bg-zinc-800 text-[0.625rem] font-medium transition-colors',
+                  'border-zinc-200 dark:border-zinc-700 text-zinc-400 group-hover:border-zinc-300 dark:group-hover:border-zinc-600 group-hover:text-teal-600 dark:group-hover:text-teal-400',
+                  'flex size-6 shrink-0 items-center justify-center rounded-lg border bg-zinc-100 dark:bg-zinc-800 text-[0.625rem] font-medium transition-colors',
                 )}
               >
                 <link.icon aria-hidden="true" className="size-4 shrink-0" />
@@ -312,27 +312,27 @@ function SidebarFooter({ onSignOut }: { onSignOut: () => void }) {
         href="https://nelsonlamounier.com"
         target="_blank"
         rel="noopener noreferrer"
-        className="flex items-center gap-x-4 px-6 py-3 text-sm/6 font-semibold text-zinc-400 hover:bg-zinc-800 hover:text-white transition-colors"
+        className="flex items-center gap-x-4 px-6 py-3 text-sm/6 font-semibold text-zinc-600 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-800 hover:text-zinc-900 dark:hover:text-white transition-colors"
       >
         <ExternalLink aria-hidden="true" className="size-5 shrink-0" />
         Back to Site
       </a>
 
       {/* User row */}
-      <div className="flex items-center gap-x-4 border-t border-zinc-700/50 px-6 py-3">
+      <div className="flex items-center gap-x-4 border-t border-zinc-200 dark:border-zinc-700/50 px-6 py-3">
         <img
           alt="Admin avatar"
           src={avatarImage as unknown as string}
-          className="size-8 shrink-0 rounded-full bg-zinc-800 ring-1 ring-zinc-700"
+          className="size-8 shrink-0 rounded-full bg-zinc-100 dark:bg-zinc-800 ring-1 ring-zinc-200 dark:ring-zinc-700"
         />
         <div className="flex-1 min-w-0">
-          <p className="truncate text-sm/6 font-medium text-white">Admin</p>
-          <p className="truncate text-xs text-zinc-500">admin@nelsonlamounier.com</p>
+          <p className="truncate text-sm/6 font-medium text-zinc-900 dark:text-white">Admin</p>
+          <p className="truncate text-xs text-zinc-500 dark:text-zinc-500">admin@nelsonlamounier.com</p>
         </div>
         <button
           type="button"
           onClick={onSignOut}
-          className="text-zinc-400 hover:text-teal-400 transition-colors"
+          className="text-zinc-400 hover:text-teal-600 dark:hover:text-teal-400 transition-colors"
           title="Sign Out"
         >
           <LogOut className="size-5" />

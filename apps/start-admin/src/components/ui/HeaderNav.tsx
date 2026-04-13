@@ -34,7 +34,7 @@ export function HeaderNav({ onOpenSidebar, onSignOut, userAvatar, userEmail }: H
   const { theme, toggleTheme } = useTheme()
 
   return (
-    <div className="sticky top-0 z-40 flex h-16 shrink-0 items-center gap-x-4 border-b border-zinc-200 dark:border-zinc-700/50 bg-white dark:bg-zinc-900 px-4 shadow-sm sm:gap-x-6 sm:px-6 lg:px-8">
+    <div className="sticky top-0 z-40 flex h-16 shrink-0 items-center gap-x-4 border-b border-zinc-200 dark:border-zinc-700/50 bg-white dark:bg-zinc-900 px-4 shadow-sm dark:shadow-zinc-900 sm:gap-x-6 sm:px-6 lg:px-8">
       {/* Mobile sidebar toggle */}
       <button
         type="button"
