@@ -1,5 +1,6 @@
 # .dockerignore — Keep Docker build context lean
 node_modules
+**/dist/
 .next
 .git
 .gitignore

@@ -34,10 +34,10 @@ export async function generateCodeChallenge(verifier: string): Promise<string> {
  * Validates the Cognito JWT using JWKS and extracts the payload
  */
 export async function verifyCognitoJwt(token: string) {
-  const issuer = process.env.AUTH_COGNITO_ISSUER || process.env.AUTH_COGNITO_ISSUER_URL
+  const issuer = process.env.AUTH_COGNITO_ISSUER || process.env.AUTH_COGNITO_ISSUER_URL || process.env.COGNITO_ISSUER_URL
   if (!issuer) throw new Error('Missing Cognito Issuer Environment Variable')
 
-  const clientId = process.env.AUTH_COGNITO_ID || process.env.AUTH_COGNITO_CLIENT_ID
+  const clientId = process.env.AUTH_COGNITO_ID || process.env.AUTH_COGNITO_CLIENT_ID || process.env.COGNITO_CLIENT_ID
   if (!clientId) throw new Error('Missing Cognito Client ID')
 
   // The JWKS endpoint is standard for Cognito
@@ -60,10 +60,10 @@ export async function verifyCognitoJwt(token: string) {
  * Exchange the authorization code for Cognito tokens
  */
 export async function exchangeCognitoCode(code: string, codeVerifier: string, redirectUri: string) {
-  const issuer = process.env.AUTH_COGNITO_ISSUER || process.env.AUTH_COGNITO_ISSUER_URL
+  const issuer = process.env.AUTH_COGNITO_ISSUER || process.env.AUTH_COGNITO_ISSUER_URL || process.env.COGNITO_ISSUER_URL
   if (!issuer) throw new Error('Missing Cognito Issuer Environment Variable')
 
-  const clientId = process.env.AUTH_COGNITO_ID || process.env.AUTH_COGNITO_CLIENT_ID
+  const clientId = process.env.AUTH_COGNITO_ID || process.env.AUTH_COGNITO_CLIENT_ID || process.env.COGNITO_CLIENT_ID
   if (!clientId) throw new Error('Missing Cognito Client ID')
 
   const domain = process.env.AUTH_COGNITO_DOMAIN
