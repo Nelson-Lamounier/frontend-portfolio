@@ -24,11 +24,11 @@ import { Stats } from '../../../components/ui/Stats'
 const RECENT_LIMIT = 5
 
 const statuses = {
-  published: 'bg-green-500/10 text-green-500 ring-green-500/10',
-  draft: 'bg-white/5 text-zinc-400 ring-white/10',
-  review: 'bg-yellow-500/10 text-yellow-500 ring-yellow-500/10',
-  pending: 'bg-yellow-500/10 text-yellow-500 ring-yellow-500/10',
-  approved: 'bg-green-500/10 text-green-500 ring-green-500/10',
+  published: 'bg-green-500/10 text-green-700 dark:text-green-400 ring-green-600/20 dark:ring-green-500/10',
+  draft: 'bg-zinc-100 dark:bg-white/5 text-zinc-600 dark:text-zinc-400 ring-zinc-300 dark:ring-white/10',
+  review: 'bg-yellow-500/10 text-yellow-700 dark:text-yellow-400 ring-yellow-600/20 dark:ring-yellow-500/10',
+  pending: 'bg-yellow-500/10 text-yellow-700 dark:text-yellow-400 ring-yellow-600/20 dark:ring-yellow-500/10',
+  approved: 'bg-green-500/10 text-green-700 dark:text-green-400 ring-green-600/20 dark:ring-green-500/10',
 }
 
 /**
@@ -267,13 +267,13 @@ export function DashboardOverview() {
           {/* Header */}
           <header className="pt-6 pb-4 sm:pb-6">
             <div className="mx-auto flex max-w-7xl flex-wrap items-center gap-6 px-4 sm:flex-nowrap sm:px-6 lg:px-8">
-              <h1 className="text-base/7 font-semibold text-white">Dashboard Overview</h1>
-              <div className="order-last flex w-full gap-x-8 text-sm/6 font-semibold sm:order-0 sm:w-auto sm:border-l sm:border-white/10 sm:pl-6 sm:text-sm/7">
+              <h1 className="text-base/7 font-semibold text-zinc-900 dark:text-white">Dashboard Overview</h1>
+              <div className="order-last flex w-full gap-x-8 text-sm/6 font-semibold sm:order-0 sm:w-auto sm:border-l sm:border-zinc-200 dark:sm:border-white/10 sm:pl-6 sm:text-sm/7">
                 {quickActions.map((action) => (
                   <button
                     key={action.label}
                     onClick={() => navigate({ to: action.href } as any)}
-                    className="text-zinc-300 hover:text-white"
+                    className="text-zinc-500 dark:text-zinc-300 hover:text-zinc-900 dark:hover:text-white"
                   >
                     {action.label}
                   </button>
@@ -281,7 +281,7 @@ export function DashboardOverview() {
               </div>
               <Link
                 to="/ai-agent"
-                className="ml-auto flex items-center gap-x-1 rounded-md bg-indigo-500 px-3 py-2 text-sm font-semibold text-white hover:bg-indigo-400 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-500"
+                className="ml-auto flex items-center gap-x-1 rounded-md bg-teal-600 px-3 py-2 text-sm font-semibold text-white hover:bg-teal-500 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-teal-500"
               >
                 <PlusSmallIcon aria-hidden="true" className="-ml-1.5 size-5" />
                 New article
@@ -291,15 +291,15 @@ export function DashboardOverview() {
 
           {/* Tabs Navigation */}
           <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 mt-12 mb-4">
-            <div className="flex flex-wrap gap-2 border-b border-white/10 pb-4">
+            <div className="flex flex-wrap gap-2 border-b border-zinc-200 dark:border-white/10 pb-4">
               {sections.map((section) => (
                 <button
                   key={section.id}
                   onClick={() => setActiveSection(section.id as any)}
                   className={classNames(
                     activeSection === section.id
-                      ? 'bg-indigo-500/10 text-indigo-400 border border-indigo-500/20'
-                      : 'text-zinc-400 hover:text-zinc-300 hover:bg-white/5 border border-transparent',
+                      ? 'bg-teal-500/10 text-teal-700 dark:text-teal-400 border border-teal-500/20'
+                      : 'text-zinc-500 dark:text-zinc-400 hover:text-zinc-800 dark:hover:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-white/5 border border-transparent',
                     'px-4 py-2 rounded-md text-sm font-medium transition-colors'
                   )}
                 >
@@ -314,7 +314,7 @@ export function DashboardOverview() {
             {activeSection === 'overview' && (
               <div>
                 <div className="mb-4">
-                  <h2 className="text-base/7 font-semibold text-indigo-400">Platform Metrics</h2>
+                  <h2 className="text-base/7 font-semibold text-teal-700 dark:text-teal-400">Platform Metrics</h2>
                 </div>
                 <Stats stats={overviewStats} />
               </div>
@@ -323,7 +323,7 @@ export function DashboardOverview() {
             {activeSection === 'articles' && (
               <div>
                 <div className="mb-4">
-                  <h2 className="text-base/7 font-semibold text-indigo-400">Content Management</h2>
+                  <h2 className="text-base/7 font-semibold text-teal-700 dark:text-teal-400">Content Management</h2>
                 </div>
                 <Stats stats={articleStats} />
               </div>
@@ -332,7 +332,7 @@ export function DashboardOverview() {
             {activeSection === 'resumes' && (
               <div>
                 <div className="mb-4">
-                  <h2 className="text-base/7 font-semibold text-indigo-400">Career Documents</h2>
+                  <h2 className="text-base/7 font-semibold text-teal-700 dark:text-teal-400">Career Documents</h2>
                 </div>
                 <Stats stats={resumeStats} />
               </div>
@@ -358,11 +358,11 @@ export function DashboardOverview() {
           {/* Recent Activity Table */}
           <div>
             <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-              <h2 className="mx-auto max-w-2xl text-base font-semibold text-white lg:mx-0 lg:max-w-none">
+              <h2 className="mx-auto max-w-2xl text-base font-semibold text-zinc-900 dark:text-white lg:mx-0 lg:max-w-none">
                 Recent Activity
               </h2>
             </div>
-            <div className="mt-6 overflow-hidden border-t border-white/5">
+            <div className="mt-6 overflow-hidden border-t border-zinc-200 dark:border-zinc-700/30">
               <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
                 <div className="mx-auto max-w-2xl lg:mx-0 lg:max-w-none">
                   <table className="w-full text-left">
@@ -376,11 +376,11 @@ export function DashboardOverview() {
                     <tbody>
                       {days.map((day) => (
                         <Fragment key={day.dateTime}>
-                          <tr className="text-sm/6 text-white">
+                          <tr className="text-sm/6 text-zinc-900 dark:text-white">
                             <th scope="colgroup" colSpan={3} className="relative isolate py-2 font-semibold">
                               <time dateTime={day.dateTime}>{day.date}</time>
-                              <div className="absolute inset-y-0 right-full -z-10 w-screen border-b border-white/10 bg-white/2.5" />
-                              <div className="absolute inset-y-0 left-0 -z-10 w-screen border-b border-white/10 bg-white/2.5" />
+                              <div className="absolute inset-y-0 right-full -z-10 w-screen border-b border-zinc-200 dark:border-white/10 bg-zinc-50 dark:bg-white/2.5" />
+                              <div className="absolute inset-y-0 left-0 -z-10 w-screen border-b border-zinc-200 dark:border-white/10 bg-zinc-50 dark:bg-white/2.5" />
                             </th>
                           </tr>
                           {day.transactions.map((transaction) => (
@@ -392,16 +392,16 @@ export function DashboardOverview() {
                                     className="hidden h-6 w-5 flex-none text-zinc-500 sm:block"
                                   />
                                   <div className="flex-auto">
-                                    <div className="text-sm/6 font-medium text-white">{transaction.title}</div>
+                                    <div className="text-sm/6 font-medium text-zinc-900 dark:text-white">{transaction.title}</div>
                                     <div className="mt-1 text-xs/5 text-zinc-400">{transaction.description}</div>
                                   </div>
                                 </div>
-                                <div className="absolute right-full bottom-0 h-px w-screen bg-white/5" />
-                                <div className="absolute bottom-0 left-0 h-px w-screen bg-white/5" />
+                                <div className="absolute right-full bottom-0 h-px w-screen bg-zinc-200 dark:bg-white/5" />
+                                <div className="absolute bottom-0 left-0 h-px w-screen bg-zinc-200 dark:bg-white/5" />
                               </td>
                               <td className="hidden py-5 pr-6 sm:table-cell">
                                 <div className="flex items-start gap-x-3">
-                                  <div className="text-sm/6 text-white">{transaction.category}</div>
+                                  <div className="text-sm/6 text-zinc-700 dark:text-white">{transaction.category}</div>
                                   <div
                                     className={classNames(
                                       statuses[transaction.status as keyof typeof statuses] || statuses.draft,
@@ -411,7 +411,7 @@ export function DashboardOverview() {
                                     {transaction.status}
                                   </div>
                                 </div>
-                                <div className="mt-1 flex gap-2 text-xs/5 text-zinc-400">
+                                <div className="mt-1 flex gap-2 text-xs/5 text-zinc-500 dark:text-zinc-400">
                                   <span>{transaction.date}</span>
                                   <span>&middot;</span>
                                   <span>{transaction.readingTime} read</span>
@@ -421,7 +421,7 @@ export function DashboardOverview() {
                                 <div className="flex justify-end">
                                   <Link
                                     to="/articles"
-                                    className="text-sm/6 font-medium text-indigo-400 hover:text-indigo-300"
+                                    className="text-sm/6 font-medium text-teal-700 dark:text-teal-400 hover:text-teal-600 dark:hover:text-teal-300"
                                   >
                                     View<span className="hidden sm:inline"> article</span>
                                     <span className="sr-only">
@@ -445,33 +445,33 @@ export function DashboardOverview() {
           <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
             <div className="mx-auto max-w-2xl lg:mx-0 lg:max-w-none">
               <div className="flex items-center justify-between">
-                <h2 className="text-base/7 font-semibold text-white">Content Pipeline</h2>
-                <Link to="/articles" className="text-sm/6 font-semibold text-indigo-400 hover:text-indigo-300">
+                <h2 className="text-base/7 font-semibold text-zinc-900 dark:text-white">Content Pipeline</h2>
+                <Link to="/articles" className="text-sm/6 font-semibold text-teal-700 dark:text-teal-400 hover:text-teal-600 dark:hover:text-teal-300">
                   View all articles &rarr;
                 </Link>
               </div>
               <ul role="list" className="mt-6 grid grid-cols-1 gap-x-6 gap-y-8 lg:grid-cols-3 xl:gap-x-8">
                 {pipelines.map((pipeline) => (
-                  <li key={pipeline.id} className="overflow-hidden rounded-xl outline -outline-offset-1 outline-white/10">
-                    <div className="flex items-center gap-x-4 border-b border-white/10 bg-zinc-800/50 p-6">
-                      <div className="text-sm/6 font-semibold text-white">{pipeline.name}</div>
-                      <div className="ml-2 rounded-full bg-indigo-500/10 px-2 py-0.5 text-xs font-medium text-indigo-400 ring-1 ring-inset ring-indigo-500/20">
+                  <li key={pipeline.id} className="overflow-hidden rounded-xl outline -outline-offset-1 outline-zinc-200 dark:outline-white/10">
+                    <div className="flex items-center gap-x-4 border-b border-zinc-200 dark:border-white/10 bg-zinc-50 dark:bg-zinc-800/50 p-6">
+                      <div className="text-sm/6 font-semibold text-zinc-900 dark:text-white">{pipeline.name}</div>
+                      <div className="ml-2 rounded-full bg-teal-500/10 px-2 py-0.5 text-xs font-medium text-teal-700 dark:text-teal-400 ring-1 ring-inset ring-teal-500/20">
                         {pipeline.count}
                       </div>
                       <Menu as="div" className="relative ml-auto">
-                        <MenuButton className="relative block text-zinc-500 hover:text-white">
+                        <MenuButton className="relative block text-zinc-400 hover:text-zinc-900 dark:hover:text-white">
                           <span className="absolute -inset-2.5" />
                           <span className="sr-only">Open options</span>
                           <EllipsisHorizontalIcon aria-hidden="true" className="size-5" />
                         </MenuButton>
                         <MenuItems
                           transition
-                          className="absolute right-0 z-10 mt-0.5 w-32 origin-top-right rounded-md bg-zinc-800 py-2 outline-1 -outline-offset-1 outline-white/10 transition data-closed:scale-95 data-closed:transform data-closed:opacity-0 data-enter:duration-100 data-enter:ease-out data-leave:duration-75 data-leave:ease-in"
+                          className="absolute right-0 z-10 mt-0.5 w-32 origin-top-right rounded-md bg-white dark:bg-zinc-800 py-2 shadow-lg ring-1 ring-zinc-200 dark:ring-white/10 transition data-closed:scale-95 data-closed:transform data-closed:opacity-0 data-enter:duration-100 data-enter:ease-out data-leave:duration-75 data-leave:ease-in"
                         >
                           <MenuItem>
                             <Link
                               to="/articles"
-                              className="block px-3 py-1 text-sm/6 text-white data-focus:bg-white/5 data-focus:outline-hidden"
+                              className="block px-3 py-1 text-sm/6 text-zinc-700 dark:text-white hover:bg-zinc-50 dark:data-focus:bg-white/5 data-focus:outline-hidden"
                             >
                               View list
                             </Link>
@@ -479,13 +479,13 @@ export function DashboardOverview() {
                         </MenuItems>
                       </Menu>
                     </div>
-                    <dl className="-my-3 divide-y divide-white/10 px-6 py-4 text-sm/6">
+                    <dl className="-my-3 divide-y divide-zinc-200 dark:divide-white/10 px-6 py-4 text-sm/6">
                       {pipeline.articles.map((article) => (
                         <div key={article.title} className="flex flex-col py-3">
-                          <dt className="text-sm/6 font-medium text-white truncate" title={article.title}>{article.title}</dt>
-                          <dd className="mt-1 flex justify-between gap-x-4 text-xs/5 text-zinc-400">
+                          <dt className="text-sm/6 font-medium text-zinc-900 dark:text-white truncate" title={article.title}>{article.title}</dt>
+                          <dd className="mt-1 flex justify-between gap-x-4 text-xs/5 text-zinc-500 dark:text-zinc-400">
                             <span>{article.detail}</span>
-                            <span className="text-zinc-300 font-medium">{article.status}</span>
+                            <span className="text-zinc-600 dark:text-zinc-300 font-medium">{article.status}</span>
                           </dd>
                         </div>
                       ))}
@@ -498,20 +498,20 @@ export function DashboardOverview() {
 
           {/* Quick Actions */}
           <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-            <h2 className="text-base/7 font-semibold text-white">Quick Actions</h2>
+            <h2 className="text-base/7 font-semibold text-zinc-900 dark:text-white">Quick Actions</h2>
             <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
               {quickActions.map((action) => (
                 <button
                   key={action.label}
                   type="button"
                   onClick={() => navigate({ to: action.href } as any)}
-                  className="group flex items-center gap-4 rounded-xl border border-white/10 bg-zinc-800/50 p-4 text-left transition-all hover:border-indigo-500/30 hover:bg-white/5"
+                  className="group flex items-center gap-4 rounded-xl border border-zinc-200 dark:border-white/10 bg-zinc-50 dark:bg-zinc-800/50 p-4 text-left transition-all hover:border-teal-500/30 hover:bg-zinc-100 dark:hover:bg-white/5"
                 >
-                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-indigo-500/10 text-indigo-400 ring-1 ring-inset ring-indigo-500/20">
+                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-teal-500/10 text-teal-700 dark:text-teal-400 ring-1 ring-inset ring-teal-500/20">
                     <PlusSmallIcon className="size-5" />
                   </div>
                   <div>
-                    <p className="text-sm font-semibold text-white">
+                    <p className="text-sm font-semibold text-zinc-900 dark:text-white">
                       {action.label}
                     </p>
                     <p className="text-xs text-zinc-400">

@@ -24,39 +24,44 @@ export function Stats({ stats }: StatsProps) {
   }[stats.length] || 'lg:grid-cols-4'
 
   return (
-    <div className="border-b border-b-white/10 lg:border-t lg:border-t-white/5">
+    <div className="border-b border-zinc-200 dark:border-zinc-700/50 lg:border-t lg:border-zinc-200 dark:lg:border-zinc-700/30">
       <dl className={classNames("mx-auto grid max-w-7xl grid-cols-1 sm:grid-cols-2 lg:px-2 xl:px-0", gridColsLg)}>
         {stats.map((stat, statIdx) => {
           let borderClass = '';
           if (statIdx % 2 === 1) {
-            borderClass = 'sm:border-l';
+            borderClass = 'sm:border-l sm:border-zinc-200 dark:sm:border-zinc-700/30';
           }
           if (statIdx > 0) {
-            borderClass = classNames(borderClass, 'lg:border-l');
+            borderClass = classNames(borderClass, 'lg:border-l lg:border-zinc-200 dark:lg:border-zinc-700/30');
           }
-          
+
           return (
             <div
               key={stat.name}
               className={classNames(
                 borderClass,
-                'flex flex-wrap items-baseline justify-between gap-x-4 gap-y-2 border-t border-white/5 px-4 py-10 sm:px-6 lg:border-t-0 xl:px-8',
+                'flex flex-wrap items-baseline justify-between gap-x-4 gap-y-2 border-t border-zinc-200 dark:border-zinc-700/30 px-4 py-10 sm:px-6 lg:border-t-0 xl:px-8',
               )}
             >
-            <dt className="text-sm/6 font-medium text-zinc-400 w-full">{stat.name}</dt>
-            <dd className="w-full flex-none text-3xl/10 font-medium tracking-tight text-white">{stat.value}</dd>
-            {stat.change && (
-              <dd
-                className={classNames(
-                  stat.changeType === 'negative' ? 'text-rose-400' : stat.changeType === 'positive' ? 'text-green-400' : 'text-zinc-400',
-                  'text-xs font-medium w-full',
-                )}
-              >
-                {stat.change}
-              </dd>
-            )}
-          </div>
-        )})}
+              <dt className="text-sm/6 font-medium text-zinc-500 dark:text-zinc-400 w-full">{stat.name}</dt>
+              <dd className="w-full flex-none text-3xl/10 font-medium tracking-tight text-zinc-900 dark:text-white">{stat.value}</dd>
+              {stat.change && (
+                <dd
+                  className={classNames(
+                    stat.changeType === 'negative'
+                      ? 'text-rose-600 dark:text-rose-400'
+                      : stat.changeType === 'positive'
+                        ? 'text-green-600 dark:text-green-400'
+                        : 'text-zinc-500 dark:text-zinc-400',
+                    'text-xs font-medium w-full',
+                  )}
+                >
+                  {stat.change}
+                </dd>
+              )}
+            </div>
+          )
+        })}
       </dl>
     </div>
   )
