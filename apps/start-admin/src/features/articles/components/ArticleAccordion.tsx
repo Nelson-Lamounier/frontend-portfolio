@@ -42,7 +42,7 @@ export function ArticleAccordion({ article, isDraft }: ArticleAccordionProps) {
                   {article.tags.map((tag) => (
                     <span
                       key={tag}
-                      className="inline-block rounded-md bg-white/5 border border-white/10 px-2 py-0.5 text-[11px] text-gray-400"
+                      className="inline-block rounded-md bg-white/5 border border-white/10 px-2 py-0.5 text-[11px] text-zinc-400"
                     >
                       {tag}
                     </span>
@@ -50,12 +50,12 @@ export function ArticleAccordion({ article, isDraft }: ArticleAccordionProps) {
                 </div>
               )}
               {article.category && (
-                <span className="text-xs text-gray-500 border-l border-white/10 pl-2 ml-1">
+                <span className="text-xs text-zinc-500 border-l border-white/10 pl-2 ml-1">
                   {article.category}
                 </span>
               )}
               {article.readingTimeMinutes && (
-                <span className="text-xs text-gray-500 border-l border-white/10 pl-2 ml-1">
+                <span className="text-xs text-zinc-500 border-l border-white/10 pl-2 ml-1">
                   {article.readingTimeMinutes} min read
                 </span>
               )}

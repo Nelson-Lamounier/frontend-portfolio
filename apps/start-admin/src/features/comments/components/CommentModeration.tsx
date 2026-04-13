@@ -75,7 +75,7 @@ export function CommentModeration() {
     return (
       <main>
         <div className="mx-auto max-w-7xl px-4 py-16 sm:px-6 lg:px-8">
-          <p className="text-sm/6 text-gray-400">Loading comments...</p>
+          <p className="text-sm/6 text-zinc-400">Loading comments...</p>
         </div>
       </main>
     )
@@ -115,7 +115,7 @@ export function CommentModeration() {
           <div className="mx-auto flex max-w-7xl flex-wrap items-center gap-6 px-4 sm:flex-nowrap sm:px-6 lg:px-8">
             <div>
               <h1 className="text-base/7 font-semibold text-white">Engagement Dashboard</h1>
-              <p className="mt-1 text-sm text-gray-400">
+              <p className="mt-1 text-sm text-zinc-400">
                 Monitor discussion sentiment, track engagement metrics, and join the conversation.
               </p>
             </div>
@@ -157,7 +157,7 @@ export function CommentModeration() {
             <section>
               <div className="mb-6 flex items-center justify-between border-b border-white/5 pb-4">
                 <h2 className="text-base font-semibold text-white">Comments</h2>
-                <div className="flex items-center gap-2 text-sm text-gray-400">
+                <div className="flex items-center gap-2 text-sm text-zinc-400">
                   <span className="hidden sm:inline">Sort by:</span>
                   <select
                     value={sortBy}
@@ -188,7 +188,7 @@ export function CommentModeration() {
                     />
                   ))
                 ) : (
-                  <p className="text-center text-sm text-gray-500 py-8">
+                  <p className="text-center text-sm text-zinc-500 py-8">
                     No comments yet. Be the first to start the discussion!
                   </p>
                 )}

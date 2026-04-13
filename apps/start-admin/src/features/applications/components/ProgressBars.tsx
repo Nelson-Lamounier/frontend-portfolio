@@ -83,7 +83,7 @@ export function ProgressBars({ slug }: { slug: string }) {
                       </span>
                       <span className="ml-4 flex min-w-0 flex-col">
                         <span className="text-sm font-medium text-white">{step.name}</span>
-                        <span className="text-sm text-gray-400">{step.description}</span>
+                        <span className="text-sm text-zinc-400">{step.description}</span>
                       </span>
                     </div>
                   </>
@@ -103,7 +103,7 @@ export function ProgressBars({ slug }: { slug: string }) {
                           {step.name}
                           <Loader2 className="w-3 h-3 animate-spin" />
                         </span>
-                        <span className="text-sm text-gray-400">{step.description}</span>
+                        <span className="text-sm text-zinc-400">{step.description}</span>
                       </span>
                     </div>
                   </>

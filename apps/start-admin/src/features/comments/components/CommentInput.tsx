@@ -34,7 +34,7 @@ export function CommentInput({ onSubmit }: CommentInputProps) {
   }
 
   return (
-    <div className="rounded-xl border border-white/10 bg-gray-800/50 p-4 shadow-sm">
+    <div className="rounded-xl border border-white/10 bg-zinc-800/50 p-4 shadow-sm">
       <form onSubmit={handleSubmit}>
         <label htmlFor="comment" className="sr-only">
           Add your comment
@@ -45,7 +45,7 @@ export function CommentInput({ onSubmit }: CommentInputProps) {
           rows={3}
           value={body}
           onChange={(e) => setBody(e.target.value)}
-          className="block w-full resize-none rounded-lg border-0 bg-white/5 py-2.5 text-white placeholder-gray-400 focus:ring-2 focus:ring-inset focus:ring-teal-500 sm:text-sm sm:leading-6"
+          className="block w-full resize-none rounded-lg border-0 bg-white/5 py-2.5 text-white placeholder-zinc-400 focus:ring-2 focus:ring-inset focus:ring-teal-500 sm:text-sm sm:leading-6"
           placeholder="Add your comment..."
         />
         
@@ -56,9 +56,9 @@ export function CommentInput({ onSubmit }: CommentInputProps) {
                 key={reaction.label}
                 type="button"
                 onClick={() => handleReactionClick(reaction.label)}
-                className="inline-flex items-center gap-x-1.5 rounded-full bg-white/5 px-2.5 py-1 text-xs font-semibold text-gray-300 ring-1 ring-inset ring-white/10 hover:bg-white/10 hover:text-white"
+                className="inline-flex items-center gap-x-1.5 rounded-full bg-white/5 px-2.5 py-1 text-xs font-semibold text-zinc-300 ring-1 ring-inset ring-white/10 hover:bg-white/10 hover:text-white"
               >
-                <reaction.icon className="-ml-0.5 h-4 w-4 text-gray-400" aria-hidden="true" />
+                <reaction.icon className="-ml-0.5 h-4 w-4 text-zinc-400" aria-hidden="true" />
                 {reaction.label}
               </button>
             ))}

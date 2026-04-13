@@ -572,7 +572,7 @@ const months = [
 export default function Example() {
   return (
     <div>
-      <header className="flex items-center justify-between border-b border-white/10 bg-gray-800/50 px-6 py-4">
+      <header className="flex items-center justify-between border-b border-white/10 bg-zinc-800/50 px-6 py-4">
         <h1 className="text-base font-semibold text-white">
           <time dateTime="2022">2022</time>
         </h1>
@@ -580,7 +580,7 @@ export default function Example() {
           <div className="relative flex items-center rounded-md bg-white/10 outline -outline-offset-1 outline-white/5 md:items-stretch">
             <button
               type="button"
-              className="flex h-9 w-12 items-center justify-center rounded-l-md pr-1 text-gray-400 hover:text-white focus:relative md:w-9 md:pr-0 md:hover:bg-white/10"
+              className="flex h-9 w-12 items-center justify-center rounded-l-md pr-1 text-zinc-400 hover:text-white focus:relative md:w-9 md:pr-0 md:hover:bg-white/10"
             >
               <span className="sr-only">Previous year</span>
               <ChevronLeftIcon aria-hidden="true" className="size-5" />
@@ -594,7 +594,7 @@ export default function Example() {
             <span className="relative -mx-px h-5 w-px bg-white/10 md:hidden" />
             <button
               type="button"
-              className="flex h-9 w-12 items-center justify-center rounded-r-md pl-1 text-gray-400 hover:text-white focus:relative md:w-9 md:pl-0 md:hover:bg-white/10"
+              className="flex h-9 w-12 items-center justify-center rounded-r-md pl-1 text-zinc-400 hover:text-white focus:relative md:w-9 md:pl-0 md:hover:bg-white/10"
             >
               <span className="sr-only">Next year</span>
               <ChevronRightIcon aria-hidden="true" className="size-5" />
@@ -607,19 +607,19 @@ export default function Example() {
                 className="flex items-center gap-x-1.5 rounded-md bg-white/10 px-3 py-2 text-sm font-semibold text-white inset-ring inset-ring-white/5 hover:bg-white/20"
               >
                 Year view
-                <ChevronDownIcon aria-hidden="true" className="-mr-1 size-5 text-gray-400" />
+                <ChevronDownIcon aria-hidden="true" className="-mr-1 size-5 text-zinc-400" />
               </MenuButton>
 
               <MenuItems
                 transition
-                className="absolute right-0 z-10 mt-3 w-36 origin-top-right overflow-hidden rounded-md bg-gray-800 outline-1 -outline-offset-1 outline-white/5 transition data-closed:scale-95 data-closed:transform data-closed:opacity-0 data-enter:duration-100 data-enter:ease-out data-leave:duration-75 data-leave:ease-in"
+                className="absolute right-0 z-10 mt-3 w-36 origin-top-right overflow-hidden rounded-md bg-zinc-800 outline-1 -outline-offset-1 outline-white/5 transition data-closed:scale-95 data-closed:transform data-closed:opacity-0 data-enter:duration-100 data-enter:ease-out data-leave:duration-75 data-leave:ease-in"
               >
                 <div className="py-1">
                   <MenuItem>
                     <Link
                       to="/calendar"
                       search={{ view: 'day' }}
-                      className="block px-4 py-2 text-sm text-gray-300 data-focus:bg-white/5 data-focus:text-white data-focus:outline-hidden"
+                      className="block px-4 py-2 text-sm text-zinc-300 data-focus:bg-white/5 data-focus:text-white data-focus:outline-hidden"
                     >
                       Day view
                     </Link>
@@ -628,7 +628,7 @@ export default function Example() {
                     <Link
                       to="/calendar"
                       search={{ view: 'week' }}
-                      className="block px-4 py-2 text-sm text-gray-300 data-focus:bg-white/5 data-focus:text-white data-focus:outline-hidden"
+                      className="block px-4 py-2 text-sm text-zinc-300 data-focus:bg-white/5 data-focus:text-white data-focus:outline-hidden"
                     >
                       Week view
                     </Link>
@@ -637,7 +637,7 @@ export default function Example() {
                     <Link
                       to="/calendar"
                       search={{ view: 'month' }}
-                      className="block px-4 py-2 text-sm text-gray-300 data-focus:bg-white/5 data-focus:text-white data-focus:outline-hidden"
+                      className="block px-4 py-2 text-sm text-zinc-300 data-focus:bg-white/5 data-focus:text-white data-focus:outline-hidden"
                     >
                       Month view
                     </Link>
@@ -646,7 +646,7 @@ export default function Example() {
                     <Link
                       to="/calendar"
                       search={{ view: 'year' }}
-                      className="block px-4 py-2 text-sm text-gray-300 data-focus:bg-white/5 data-focus:text-white data-focus:outline-hidden"
+                      className="block px-4 py-2 text-sm text-zinc-300 data-focus:bg-white/5 data-focus:text-white data-focus:outline-hidden"
                     >
                       Year view
                     </Link>
@@ -664,7 +664,7 @@ export default function Example() {
           </div>
           <div className="ml-6 md:hidden">
             <Menu as="div" className="relative">
-              <MenuButton className="relative flex items-center rounded-full text-gray-400 outline-offset-8 hover:text-white">
+              <MenuButton className="relative flex items-center rounded-full text-zinc-400 outline-offset-8 hover:text-white">
                 <span className="absolute -inset-2" />
                 <span className="sr-only">Open menu</span>
                 <EllipsisHorizontalIcon aria-hidden="true" className="size-5" />
@@ -672,13 +672,13 @@ export default function Example() {
 
               <MenuItems
                 transition
-                className="absolute right-0 z-10 mt-3 w-36 origin-top-right divide-y divide-white/10 overflow-hidden rounded-md bg-gray-800 shadow-lg outline-1 -outline-offset-1 outline-white/5 transition data-closed:scale-95 data-closed:transform data-closed:opacity-0 data-enter:duration-100 data-enter:ease-out data-leave:duration-75 data-leave:ease-in"
+                className="absolute right-0 z-10 mt-3 w-36 origin-top-right divide-y divide-white/10 overflow-hidden rounded-md bg-zinc-800 shadow-lg outline-1 -outline-offset-1 outline-white/5 transition data-closed:scale-95 data-closed:transform data-closed:opacity-0 data-enter:duration-100 data-enter:ease-out data-leave:duration-75 data-leave:ease-in"
               >
                 <div className="py-1">
                   <MenuItem>
                     <a
                       href="#"
-                      className="block px-4 py-2 text-sm text-gray-300 data-focus:bg-white/5 data-focus:text-white data-focus:outline-hidden"
+                      className="block px-4 py-2 text-sm text-zinc-300 data-focus:bg-white/5 data-focus:text-white data-focus:outline-hidden"
                     >
                       Create event
                     </a>
@@ -688,7 +688,7 @@ export default function Example() {
                   <MenuItem>
                     <a
                       href="#"
-                      className="block px-4 py-2 text-sm text-gray-300 data-focus:bg-white/5 data-focus:text-white data-focus:outline-hidden"
+                      className="block px-4 py-2 text-sm text-zinc-300 data-focus:bg-white/5 data-focus:text-white data-focus:outline-hidden"
                     >
                       Go to today
                     </a>
@@ -699,7 +699,7 @@ export default function Example() {
                     <Link
                       to="/calendar"
                       search={{ view: 'day' }}
-                      className="block px-4 py-2 text-sm text-gray-300 data-focus:bg-white/5 data-focus:text-white data-focus:outline-hidden"
+                      className="block px-4 py-2 text-sm text-zinc-300 data-focus:bg-white/5 data-focus:text-white data-focus:outline-hidden"
                     >
                       Day view
                     </Link>
@@ -708,7 +708,7 @@ export default function Example() {
                     <Link
                       to="/calendar"
                       search={{ view: 'week' }}
-                      className="block px-4 py-2 text-sm text-gray-300 data-focus:bg-white/5 data-focus:text-white data-focus:outline-hidden"
+                      className="block px-4 py-2 text-sm text-zinc-300 data-focus:bg-white/5 data-focus:text-white data-focus:outline-hidden"
                     >
                       Week view
                     </Link>
@@ -717,7 +717,7 @@ export default function Example() {
                     <Link
                       to="/calendar"
                       search={{ view: 'month' }}
-                      className="block px-4 py-2 text-sm text-gray-300 data-focus:bg-white/5 data-focus:text-white data-focus:outline-hidden"
+                      className="block px-4 py-2 text-sm text-zinc-300 data-focus:bg-white/5 data-focus:text-white data-focus:outline-hidden"
                     >
                       Month view
                     </Link>
@@ -726,7 +726,7 @@ export default function Example() {
                     <Link
                       to="/calendar"
                       search={{ view: 'year' }}
-                      className="block px-4 py-2 text-sm text-gray-300 data-focus:bg-white/5 data-focus:text-white data-focus:outline-hidden"
+                      className="block px-4 py-2 text-sm text-zinc-300 data-focus:bg-white/5 data-focus:text-white data-focus:outline-hidden"
                     >
                       Year view
                     </Link>
@@ -737,12 +737,12 @@ export default function Example() {
           </div>
         </div>
       </header>
-      <div className="bg-gray-900">
+      <div className="bg-zinc-900">
         <div className="mx-auto grid max-w-3xl grid-cols-1 gap-x-8 gap-y-16 px-4 py-16 sm:grid-cols-2 sm:px-6 xl:max-w-none xl:grid-cols-3 xl:px-8 2xl:grid-cols-4">
           {months.map((month) => (
             <section key={month.name} className="text-center">
               <h2 className="text-sm font-semibold text-white">{month.name}</h2>
-              <div className="mt-6 grid grid-cols-7 text-xs/6 text-gray-400">
+              <div className="mt-6 grid grid-cols-7 text-xs/6 text-zinc-400">
                 <div>M</div>
                 <div>T</div>
                 <div>W</div>
@@ -758,7 +758,7 @@ export default function Example() {
                     type="button"
                     data-is-today={day.isToday ? '' : undefined}
                     data-is-current-month={day.isCurrentMonth ? '' : undefined}
-                    className="relative bg-gray-900/75 py-1.5 text-gray-500 first:rounded-tl-lg last:rounded-br-lg hover:bg-gray-900/25 focus:z-10 data-is-current-month:bg-gray-900 data-is-current-month:text-gray-100 data-is-current-month:hover:bg-gray-900/50 nth-36:rounded-bl-lg nth-7:rounded-tr-lg"
+                    className="relative bg-zinc-900/75 py-1.5 text-zinc-500 first:rounded-tl-lg last:rounded-br-lg hover:bg-zinc-900/25 focus:z-10 data-is-current-month:bg-zinc-900 data-is-current-month:text-zinc-100 data-is-current-month:hover:bg-zinc-900/50 nth-36:rounded-bl-lg nth-7:rounded-tr-lg"
                   >
                     <time
                       dateTime={day.date}

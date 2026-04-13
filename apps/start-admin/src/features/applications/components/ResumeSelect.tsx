@@ -28,9 +28,9 @@ export function ResumeSelect({ onSelect }: ResumeSelectProps) {
   if (!hasResumes) {
     return (
       <div className="mx-auto max-w-lg text-center mt-12 mb-8 overflow-hidden rounded-lg border border-white/10 bg-white/5 shadow-sm p-12">
-        <DocumentTextIcon className="mx-auto h-12 w-12 text-gray-400" />
+        <DocumentTextIcon className="mx-auto h-12 w-12 text-zinc-400" />
         <h3 className="mt-2 text-sm font-semibold text-white">No resumes found</h3>
-        <p className="mt-1 text-sm text-gray-400">
+        <p className="mt-1 text-sm text-zinc-400">
           You need to create a resume before starting an application analysis.
         </p>
         <div className="mt-6">
@@ -56,7 +56,7 @@ export function ResumeSelect({ onSelect }: ResumeSelectProps) {
   return (
     <div className="mx-auto max-w-2xl mt-8">
       <h2 className="text-base font-semibold text-white">Select a Resume</h2>
-      <p className="mt-1 text-sm text-gray-400">Choose the resume version you want to use for this analysis.</p>
+      <p className="mt-1 text-sm text-zinc-400">Choose the resume version you want to use for this analysis.</p>
       
       <ul role="list" className="mt-6 divide-y divide-white/10 border-y border-white/10">
         {sortedResumes.map((resume) => (
@@ -84,12 +84,12 @@ export function ResumeSelect({ onSelect }: ResumeSelectProps) {
                     </span>
                   )}
                 </div>
-                <p className="text-sm text-gray-400 mt-1">
+                <p className="text-sm text-zinc-400 mt-1">
                   Last updated {new Date(resume.updatedAt).toLocaleDateString()}
                 </p>
               </div>
               <div className="shrink-0 self-center pr-4">
-                <ChevronRightIcon aria-hidden="true" className="size-5 text-gray-500 group-hover:text-gray-300" />
+                <ChevronRightIcon aria-hidden="true" className="size-5 text-zinc-500 group-hover:text-zinc-300" />
               </div>
             </div>
           </li>

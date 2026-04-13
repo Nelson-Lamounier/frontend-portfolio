@@ -5,7 +5,7 @@ import { Link } from '@tanstack/react-router'
 export default function Example() {
   return (
     <div className="flex h-full flex-col">
-      <header className="flex flex-none items-center justify-between border-b border-white/15 bg-gray-800/50 px-6 py-4">
+      <header className="flex flex-none items-center justify-between border-b border-white/15 bg-zinc-800/50 px-6 py-4">
         <h1 className="text-base font-semibold text-white">
           <time dateTime="2022-01">January 2022</time>
         </h1>
@@ -13,7 +13,7 @@ export default function Example() {
           <div className="relative flex items-center rounded-md bg-white/10 outline -outline-offset-1 outline-white/5 md:items-stretch">
             <button
               type="button"
-              className="flex h-9 w-12 items-center justify-center rounded-l-md pr-1 text-gray-400 hover:text-white focus:relative md:w-9 md:pr-0 md:hover:bg-white/10"
+              className="flex h-9 w-12 items-center justify-center rounded-l-md pr-1 text-zinc-400 hover:text-white focus:relative md:w-9 md:pr-0 md:hover:bg-white/10"
             >
               <span className="sr-only">Previous week</span>
               <ChevronLeftIcon aria-hidden="true" className="size-5" />
@@ -27,7 +27,7 @@ export default function Example() {
             <span className="relative -mx-px h-5 w-px bg-white/10 md:hidden" />
             <button
               type="button"
-              className="flex h-9 w-12 items-center justify-center rounded-r-md pl-1 text-gray-400 hover:text-white focus:relative md:w-9 md:pl-0 md:hover:bg-white/10"
+              className="flex h-9 w-12 items-center justify-center rounded-r-md pl-1 text-zinc-400 hover:text-white focus:relative md:w-9 md:pl-0 md:hover:bg-white/10"
             >
               <span className="sr-only">Next week</span>
               <ChevronRightIcon aria-hidden="true" className="size-5" />
@@ -40,19 +40,19 @@ export default function Example() {
                 className="flex items-center gap-x-1.5 rounded-md bg-white/10 px-3 py-2 text-sm font-semibold text-white inset-ring inset-ring-white/5 hover:bg-white/20"
               >
                 Week view
-                <ChevronDownIcon aria-hidden="true" className="-mr-1 size-5 text-gray-500" />
+                <ChevronDownIcon aria-hidden="true" className="-mr-1 size-5 text-zinc-500" />
               </MenuButton>
 
               <MenuItems
                 transition
-                className="absolute right-0 z-10 mt-3 w-36 origin-top-right overflow-hidden rounded-md bg-gray-800 shadow-lg outline-1 -outline-offset-1 outline-white/10 transition data-closed:scale-95 data-closed:transform data-closed:opacity-0 data-enter:duration-100 data-enter:ease-out data-leave:duration-75 data-leave:ease-in"
+                className="absolute right-0 z-10 mt-3 w-36 origin-top-right overflow-hidden rounded-md bg-zinc-800 shadow-lg outline-1 -outline-offset-1 outline-white/10 transition data-closed:scale-95 data-closed:transform data-closed:opacity-0 data-enter:duration-100 data-enter:ease-out data-leave:duration-75 data-leave:ease-in"
               >
                 <div className="py-1">
                   <MenuItem>
                     <Link
                       to="/calendar"
                       search={{ view: 'day' }}
-                      className="block px-4 py-2 text-sm text-gray-300 data-focus:bg-white/5 data-focus:text-white data-focus:outline-hidden"
+                      className="block px-4 py-2 text-sm text-zinc-300 data-focus:bg-white/5 data-focus:text-white data-focus:outline-hidden"
                     >
                       Day view
                     </Link>
@@ -61,7 +61,7 @@ export default function Example() {
                     <Link
                       to="/calendar"
                       search={{ view: 'week' }}
-                      className="block px-4 py-2 text-sm text-gray-300 data-focus:bg-white/5 data-focus:text-white data-focus:outline-hidden"
+                      className="block px-4 py-2 text-sm text-zinc-300 data-focus:bg-white/5 data-focus:text-white data-focus:outline-hidden"
                     >
                       Week view
                     </Link>
@@ -70,7 +70,7 @@ export default function Example() {
                     <Link
                       to="/calendar"
                       search={{ view: 'month' }}
-                      className="block px-4 py-2 text-sm text-gray-300 data-focus:bg-white/5 data-focus:text-white data-focus:outline-hidden"
+                      className="block px-4 py-2 text-sm text-zinc-300 data-focus:bg-white/5 data-focus:text-white data-focus:outline-hidden"
                     >
                       Month view
                     </Link>
@@ -79,7 +79,7 @@ export default function Example() {
                     <Link
                       to="/calendar"
                       search={{ view: 'year' }}
-                      className="block px-4 py-2 text-sm text-gray-300 data-focus:bg-white/5 data-focus:text-white data-focus:outline-hidden"
+                      className="block px-4 py-2 text-sm text-zinc-300 data-focus:bg-white/5 data-focus:text-white data-focus:outline-hidden"
                     >
                       Year view
                     </Link>
@@ -97,7 +97,7 @@ export default function Example() {
           </div>
           <div className="ml-6 md:hidden">
             <Menu as="div" className="relative">
-              <MenuButton className="relative flex items-center rounded-full text-gray-400 outline-offset-8 hover:text-white">
+              <MenuButton className="relative flex items-center rounded-full text-zinc-400 outline-offset-8 hover:text-white">
                 <span className="absolute -inset-2" />
                 <span className="sr-only">Open menu</span>
                 <EllipsisHorizontalIcon aria-hidden="true" className="size-5" />
@@ -105,13 +105,13 @@ export default function Example() {
 
               <MenuItems
                 transition
-                className="absolute right-0 z-10 mt-3 w-36 origin-top-right divide-y divide-white/10 overflow-hidden rounded-md bg-gray-800 shadow-lg outline-1 -outline-offset-1 outline-white/10 transition data-closed:scale-95 data-closed:transform data-closed:opacity-0 data-enter:duration-100 data-enter:ease-out data-leave:duration-75 data-leave:ease-in"
+                className="absolute right-0 z-10 mt-3 w-36 origin-top-right divide-y divide-white/10 overflow-hidden rounded-md bg-zinc-800 shadow-lg outline-1 -outline-offset-1 outline-white/10 transition data-closed:scale-95 data-closed:transform data-closed:opacity-0 data-enter:duration-100 data-enter:ease-out data-leave:duration-75 data-leave:ease-in"
               >
                 <div className="py-1">
                   <MenuItem>
                     <a
                       href="#"
-                      className="block px-4 py-2 text-sm text-gray-300 data-focus:bg-white/5 data-focus:text-white data-focus:outline-hidden"
+                      className="block px-4 py-2 text-sm text-zinc-300 data-focus:bg-white/5 data-focus:text-white data-focus:outline-hidden"
                     >
                       Create event
                     </a>
@@ -121,7 +121,7 @@ export default function Example() {
                   <MenuItem>
                     <a
                       href="#"
-                      className="block px-4 py-2 text-sm text-gray-300 data-focus:bg-white/5 data-focus:text-white data-focus:outline-hidden"
+                      className="block px-4 py-2 text-sm text-zinc-300 data-focus:bg-white/5 data-focus:text-white data-focus:outline-hidden"
                     >
                       Go to today
                     </a>
@@ -132,7 +132,7 @@ export default function Example() {
                     <Link
                       to="/calendar"
                       search={{ view: 'day' }}
-                      className="block px-4 py-2 text-sm text-gray-300 data-focus:bg-white/5 data-focus:text-white data-focus:outline-hidden"
+                      className="block px-4 py-2 text-sm text-zinc-300 data-focus:bg-white/5 data-focus:text-white data-focus:outline-hidden"
                     >
                       Day view
                     </Link>
@@ -141,7 +141,7 @@ export default function Example() {
                     <Link
                       to="/calendar"
                       search={{ view: 'week' }}
-                      className="block px-4 py-2 text-sm text-gray-300 data-focus:bg-white/5 data-focus:text-white data-focus:outline-hidden"
+                      className="block px-4 py-2 text-sm text-zinc-300 data-focus:bg-white/5 data-focus:text-white data-focus:outline-hidden"
                     >
                       Week view
                     </Link>
@@ -150,7 +150,7 @@ export default function Example() {
                     <Link
                       to="/calendar"
                       search={{ view: 'month' }}
-                      className="block px-4 py-2 text-sm text-gray-300 data-focus:bg-white/5 data-focus:text-white data-focus:outline-hidden"
+                      className="block px-4 py-2 text-sm text-zinc-300 data-focus:bg-white/5 data-focus:text-white data-focus:outline-hidden"
                     >
                       Month view
                     </Link>
@@ -159,7 +159,7 @@ export default function Example() {
                     <Link
                       to="/calendar"
                       search={{ view: 'year' }}
-                      className="block px-4 py-2 text-sm text-gray-300 data-focus:bg-white/5 data-focus:text-white data-focus:outline-hidden"
+                      className="block px-4 py-2 text-sm text-zinc-300 data-focus:bg-white/5 data-focus:text-white data-focus:outline-hidden"
                     >
                       Year view
                     </Link>
@@ -170,10 +170,10 @@ export default function Example() {
           </div>
         </div>
       </header>
-      <div className="isolate flex flex-auto flex-col overflow-auto bg-gray-900">
+      <div className="isolate flex flex-auto flex-col overflow-auto bg-zinc-900">
         <div style={{ width: '165%' }} className="flex max-w-full flex-none flex-col sm:max-w-none md:max-w-full">
-          <div className="sticky top-0 z-30 flex-none bg-gray-900 ring-1 ring-white/20 sm:pr-8">
-            <div className="grid grid-cols-7 text-sm/6 text-gray-400 sm:hidden">
+          <div className="sticky top-0 z-30 flex-none bg-zinc-900 ring-1 ring-white/20 sm:pr-8">
+            <div className="grid grid-cols-7 text-sm/6 text-zinc-400 sm:hidden">
               <button type="button" className="flex flex-col items-center pt-2 pb-3">
                 M <span className="mt-1 flex size-8 items-center justify-center font-semibold text-white">10</span>
               </button>
@@ -200,7 +200,7 @@ export default function Example() {
               </button>
             </div>
 
-            <div className="-mr-px hidden grid-cols-7 divide-x divide-white/10 border-r border-white/10 text-sm/6 text-gray-400 sm:grid">
+            <div className="-mr-px hidden grid-cols-7 divide-x divide-white/10 border-r border-white/10 text-sm/6 text-zinc-400 sm:grid">
               <div className="col-end-1 w-14" />
               <div className="flex items-center justify-center py-3">
                 <span>
@@ -243,7 +243,7 @@ export default function Example() {
             </div>
           </div>
           <div className="flex flex-auto">
-            <div className="sticky left-0 z-10 w-14 flex-none bg-gray-900 ring-1 ring-white/5" />
+            <div className="sticky left-0 z-10 w-14 flex-none bg-zinc-900 ring-1 ring-white/5" />
             <div className="grid flex-auto grid-cols-1 grid-rows-1">
               {/* Horizontal lines */}
               <div
@@ -252,145 +252,145 @@ export default function Example() {
               >
                 <div className="row-end-1 h-7" />
                 <div>
-                  <div className="sticky left-0 z-20 -mt-2.5 -ml-14 w-14 pr-2 text-right text-xs/5 text-gray-500">
+                  <div className="sticky left-0 z-20 -mt-2.5 -ml-14 w-14 pr-2 text-right text-xs/5 text-zinc-500">
                     12AM
                   </div>
                 </div>
                 <div />
                 <div>
-                  <div className="sticky left-0 z-20 -mt-2.5 -ml-14 w-14 pr-2 text-right text-xs/5 text-gray-500">
+                  <div className="sticky left-0 z-20 -mt-2.5 -ml-14 w-14 pr-2 text-right text-xs/5 text-zinc-500">
                     1AM
                   </div>
                 </div>
                 <div />
                 <div>
-                  <div className="sticky left-0 z-20 -mt-2.5 -ml-14 w-14 pr-2 text-right text-xs/5 text-gray-500">
+                  <div className="sticky left-0 z-20 -mt-2.5 -ml-14 w-14 pr-2 text-right text-xs/5 text-zinc-500">
                     2AM
                   </div>
                 </div>
                 <div />
                 <div>
-                  <div className="sticky left-0 z-20 -mt-2.5 -ml-14 w-14 pr-2 text-right text-xs/5 text-gray-500">
+                  <div className="sticky left-0 z-20 -mt-2.5 -ml-14 w-14 pr-2 text-right text-xs/5 text-zinc-500">
                     3AM
                   </div>
                 </div>
                 <div />
                 <div>
-                  <div className="sticky left-0 z-20 -mt-2.5 -ml-14 w-14 pr-2 text-right text-xs/5 text-gray-500">
+                  <div className="sticky left-0 z-20 -mt-2.5 -ml-14 w-14 pr-2 text-right text-xs/5 text-zinc-500">
                     4AM
                   </div>
                 </div>
                 <div />
                 <div>
-                  <div className="sticky left-0 z-20 -mt-2.5 -ml-14 w-14 pr-2 text-right text-xs/5 text-gray-500">
+                  <div className="sticky left-0 z-20 -mt-2.5 -ml-14 w-14 pr-2 text-right text-xs/5 text-zinc-500">
                     5AM
                   </div>
                 </div>
                 <div />
                 <div>
-                  <div className="sticky left-0 z-20 -mt-2.5 -ml-14 w-14 pr-2 text-right text-xs/5 text-gray-500">
+                  <div className="sticky left-0 z-20 -mt-2.5 -ml-14 w-14 pr-2 text-right text-xs/5 text-zinc-500">
                     6AM
                   </div>
                 </div>
                 <div />
                 <div>
-                  <div className="sticky left-0 z-20 -mt-2.5 -ml-14 w-14 pr-2 text-right text-xs/5 text-gray-500">
+                  <div className="sticky left-0 z-20 -mt-2.5 -ml-14 w-14 pr-2 text-right text-xs/5 text-zinc-500">
                     7AM
                   </div>
                 </div>
                 <div />
                 <div>
-                  <div className="sticky left-0 z-20 -mt-2.5 -ml-14 w-14 pr-2 text-right text-xs/5 text-gray-500">
+                  <div className="sticky left-0 z-20 -mt-2.5 -ml-14 w-14 pr-2 text-right text-xs/5 text-zinc-500">
                     8AM
                   </div>
                 </div>
                 <div />
                 <div>
-                  <div className="sticky left-0 z-20 -mt-2.5 -ml-14 w-14 pr-2 text-right text-xs/5 text-gray-500">
+                  <div className="sticky left-0 z-20 -mt-2.5 -ml-14 w-14 pr-2 text-right text-xs/5 text-zinc-500">
                     9AM
                   </div>
                 </div>
                 <div />
                 <div>
-                  <div className="sticky left-0 z-20 -mt-2.5 -ml-14 w-14 pr-2 text-right text-xs/5 text-gray-500">
+                  <div className="sticky left-0 z-20 -mt-2.5 -ml-14 w-14 pr-2 text-right text-xs/5 text-zinc-500">
                     10AM
                   </div>
                 </div>
                 <div />
                 <div>
-                  <div className="sticky left-0 z-20 -mt-2.5 -ml-14 w-14 pr-2 text-right text-xs/5 text-gray-500">
+                  <div className="sticky left-0 z-20 -mt-2.5 -ml-14 w-14 pr-2 text-right text-xs/5 text-zinc-500">
                     11AM
                   </div>
                 </div>
                 <div />
                 <div>
-                  <div className="sticky left-0 z-20 -mt-2.5 -ml-14 w-14 pr-2 text-right text-xs/5 text-gray-500">
+                  <div className="sticky left-0 z-20 -mt-2.5 -ml-14 w-14 pr-2 text-right text-xs/5 text-zinc-500">
                     12PM
                   </div>
                 </div>
                 <div />
                 <div>
-                  <div className="sticky left-0 z-20 -mt-2.5 -ml-14 w-14 pr-2 text-right text-xs/5 text-gray-500">
+                  <div className="sticky left-0 z-20 -mt-2.5 -ml-14 w-14 pr-2 text-right text-xs/5 text-zinc-500">
                     1PM
                   </div>
                 </div>
                 <div />
                 <div>
-                  <div className="sticky left-0 z-20 -mt-2.5 -ml-14 w-14 pr-2 text-right text-xs/5 text-gray-500">
+                  <div className="sticky left-0 z-20 -mt-2.5 -ml-14 w-14 pr-2 text-right text-xs/5 text-zinc-500">
                     2PM
                   </div>
                 </div>
                 <div />
                 <div>
-                  <div className="sticky left-0 z-20 -mt-2.5 -ml-14 w-14 pr-2 text-right text-xs/5 text-gray-500">
+                  <div className="sticky left-0 z-20 -mt-2.5 -ml-14 w-14 pr-2 text-right text-xs/5 text-zinc-500">
                     3PM
                   </div>
                 </div>
                 <div />
                 <div>
-                  <div className="sticky left-0 z-20 -mt-2.5 -ml-14 w-14 pr-2 text-right text-xs/5 text-gray-500">
+                  <div className="sticky left-0 z-20 -mt-2.5 -ml-14 w-14 pr-2 text-right text-xs/5 text-zinc-500">
                     4PM
                   </div>
                 </div>
                 <div />
                 <div>
-                  <div className="sticky left-0 z-20 -mt-2.5 -ml-14 w-14 pr-2 text-right text-xs/5 text-gray-500">
+                  <div className="sticky left-0 z-20 -mt-2.5 -ml-14 w-14 pr-2 text-right text-xs/5 text-zinc-500">
                     5PM
                   </div>
                 </div>
                 <div />
                 <div>
-                  <div className="sticky left-0 z-20 -mt-2.5 -ml-14 w-14 pr-2 text-right text-xs/5 text-gray-500">
+                  <div className="sticky left-0 z-20 -mt-2.5 -ml-14 w-14 pr-2 text-right text-xs/5 text-zinc-500">
                     6PM
                   </div>
                 </div>
                 <div />
                 <div>
-                  <div className="sticky left-0 z-20 -mt-2.5 -ml-14 w-14 pr-2 text-right text-xs/5 text-gray-500">
+                  <div className="sticky left-0 z-20 -mt-2.5 -ml-14 w-14 pr-2 text-right text-xs/5 text-zinc-500">
                     7PM
                   </div>
                 </div>
                 <div />
                 <div>
-                  <div className="sticky left-0 z-20 -mt-2.5 -ml-14 w-14 pr-2 text-right text-xs/5 text-gray-500">
+                  <div className="sticky left-0 z-20 -mt-2.5 -ml-14 w-14 pr-2 text-right text-xs/5 text-zinc-500">
                     8PM
                   </div>
                 </div>
                 <div />
                 <div>
-                  <div className="sticky left-0 z-20 -mt-2.5 -ml-14 w-14 pr-2 text-right text-xs/5 text-gray-500">
+                  <div className="sticky left-0 z-20 -mt-2.5 -ml-14 w-14 pr-2 text-right text-xs/5 text-zinc-500">
                     9PM
                   </div>
                 </div>
                 <div />
                 <div>
-                  <div className="sticky left-0 z-20 -mt-2.5 -ml-14 w-14 pr-2 text-right text-xs/5 text-gray-500">
+                  <div className="sticky left-0 z-20 -mt-2.5 -ml-14 w-14 pr-2 text-right text-xs/5 text-zinc-500">
                     10PM
                   </div>
                 </div>
                 <div />
                 <div>
-                  <div className="sticky left-0 z-20 -mt-2.5 -ml-14 w-14 pr-2 text-right text-xs/5 text-gray-500">
+                  <div className="sticky left-0 z-20 -mt-2.5 -ml-14 w-14 pr-2 text-right text-xs/5 text-zinc-500">
                     11PM
                   </div>
                 </div>
@@ -416,7 +416,7 @@ export default function Example() {
               >
                 <li
                   style={{ gridRow: '74 / span 12' }}
-                  className="relative mt-px flex before:pointer-events-none before:absolute before:inset-1 before:z-0 before:rounded-lg before:bg-gray-900 sm:col-start-3"
+                  className="relative mt-px flex before:pointer-events-none before:absolute before:inset-1 before:z-0 before:rounded-lg before:bg-zinc-900 sm:col-start-3"
                 >
                   <a
                     href="#"
@@ -430,7 +430,7 @@ export default function Example() {
                 </li>
                 <li
                   style={{ gridRow: '92 / span 30' }}
-                  className="relative mt-px flex before:pointer-events-none before:absolute before:inset-1 before:z-0 before:rounded-lg before:bg-gray-900 sm:col-start-3"
+                  className="relative mt-px flex before:pointer-events-none before:absolute before:inset-1 before:z-0 before:rounded-lg before:bg-zinc-900 sm:col-start-3"
                 >
                   <a
                     href="#"
@@ -444,14 +444,14 @@ export default function Example() {
                 </li>
                 <li
                   style={{ gridRow: '122 / span 24' }}
-                  className="relative mt-px hidden before:pointer-events-none before:absolute before:inset-1 before:z-0 before:rounded-lg before:bg-gray-900 sm:col-start-6 sm:flex"
+                  className="relative mt-px hidden before:pointer-events-none before:absolute before:inset-1 before:z-0 before:rounded-lg before:bg-zinc-900 sm:col-start-6 sm:flex"
                 >
                   <a
                     href="#"
                     className="group absolute inset-1 flex flex-col overflow-y-auto rounded-lg bg-white/10 p-2 text-xs/5 hover:bg-white/15"
                   >
-                    <p className="order-1 font-semibold text-gray-300">Meeting with design team at Disney</p>
-                    <p className="text-gray-400 group-hover:text-gray-300">
+                    <p className="order-1 font-semibold text-zinc-300">Meeting with design team at Disney</p>
+                    <p className="text-zinc-400 group-hover:text-zinc-300">
                       <time dateTime="2022-01-15T10:00">10:00 AM</time>
                     </p>
                   </a>

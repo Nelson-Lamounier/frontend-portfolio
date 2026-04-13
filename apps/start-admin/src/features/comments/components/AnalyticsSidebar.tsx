@@ -26,17 +26,17 @@ export function AnalyticsSidebar({
   return (
     <div className="space-y-6">
       {/* Overview Block */}
-      <div className="rounded-xl border border-white/5 bg-gray-800/50 p-6 shadow-sm">
-        <h3 className="text-sm font-medium text-gray-400">Total Interactions</h3>
+      <div className="rounded-xl border border-white/5 bg-zinc-800/50 p-6 shadow-sm">
+        <h3 className="text-sm font-medium text-zinc-400">Total Interactions</h3>
         <div className="mt-2 flex items-baseline gap-x-2">
           <span className="text-4xl font-bold tracking-tight text-white">
             {sum === 1 && totalComments === 0 ? 0 : sum}
           </span>
-          <span className="text-sm text-gray-500">last 30 days</span>
+          <span className="text-sm text-zinc-500">last 30 days</span>
         </div>
 
         <div className="mt-6 flex justify-between text-sm">
-          <span className="text-gray-400">Likes Growth</span>
+          <span className="text-zinc-400">Likes Growth</span>
           <span className="font-medium text-teal-400">Flat (0 metrics)</span>
         </div>
         <div className="mt-2 w-full pt-2">
@@ -45,8 +45,8 @@ export function AnalyticsSidebar({
       </div>
 
       {/* Interaction Breakdown */}
-      <div className="rounded-xl border border-white/5 bg-gray-800/50 p-6 shadow-sm">
-        <h3 className="text-sm font-medium text-gray-400">Interaction Breakdown</h3>
+      <div className="rounded-xl border border-white/5 bg-zinc-800/50 p-6 shadow-sm">
+        <h3 className="text-sm font-medium text-zinc-400">Interaction Breakdown</h3>
         <div className="mt-6">
           <div className="flex h-2 w-full overflow-hidden rounded-full bg-white/5">
             <div style={{ width: `${likesPct}%` }} className="bg-teal-500" />
@@ -57,50 +57,50 @@ export function AnalyticsSidebar({
           <ul className="mt-4 grid grid-cols-2 gap-4 text-xs">
             <li className="flex items-center gap-x-2">
               <span className="h-2 w-2 rounded-full bg-teal-500" />
-              <span className="text-gray-400">Likes ({likesPct}%)</span>
+              <span className="text-zinc-400">Likes ({likesPct}%)</span>
             </li>
             <li className="flex items-center gap-x-2">
               <span className="h-2 w-2 rounded-full bg-blue-500" />
-              <span className="text-gray-400">Comments ({commentsPct}%)</span>
+              <span className="text-zinc-400">Comments ({commentsPct}%)</span>
             </li>
             <li className="flex items-center gap-x-2">
               <span className="h-2 w-2 rounded-full bg-yellow-500" />
-              <span className="text-gray-400">Saves ({savesPct}%)</span>
+              <span className="text-zinc-400">Saves ({savesPct}%)</span>
             </li>
             <li className="flex items-center gap-x-2">
               <span className="h-2 w-2 rounded-full bg-purple-500" />
-              <span className="text-gray-400">Shares ({sharesPct}%)</span>
+              <span className="text-zinc-400">Shares ({sharesPct}%)</span>
             </li>
           </ul>
         </div>
       </div>
 
       {/* Sentiment Analysis */}
-      <div className="rounded-xl border border-white/5 bg-gray-800/50 p-6 shadow-sm">
+      <div className="rounded-xl border border-white/5 bg-zinc-800/50 p-6 shadow-sm">
         <div className="flex items-center justify-between">
-          <h3 className="text-sm font-medium text-gray-400">Sentiment Analysis</h3>
-          <span className="rounded bg-white/5 px-2 py-0.5 text-[10px] font-medium text-gray-400 ring-1 ring-inset ring-white/10 uppercase tracking-wide">
+          <h3 className="text-sm font-medium text-zinc-400">Sentiment Analysis</h3>
+          <span className="rounded bg-white/5 px-2 py-0.5 text-[10px] font-medium text-zinc-400 ring-1 ring-inset ring-white/10 uppercase tracking-wide">
             Coming Soon
           </span>
         </div>
-        <p className="mt-2 text-xs text-gray-500">
+        <p className="mt-2 text-xs text-zinc-500">
           Positive, neutral, and negative classification using Amazon Bedrock.
         </p>
         <div className="mt-4 flex flex-col gap-2">
           <div className="flex items-center justify-between text-xs">
-            <span className="text-gray-400">Positive</span>
+            <span className="text-zinc-400">Positive</span>
             <span className="font-medium text-white">0%</span>
           </div>
           <div className="h-1.5 w-full rounded-full bg-white/5"></div>
           
           <div className="flex items-center justify-between text-xs">
-            <span className="text-gray-400">Neutral</span>
+            <span className="text-zinc-400">Neutral</span>
             <span className="font-medium text-white">0%</span>
           </div>
           <div className="h-1.5 w-full rounded-full bg-white/5"></div>
 
           <div className="flex items-center justify-between text-xs">
-            <span className="text-gray-400">Negative</span>
+            <span className="text-zinc-400">Negative</span>
             <span className="font-medium text-white">0%</span>
           </div>
           <div className="h-1.5 w-full rounded-full bg-white/5"></div>
@@ -108,18 +108,18 @@ export function AnalyticsSidebar({
       </div>
 
       {/* Leaderboard Placeholders */}
-      <div className="rounded-xl border border-white/5 bg-gray-800/50 p-6 shadow-sm">
-        <h3 className="text-sm font-medium text-gray-400">Top Contributors</h3>
+      <div className="rounded-xl border border-white/5 bg-zinc-800/50 p-6 shadow-sm">
+        <h3 className="text-sm font-medium text-zinc-400">Top Contributors</h3>
         <ul className="mt-4 space-y-4">
           {[1, 2, 3].map((rank) => (
             <li key={rank} className="flex items-center justify-between text-sm">
               <div className="flex items-center gap-x-3">
-                <span className="flex h-6 w-6 items-center justify-center rounded-full bg-white/5 text-xs font-medium text-gray-400">
+                <span className="flex h-6 w-6 items-center justify-center rounded-full bg-white/5 text-xs font-medium text-zinc-400">
                   {rank}
                 </span>
-                <span className="text-gray-300">Not enough data</span>
+                <span className="text-zinc-300">Not enough data</span>
               </div>
-              <span className="text-gray-500 text-xs">0 interactions</span>
+              <span className="text-zinc-500 text-xs">0 interactions</span>
             </li>
           ))}
         </ul>

@@ -122,7 +122,7 @@ export function ArticleVersionsList({ article, isDraft }: ArticleVersionsListPro
 
   return (
     <>
-      <ul className="divide-y divide-white/5 border border-white/10 rounded-lg bg-gray-900">
+      <ul className="divide-y divide-white/5 border border-white/10 rounded-lg bg-zinc-900">
         <li className="px-4 py-5 hover:bg-white/[0.02] transition-colors sm:px-6 first:rounded-t-lg last:rounded-b-lg">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
@@ -138,7 +138,7 @@ export function ArticleVersionsList({ article, isDraft }: ArticleVersionsListPro
               <span className="inline-flex items-center text-sm font-semibold text-white">
                 v{article.version ?? 1}
               </span>
-              <time dateTime={article.date} className="text-xs text-gray-500">
+              <time dateTime={article.date} className="text-xs text-zinc-500">
                 {new Date(article.date).toLocaleDateString('en-GB', {
                   day: 'numeric',
                   month: 'long',
@@ -163,7 +163,7 @@ export function ArticleVersionsList({ article, isDraft }: ArticleVersionsListPro
           <div className="mt-4 flex flex-wrap items-center justify-end gap-4">
             <div className="flex items-center gap-2">
               <svg
-                className="h-4 w-4 flex-shrink-0 text-gray-500"
+                className="h-4 w-4 flex-shrink-0 text-zinc-500"
                 viewBox="0 0 24 24"
                 fill="currentColor"
                 aria-hidden="true"
@@ -179,7 +179,7 @@ export function ArticleVersionsList({ article, isDraft }: ArticleVersionsListPro
                 placeholder="https://github.com/..."
                 value={githubUrl}
                 onChange={(e) => setGithubUrl(e.target.value)}
-                className="w-48 rounded bg-black/20 border border-white/10 px-2 py-1 text-xs text-gray-300 placeholder-gray-600 outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500"
+                className="w-48 rounded bg-black/20 border border-white/10 px-2 py-1 text-xs text-zinc-300 placeholder-zinc-600 outline-none focus:border-teal-500 focus:ring-1 focus:ring-teal-500"
               />
               {githubDirty && (
                 <button

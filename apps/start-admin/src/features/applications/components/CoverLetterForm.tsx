@@ -51,7 +51,7 @@ export function CoverLetterForm({
       <div className="flex-1 space-y-12">
         <div className="border-b border-white/10 pb-12 pt-4">
           <h2 className="text-base/7 font-semibold text-white">Cover Letter Content</h2>
-          <p className="mt-1 text-sm/6 text-gray-400">
+          <p className="mt-1 text-sm/6 text-zinc-400">
             Edit the content of the tailored cover letter directly.
           </p>
           <div className="mt-6">

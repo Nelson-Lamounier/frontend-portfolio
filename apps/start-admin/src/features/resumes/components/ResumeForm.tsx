@@ -218,7 +218,7 @@ export function ResumeForm({
         {/* ==================================================================== */}
         <div className="border-b border-white/10 pb-12 pt-4">
           <h2 className="text-base/7 font-semibold text-white">Version Configuration</h2>
-          <p className="mt-1 text-sm/6 text-gray-400">
+          <p className="mt-1 text-sm/6 text-zinc-400">
             Identify this version of your resume (e.g. 'Frontend Engineer', 'Tech Lead').
           </p>
           <div className="mt-6">
@@ -236,7 +236,7 @@ export function ResumeForm({
         {/* ==================================================================== */}
         <div className="border-b border-white/10 pb-12">
           <h2 className="text-base/7 font-semibold text-white">Profile Details</h2>
-          <p className="mt-1 text-sm/6 text-gray-400">The header section of your resume document.</p>
+          <p className="mt-1 text-sm/6 text-zinc-400">The header section of your resume document.</p>
           <div className="mt-6 grid grid-cols-1 gap-x-6 gap-y-6 sm:grid-cols-6">
             <div className="sm:col-span-3">
               <form.Field name="data.profile.name" children={(field) => <FormInput label="Full Name" field={field} />} />

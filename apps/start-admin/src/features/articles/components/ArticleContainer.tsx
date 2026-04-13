@@ -13,7 +13,7 @@ type ActiveTab = 'all' | 'drafts' | 'in review' | 'published' | 'failed'
 function ArticlesList({ tab, articles }: { readonly tab: ActiveTab; readonly articles: any[] }) {
   if (articles.length === 0) {
     return (
-      <div className="mx-4 sm:mx-6 border-2 border-dashed border-white/10 rounded-lg p-12 text-center text-gray-500">
+      <div className="mx-4 sm:mx-6 border-2 border-dashed border-white/10 rounded-lg p-12 text-center text-zinc-500">
         No {tab !== 'all' ? tab : ''} articles found.
       </div>
     )
@@ -81,7 +81,7 @@ export function ArticleContainer() {
   ]
 
   return (
-    <div className="bg-gray-900 shadow-sm sm:rounded-lg">
+    <div className="bg-zinc-900 shadow-sm sm:rounded-lg">
       <Stats stats={stats} />
 
       <CommandPallete
@@ -97,7 +97,7 @@ export function ArticleContainer() {
           <div>Articles History</div>
           <button
             onClick={() => setPaletteOpen(true)}
-            className="flex items-center gap-2 text-sm font-medium text-gray-400 hover:text-white px-3 py-1.5 rounded-lg border border-white/10 hover:bg-white/5 transition-colors"
+            className="flex items-center gap-2 text-sm font-medium text-zinc-400 hover:text-white px-3 py-1.5 rounded-lg border border-white/10 hover:bg-white/5 transition-colors"
           >
             <AdjustmentsHorizontalIcon className="size-5" />
             {selectedModel.id === 'all' ? 'Filter by Model' : `Model: ${selectedModel.name}`}

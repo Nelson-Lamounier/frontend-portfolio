@@ -54,13 +54,13 @@ export function CommentItem({
 
   return (
     <div className={classNames('flex gap-x-4', isNested ? 'mt-4 border-l-2 border-white/10 pl-4' : '')}>
-      <div className="flex-auto rounded-lg border border-white/5 bg-gray-800/20 p-4">
+      <div className="flex-auto rounded-lg border border-white/5 bg-zinc-800/20 p-4">
         <div className="flex items-start justify-between gap-x-4">
           <div className="flex flex-col sm:flex-row sm:items-center gap-x-2">
             <span className="font-medium text-white">{comment.name || comment.author?.name || 'Anonymous'}</span>
-            <span className="text-xs text-gray-500">{dateStr}</span>
+            <span className="text-xs text-zinc-500">{dateStr}</span>
             {comment.articleSlug && (
-              <span className="inline-flex items-center rounded-md bg-white/5 px-2 py-1 text-xs font-medium text-gray-400 ring-1 ring-inset ring-white/10">
+              <span className="inline-flex items-center rounded-md bg-white/5 px-2 py-1 text-xs font-medium text-zinc-400 ring-1 ring-inset ring-white/10">
                 Article: {comment.articleSlug}
               </span>
             )}
@@ -78,10 +78,10 @@ export function CommentItem({
         </div>
         
         {comment.email && (
-           <div className="mt-1 text-xs text-gray-500">{comment.email}</div>
+           <div className="mt-1 text-xs text-zinc-500">{comment.email}</div>
         )}
 
-        <div className="mt-2 text-sm text-gray-300 break-words">
+        <div className="mt-2 text-sm text-zinc-300 break-words">
           {comment.body}
         </div>
 
@@ -91,7 +91,7 @@ export function CommentItem({
               type="button"
               onClick={() => onLike && onLike(comment.commentId || comment.id)}
               className={classNames(
-                comment.isLikedByMe ? 'text-teal-400' : 'text-gray-400 hover:text-gray-300',
+                comment.isLikedByMe ? 'text-teal-400' : 'text-zinc-400 hover:text-zinc-300',
                 "flex items-center gap-x-1.5 text-sm font-medium"
               )}
             >
@@ -101,7 +101,7 @@ export function CommentItem({
             <button
               type="button"
               onClick={handleReplyPrompt}
-              className="flex items-center gap-x-1.5 text-sm font-medium text-gray-400 hover:text-gray-300"
+              className="flex items-center gap-x-1.5 text-sm font-medium text-zinc-400 hover:text-zinc-300"
             >
               <ChatBubbleLeftRightIcon className="h-4 w-4" />
               Reply
@@ -109,7 +109,7 @@ export function CommentItem({
             <button
               type="button"
               onClick={() => onFlag && onFlag(comment.commentId || comment.id)}
-              className="flex items-center gap-x-1.5 text-sm font-medium text-gray-400 hover:text-gray-300"
+              className="flex items-center gap-x-1.5 text-sm font-medium text-zinc-400 hover:text-zinc-300"
             >
               <FlagIcon className="h-4 w-4" />
               Flag

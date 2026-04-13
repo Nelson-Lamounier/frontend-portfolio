@@ -50,7 +50,7 @@ const days = [
 export default function Example() {
   return (
     <div className="flex h-full flex-col">
-      <header className="flex flex-none items-center justify-between border-b border-white/10 bg-gray-800/50 px-6 py-4 max-md:border-white/15">
+      <header className="flex flex-none items-center justify-between border-b border-white/10 bg-zinc-800/50 px-6 py-4 max-md:border-white/15">
         <div>
           <h1 className="text-base font-semibold text-white">
             <time dateTime="2022-01-22" className="sm:hidden">
@@ -60,13 +60,13 @@ export default function Example() {
               January 22, 2022
             </time>
           </h1>
-          <p className="mt-1 text-sm text-gray-400">Saturday</p>
+          <p className="mt-1 text-sm text-zinc-400">Saturday</p>
         </div>
         <div className="flex items-center">
           <div className="relative flex items-center rounded-md bg-white/10 outline -outline-offset-1 outline-white/5 md:items-stretch">
             <button
               type="button"
-              className="flex h-9 w-12 items-center justify-center rounded-l-md pr-1 text-gray-400 hover:text-white focus:relative md:w-9 md:pr-0 md:hover:bg-white/10"
+              className="flex h-9 w-12 items-center justify-center rounded-l-md pr-1 text-zinc-400 hover:text-white focus:relative md:w-9 md:pr-0 md:hover:bg-white/10"
             >
               <span className="sr-only">Previous day</span>
               <ChevronLeftIcon aria-hidden="true" className="size-5" />
@@ -80,7 +80,7 @@ export default function Example() {
             <span className="relative -mx-px h-5 w-px bg-white/10 md:hidden" />
             <button
               type="button"
-              className="flex h-9 w-12 items-center justify-center rounded-r-md pl-1 text-gray-400 hover:text-white focus:relative md:w-9 md:pl-0 md:hover:bg-white/10"
+              className="flex h-9 w-12 items-center justify-center rounded-r-md pl-1 text-zinc-400 hover:text-white focus:relative md:w-9 md:pl-0 md:hover:bg-white/10"
             >
               <span className="sr-only">Next day</span>
               <ChevronRightIcon aria-hidden="true" className="size-5" />
@@ -93,19 +93,19 @@ export default function Example() {
                 className="flex items-center gap-x-1.5 rounded-md bg-white/10 px-3 py-2 text-sm font-semibold text-white inset-ring inset-ring-white/5 hover:bg-white/20"
               >
                 Day view
-                <ChevronDownIcon aria-hidden="true" className="-mr-1 size-5 text-gray-400" />
+                <ChevronDownIcon aria-hidden="true" className="-mr-1 size-5 text-zinc-400" />
               </MenuButton>
 
               <MenuItems
                 transition
-                className="absolute right-0 z-10 mt-3 w-36 origin-top-right overflow-hidden rounded-md bg-gray-800 shadow-lg outline-1 -outline-offset-1 outline-white/10 transition data-closed:scale-95 data-closed:transform data-closed:opacity-0 data-enter:duration-100 data-enter:ease-out data-leave:duration-75 data-leave:ease-in"
+                className="absolute right-0 z-10 mt-3 w-36 origin-top-right overflow-hidden rounded-md bg-zinc-800 shadow-lg outline-1 -outline-offset-1 outline-white/10 transition data-closed:scale-95 data-closed:transform data-closed:opacity-0 data-enter:duration-100 data-enter:ease-out data-leave:duration-75 data-leave:ease-in"
               >
                 <div className="py-1">
                   <MenuItem>
                     <Link
                       to="/calendar"
                       search={{ view: 'day' }}
-                      className="block px-4 py-2 text-sm text-gray-300 data-focus:bg-white/5 data-focus:text-white data-focus:outline-hidden"
+                      className="block px-4 py-2 text-sm text-zinc-300 data-focus:bg-white/5 data-focus:text-white data-focus:outline-hidden"
                     >
                       Day view
                     </Link>
@@ -114,7 +114,7 @@ export default function Example() {
                     <Link
                       to="/calendar"
                       search={{ view: 'week' }}
-                      className="block px-4 py-2 text-sm text-gray-300 data-focus:bg-white/5 data-focus:text-white data-focus:outline-hidden"
+                      className="block px-4 py-2 text-sm text-zinc-300 data-focus:bg-white/5 data-focus:text-white data-focus:outline-hidden"
                     >
                       Week view
                     </Link>
@@ -123,7 +123,7 @@ export default function Example() {
                     <Link
                       to="/calendar"
                       search={{ view: 'month' }}
-                      className="block px-4 py-2 text-sm text-gray-300 data-focus:bg-white/5 data-focus:text-white data-focus:outline-hidden"
+                      className="block px-4 py-2 text-sm text-zinc-300 data-focus:bg-white/5 data-focus:text-white data-focus:outline-hidden"
                     >
                       Month view
                     </Link>
@@ -132,7 +132,7 @@ export default function Example() {
                     <Link
                       to="/calendar"
                       search={{ view: 'year' }}
-                      className="block px-4 py-2 text-sm text-gray-300 data-focus:bg-white/5 data-focus:text-white data-focus:outline-hidden"
+                      className="block px-4 py-2 text-sm text-zinc-300 data-focus:bg-white/5 data-focus:text-white data-focus:outline-hidden"
                     >
                       Year view
                     </Link>
@@ -150,7 +150,7 @@ export default function Example() {
           </div>
           <div className="ml-6 md:hidden">
             <Menu as="div" className="relative">
-              <MenuButton className="relative flex items-center rounded-full text-gray-500 outline-offset-8 hover:text-white">
+              <MenuButton className="relative flex items-center rounded-full text-zinc-500 outline-offset-8 hover:text-white">
                 <span className="absolute -inset-2" />
                 <span className="sr-only">Open menu</span>
                 <EllipsisHorizontalIcon aria-hidden="true" className="size-5" />
@@ -158,13 +158,13 @@ export default function Example() {
 
               <MenuItems
                 transition
-                className="absolute right-0 z-10 mt-3 w-36 origin-top-right divide-y divide-white/10 overflow-hidden rounded-md bg-gray-800 shadow-lg outline-1 -outline-offset-1 outline-white/10 transition data-closed:scale-95 data-closed:transform data-closed:opacity-0 data-enter:duration-100 data-enter:ease-out data-leave:duration-75 data-leave:ease-in"
+                className="absolute right-0 z-10 mt-3 w-36 origin-top-right divide-y divide-white/10 overflow-hidden rounded-md bg-zinc-800 shadow-lg outline-1 -outline-offset-1 outline-white/10 transition data-closed:scale-95 data-closed:transform data-closed:opacity-0 data-enter:duration-100 data-enter:ease-out data-leave:duration-75 data-leave:ease-in"
               >
                 <div className="py-1">
                   <MenuItem>
                     <a
                       href="#"
-                      className="block px-4 py-2 text-sm text-gray-300 data-focus:bg-white/5 data-focus:text-white data-focus:outline-hidden"
+                      className="block px-4 py-2 text-sm text-zinc-300 data-focus:bg-white/5 data-focus:text-white data-focus:outline-hidden"
                     >
                       Create event
                     </a>
@@ -174,7 +174,7 @@ export default function Example() {
                   <MenuItem>
                     <a
                       href="#"
-                      className="block px-4 py-2 text-sm text-gray-300 data-focus:bg-white/5 data-focus:text-white data-focus:outline-hidden"
+                      className="block px-4 py-2 text-sm text-zinc-300 data-focus:bg-white/5 data-focus:text-white data-focus:outline-hidden"
                     >
                       Go to today
                     </a>
@@ -185,7 +185,7 @@ export default function Example() {
                     <Link
                       to="/calendar"
                       search={{ view: 'day' }}
-                      className="block px-4 py-2 text-sm text-gray-300 data-focus:bg-white/5 data-focus:text-white data-focus:outline-hidden"
+                      className="block px-4 py-2 text-sm text-zinc-300 data-focus:bg-white/5 data-focus:text-white data-focus:outline-hidden"
                     >
                       Day view
                     </Link>
@@ -194,7 +194,7 @@ export default function Example() {
                     <Link
                       to="/calendar"
                       search={{ view: 'week' }}
-                      className="block px-4 py-2 text-sm text-gray-300 data-focus:bg-white/5 data-focus:text-white data-focus:outline-hidden"
+                      className="block px-4 py-2 text-sm text-zinc-300 data-focus:bg-white/5 data-focus:text-white data-focus:outline-hidden"
                     >
                       Week view
                     </Link>
@@ -203,7 +203,7 @@ export default function Example() {
                     <Link
                       to="/calendar"
                       search={{ view: 'month' }}
-                      className="block px-4 py-2 text-sm text-gray-300 data-focus:bg-white/5 data-focus:text-white data-focus:outline-hidden"
+                      className="block px-4 py-2 text-sm text-zinc-300 data-focus:bg-white/5 data-focus:text-white data-focus:outline-hidden"
                     >
                       Month view
                     </Link>
@@ -212,7 +212,7 @@ export default function Example() {
                     <Link
                       to="/calendar"
                       search={{ view: 'year' }}
-                      className="block px-4 py-2 text-sm text-gray-300 data-focus:bg-white/5 data-focus:text-white data-focus:outline-hidden"
+                      className="block px-4 py-2 text-sm text-zinc-300 data-focus:bg-white/5 data-focus:text-white data-focus:outline-hidden"
                     >
                       Year view
                     </Link>
@@ -223,12 +223,12 @@ export default function Example() {
           </div>
         </div>
       </header>
-      <div className="isolate flex flex-auto overflow-hidden bg-gray-900">
+      <div className="isolate flex flex-auto overflow-hidden bg-zinc-900">
         <div className="flex flex-auto flex-col overflow-auto">
-          <div className="sticky top-0 z-10 grid flex-none grid-cols-7 bg-gray-900 text-xs text-gray-400 ring-1 ring-white/20 md:hidden">
+          <div className="sticky top-0 z-10 grid flex-none grid-cols-7 bg-zinc-900 text-xs text-zinc-400 ring-1 ring-white/20 md:hidden">
             <button type="button" className="flex flex-col items-center pt-3 pb-1.5">
               <span>W</span>
-              {/* Default: "text-white", Selected: "bg-gray-900 text-white", Today (Not Selected): "text-indigo-600", Today (Selected): "bg-indigo-600 text-white" */}
+              {/* Default: "text-white", Selected: "bg-zinc-900 text-white", Today (Not Selected): "text-indigo-600", Today (Selected): "bg-indigo-600 text-white" */}
               <span className="mt-3 flex size-8 items-center justify-center rounded-full text-base font-semibold text-white">
                 19
               </span>
@@ -247,7 +247,7 @@ export default function Example() {
             </button>
             <button type="button" className="flex flex-col items-center pt-3 pb-1.5">
               <span>S</span>
-              <span className="mt-3 flex size-8 items-center justify-center rounded-full bg-white text-base font-semibold text-gray-900">
+              <span className="mt-3 flex size-8 items-center justify-center rounded-full bg-white text-base font-semibold text-zinc-900">
                 22
               </span>
             </button>
@@ -271,7 +271,7 @@ export default function Example() {
             </button>
           </div>
           <div className="flex w-full flex-auto">
-            <div className="w-14 flex-none bg-gray-900 ring-1 ring-white/5" />
+            <div className="w-14 flex-none bg-zinc-900 ring-1 ring-white/5" />
             <div className="grid flex-auto grid-cols-1 grid-rows-1">
               {/* Horizontal lines */}
               <div
@@ -280,99 +280,99 @@ export default function Example() {
               >
                 <div className="row-end-1 h-7" />
                 <div>
-                  <div className="-mt-2.5 -ml-14 w-14 pr-2 text-right text-xs/5 text-gray-500">12AM</div>
+                  <div className="-mt-2.5 -ml-14 w-14 pr-2 text-right text-xs/5 text-zinc-500">12AM</div>
                 </div>
                 <div />
                 <div>
-                  <div className="-mt-2.5 -ml-14 w-14 pr-2 text-right text-xs/5 text-gray-500">1AM</div>
+                  <div className="-mt-2.5 -ml-14 w-14 pr-2 text-right text-xs/5 text-zinc-500">1AM</div>
                 </div>
                 <div />
                 <div>
-                  <div className="-mt-2.5 -ml-14 w-14 pr-2 text-right text-xs/5 text-gray-500">2AM</div>
+                  <div className="-mt-2.5 -ml-14 w-14 pr-2 text-right text-xs/5 text-zinc-500">2AM</div>
                 </div>
                 <div />
                 <div>
-                  <div className="-mt-2.5 -ml-14 w-14 pr-2 text-right text-xs/5 text-gray-500">3AM</div>
+                  <div className="-mt-2.5 -ml-14 w-14 pr-2 text-right text-xs/5 text-zinc-500">3AM</div>
                 </div>
                 <div />
                 <div>
-                  <div className="-mt-2.5 -ml-14 w-14 pr-2 text-right text-xs/5 text-gray-500">4AM</div>
+                  <div className="-mt-2.5 -ml-14 w-14 pr-2 text-right text-xs/5 text-zinc-500">4AM</div>
                 </div>
                 <div />
                 <div>
-                  <div className="-mt-2.5 -ml-14 w-14 pr-2 text-right text-xs/5 text-gray-500">5AM</div>
+                  <div className="-mt-2.5 -ml-14 w-14 pr-2 text-right text-xs/5 text-zinc-500">5AM</div>
                 </div>
                 <div />
                 <div>
-                  <div className="-mt-2.5 -ml-14 w-14 pr-2 text-right text-xs/5 text-gray-500">6AM</div>
+                  <div className="-mt-2.5 -ml-14 w-14 pr-2 text-right text-xs/5 text-zinc-500">6AM</div>
                 </div>
                 <div />
                 <div>
-                  <div className="-mt-2.5 -ml-14 w-14 pr-2 text-right text-xs/5 text-gray-500">7AM</div>
+                  <div className="-mt-2.5 -ml-14 w-14 pr-2 text-right text-xs/5 text-zinc-500">7AM</div>
                 </div>
                 <div />
                 <div>
-                  <div className="-mt-2.5 -ml-14 w-14 pr-2 text-right text-xs/5 text-gray-500">8AM</div>
+                  <div className="-mt-2.5 -ml-14 w-14 pr-2 text-right text-xs/5 text-zinc-500">8AM</div>
                 </div>
                 <div />
                 <div>
-                  <div className="-mt-2.5 -ml-14 w-14 pr-2 text-right text-xs/5 text-gray-500">9AM</div>
+                  <div className="-mt-2.5 -ml-14 w-14 pr-2 text-right text-xs/5 text-zinc-500">9AM</div>
                 </div>
                 <div />
                 <div>
-                  <div className="-mt-2.5 -ml-14 w-14 pr-2 text-right text-xs/5 text-gray-500">10AM</div>
+                  <div className="-mt-2.5 -ml-14 w-14 pr-2 text-right text-xs/5 text-zinc-500">10AM</div>
                 </div>
                 <div />
                 <div>
-                  <div className="-mt-2.5 -ml-14 w-14 pr-2 text-right text-xs/5 text-gray-500">11AM</div>
+                  <div className="-mt-2.5 -ml-14 w-14 pr-2 text-right text-xs/5 text-zinc-500">11AM</div>
                 </div>
                 <div />
                 <div>
-                  <div className="-mt-2.5 -ml-14 w-14 pr-2 text-right text-xs/5 text-gray-500">12PM</div>
+                  <div className="-mt-2.5 -ml-14 w-14 pr-2 text-right text-xs/5 text-zinc-500">12PM</div>
                 </div>
                 <div />
                 <div>
-                  <div className="-mt-2.5 -ml-14 w-14 pr-2 text-right text-xs/5 text-gray-500">1PM</div>
+                  <div className="-mt-2.5 -ml-14 w-14 pr-2 text-right text-xs/5 text-zinc-500">1PM</div>
                 </div>
                 <div />
                 <div>
-                  <div className="-mt-2.5 -ml-14 w-14 pr-2 text-right text-xs/5 text-gray-500">2PM</div>
+                  <div className="-mt-2.5 -ml-14 w-14 pr-2 text-right text-xs/5 text-zinc-500">2PM</div>
                 </div>
                 <div />
                 <div>
-                  <div className="-mt-2.5 -ml-14 w-14 pr-2 text-right text-xs/5 text-gray-500">3PM</div>
+                  <div className="-mt-2.5 -ml-14 w-14 pr-2 text-right text-xs/5 text-zinc-500">3PM</div>
                 </div>
                 <div />
                 <div>
-                  <div className="-mt-2.5 -ml-14 w-14 pr-2 text-right text-xs/5 text-gray-500">4PM</div>
+                  <div className="-mt-2.5 -ml-14 w-14 pr-2 text-right text-xs/5 text-zinc-500">4PM</div>
                 </div>
                 <div />
                 <div>
-                  <div className="-mt-2.5 -ml-14 w-14 pr-2 text-right text-xs/5 text-gray-500">5PM</div>
+                  <div className="-mt-2.5 -ml-14 w-14 pr-2 text-right text-xs/5 text-zinc-500">5PM</div>
                 </div>
                 <div />
                 <div>
-                  <div className="-mt-2.5 -ml-14 w-14 pr-2 text-right text-xs/5 text-gray-500">6PM</div>
+                  <div className="-mt-2.5 -ml-14 w-14 pr-2 text-right text-xs/5 text-zinc-500">6PM</div>
                 </div>
                 <div />
                 <div>
-                  <div className="-mt-2.5 -ml-14 w-14 pr-2 text-right text-xs/5 text-gray-500">7PM</div>
+                  <div className="-mt-2.5 -ml-14 w-14 pr-2 text-right text-xs/5 text-zinc-500">7PM</div>
                 </div>
                 <div />
                 <div>
-                  <div className="-mt-2.5 -ml-14 w-14 pr-2 text-right text-xs/5 text-gray-500">8PM</div>
+                  <div className="-mt-2.5 -ml-14 w-14 pr-2 text-right text-xs/5 text-zinc-500">8PM</div>
                 </div>
                 <div />
                 <div>
-                  <div className="-mt-2.5 -ml-14 w-14 pr-2 text-right text-xs/5 text-gray-500">9PM</div>
+                  <div className="-mt-2.5 -ml-14 w-14 pr-2 text-right text-xs/5 text-zinc-500">9PM</div>
                 </div>
                 <div />
                 <div>
-                  <div className="-mt-2.5 -ml-14 w-14 pr-2 text-right text-xs/5 text-gray-500">10PM</div>
+                  <div className="-mt-2.5 -ml-14 w-14 pr-2 text-right text-xs/5 text-zinc-500">10PM</div>
                 </div>
                 <div />
                 <div>
-                  <div className="-mt-2.5 -ml-14 w-14 pr-2 text-right text-xs/5 text-gray-500">11PM</div>
+                  <div className="-mt-2.5 -ml-14 w-14 pr-2 text-right text-xs/5 text-zinc-500">11PM</div>
                 </div>
                 <div />
               </div>
@@ -384,7 +384,7 @@ export default function Example() {
               >
                 <li
                   style={{ gridRow: '74 / span 12' }}
-                  className="relative mt-px flex before:pointer-events-none before:absolute before:inset-1 before:z-0 before:rounded-lg before:bg-gray-900"
+                  className="relative mt-px flex before:pointer-events-none before:absolute before:inset-1 before:z-0 before:rounded-lg before:bg-zinc-900"
                 >
                   <a
                     href="#"
@@ -398,7 +398,7 @@ export default function Example() {
                 </li>
                 <li
                   style={{ gridRow: '92 / span 30' }}
-                  className="relative mt-px flex before:pointer-events-none before:absolute before:inset-1 before:z-0 before:rounded-lg before:bg-gray-900"
+                  className="relative mt-px flex before:pointer-events-none before:absolute before:inset-1 before:z-0 before:rounded-lg before:bg-zinc-900"
                 >
                   <a
                     href="#"
@@ -415,7 +415,7 @@ export default function Example() {
                 </li>
                 <li
                   style={{ gridRow: '134 / span 18' }}
-                  className="relative mt-px flex before:pointer-events-none before:absolute before:inset-1 before:z-0 before:rounded-lg before:bg-gray-900"
+                  className="relative mt-px flex before:pointer-events-none before:absolute before:inset-1 before:z-0 before:rounded-lg before:bg-zinc-900"
                 >
                   <a
                     href="#"
@@ -436,7 +436,7 @@ export default function Example() {
           <div className="flex items-center text-center text-white">
             <button
               type="button"
-              className="-m-1.5 flex flex-none items-center justify-center p-1.5 text-gray-400 hover:text-white"
+              className="-m-1.5 flex flex-none items-center justify-center p-1.5 text-zinc-400 hover:text-white"
             >
               <span className="sr-only">Previous month</span>
               <ChevronLeftIcon aria-hidden="true" className="size-5" />
@@ -444,13 +444,13 @@ export default function Example() {
             <div className="flex-auto text-sm font-semibold">January 2022</div>
             <button
               type="button"
-              className="-m-1.5 flex flex-none items-center justify-center p-1.5 text-gray-400 hover:text-white"
+              className="-m-1.5 flex flex-none items-center justify-center p-1.5 text-zinc-400 hover:text-white"
             >
               <span className="sr-only">Next month</span>
               <ChevronRightIcon aria-hidden="true" className="size-5" />
             </button>
           </div>
-          <div className="mt-6 grid grid-cols-7 text-center text-xs/6 text-gray-400">
+          <div className="mt-6 grid grid-cols-7 text-center text-xs/6 text-zinc-400">
             <div>M</div>
             <div>T</div>
             <div>W</div>
@@ -467,7 +467,7 @@ export default function Example() {
                 data-is-today={day.isToday ? '' : undefined}
                 data-is-selected={day.isSelected ? '' : undefined}
                 data-is-current-month={day.isCurrentMonth ? '' : undefined}
-                className="py-1.5 not-data-is-current-month:bg-gray-900/75 not-data-is-selected:not-data-is-current-month:not-data-is-today:text-gray-500 first:rounded-tl-lg last:rounded-br-lg hover:bg-gray-900/25 focus:z-10 data-is-current-month:bg-gray-900/90 not-data-is-selected:data-is-current-month:not-data-is-today:text-white data-is-current-month:hover:bg-gray-900/50 data-is-selected:font-semibold data-is-selected:text-gray-900 data-is-today:font-semibold data-is-today:not-data-is-selected:text-indigo-400 nth-36:rounded-bl-lg nth-7:rounded-tr-lg"
+                className="py-1.5 not-data-is-current-month:bg-zinc-900/75 not-data-is-selected:not-data-is-current-month:not-data-is-today:text-zinc-500 first:rounded-tl-lg last:rounded-br-lg hover:bg-zinc-900/25 focus:z-10 data-is-current-month:bg-zinc-900/90 not-data-is-selected:data-is-current-month:not-data-is-today:text-white data-is-current-month:hover:bg-zinc-900/50 data-is-selected:font-semibold data-is-selected:text-zinc-900 data-is-today:font-semibold data-is-today:not-data-is-selected:text-indigo-400 nth-36:rounded-bl-lg nth-7:rounded-tr-lg"
               >
                 <time
                   dateTime={day.date}

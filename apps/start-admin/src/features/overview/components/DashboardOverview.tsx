@@ -25,7 +25,7 @@ const RECENT_LIMIT = 5
 
 const statuses = {
   published: 'bg-green-500/10 text-green-500 ring-green-500/10',
-  draft: 'bg-white/5 text-gray-400 ring-white/10',
+  draft: 'bg-white/5 text-zinc-400 ring-white/10',
   review: 'bg-yellow-500/10 text-yellow-500 ring-yellow-500/10',
   pending: 'bg-yellow-500/10 text-yellow-500 ring-yellow-500/10',
   approved: 'bg-green-500/10 text-green-500 ring-green-500/10',
@@ -273,7 +273,7 @@ export function DashboardOverview() {
                   <button
                     key={action.label}
                     onClick={() => navigate({ to: action.href } as any)}
-                    className="text-gray-300 hover:text-white"
+                    className="text-zinc-300 hover:text-white"
                   >
                     {action.label}
                   </button>
@@ -299,7 +299,7 @@ export function DashboardOverview() {
                   className={classNames(
                     activeSection === section.id
                       ? 'bg-indigo-500/10 text-indigo-400 border border-indigo-500/20'
-                      : 'text-gray-400 hover:text-gray-300 hover:bg-white/5 border border-transparent',
+                      : 'text-zinc-400 hover:text-zinc-300 hover:bg-white/5 border border-transparent',
                     'px-4 py-2 rounded-md text-sm font-medium transition-colors'
                   )}
                 >
@@ -389,11 +389,11 @@ export function DashboardOverview() {
                                 <div className="flex gap-x-6">
                                   <transaction.icon
                                     aria-hidden="true"
-                                    className="hidden h-6 w-5 flex-none text-gray-500 sm:block"
+                                    className="hidden h-6 w-5 flex-none text-zinc-500 sm:block"
                                   />
                                   <div className="flex-auto">
                                     <div className="text-sm/6 font-medium text-white">{transaction.title}</div>
-                                    <div className="mt-1 text-xs/5 text-gray-400">{transaction.description}</div>
+                                    <div className="mt-1 text-xs/5 text-zinc-400">{transaction.description}</div>
                                   </div>
                                 </div>
                                 <div className="absolute right-full bottom-0 h-px w-screen bg-white/5" />
@@ -411,7 +411,7 @@ export function DashboardOverview() {
                                     {transaction.status}
                                   </div>
                                 </div>
-                                <div className="mt-1 flex gap-2 text-xs/5 text-gray-400">
+                                <div className="mt-1 flex gap-2 text-xs/5 text-zinc-400">
                                   <span>{transaction.date}</span>
                                   <span>&middot;</span>
                                   <span>{transaction.readingTime} read</span>
@@ -453,20 +453,20 @@ export function DashboardOverview() {
               <ul role="list" className="mt-6 grid grid-cols-1 gap-x-6 gap-y-8 lg:grid-cols-3 xl:gap-x-8">
                 {pipelines.map((pipeline) => (
                   <li key={pipeline.id} className="overflow-hidden rounded-xl outline -outline-offset-1 outline-white/10">
-                    <div className="flex items-center gap-x-4 border-b border-white/10 bg-gray-800/50 p-6">
+                    <div className="flex items-center gap-x-4 border-b border-white/10 bg-zinc-800/50 p-6">
                       <div className="text-sm/6 font-semibold text-white">{pipeline.name}</div>
                       <div className="ml-2 rounded-full bg-indigo-500/10 px-2 py-0.5 text-xs font-medium text-indigo-400 ring-1 ring-inset ring-indigo-500/20">
                         {pipeline.count}
                       </div>
                       <Menu as="div" className="relative ml-auto">
-                        <MenuButton className="relative block text-gray-500 hover:text-white">
+                        <MenuButton className="relative block text-zinc-500 hover:text-white">
                           <span className="absolute -inset-2.5" />
                           <span className="sr-only">Open options</span>
                           <EllipsisHorizontalIcon aria-hidden="true" className="size-5" />
                         </MenuButton>
                         <MenuItems
                           transition
-                          className="absolute right-0 z-10 mt-0.5 w-32 origin-top-right rounded-md bg-gray-800 py-2 outline-1 -outline-offset-1 outline-white/10 transition data-closed:scale-95 data-closed:transform data-closed:opacity-0 data-enter:duration-100 data-enter:ease-out data-leave:duration-75 data-leave:ease-in"
+                          className="absolute right-0 z-10 mt-0.5 w-32 origin-top-right rounded-md bg-zinc-800 py-2 outline-1 -outline-offset-1 outline-white/10 transition data-closed:scale-95 data-closed:transform data-closed:opacity-0 data-enter:duration-100 data-enter:ease-out data-leave:duration-75 data-leave:ease-in"
                         >
                           <MenuItem>
                             <Link
@@ -483,9 +483,9 @@ export function DashboardOverview() {
                       {pipeline.articles.map((article) => (
                         <div key={article.title} className="flex flex-col py-3">
                           <dt className="text-sm/6 font-medium text-white truncate" title={article.title}>{article.title}</dt>
-                          <dd className="mt-1 flex justify-between gap-x-4 text-xs/5 text-gray-400">
+                          <dd className="mt-1 flex justify-between gap-x-4 text-xs/5 text-zinc-400">
                             <span>{article.detail}</span>
-                            <span className="text-gray-300 font-medium">{article.status}</span>
+                            <span className="text-zinc-300 font-medium">{article.status}</span>
                           </dd>
                         </div>
                       ))}
@@ -505,7 +505,7 @@ export function DashboardOverview() {
                   key={action.label}
                   type="button"
                   onClick={() => navigate({ to: action.href } as any)}
-                  className="group flex items-center gap-4 rounded-xl border border-white/10 bg-gray-800/50 p-4 text-left transition-all hover:border-indigo-500/30 hover:bg-white/5"
+                  className="group flex items-center gap-4 rounded-xl border border-white/10 bg-zinc-800/50 p-4 text-left transition-all hover:border-indigo-500/30 hover:bg-white/5"
                 >
                   <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-indigo-500/10 text-indigo-400 ring-1 ring-inset ring-indigo-500/20">
                     <PlusSmallIcon className="size-5" />
@@ -514,7 +514,7 @@ export function DashboardOverview() {
                     <p className="text-sm font-semibold text-white">
                       {action.label}
                     </p>
-                    <p className="text-xs text-gray-400">
+                    <p className="text-xs text-zinc-400">
                       {action.description}
                     </p>
                   </div>

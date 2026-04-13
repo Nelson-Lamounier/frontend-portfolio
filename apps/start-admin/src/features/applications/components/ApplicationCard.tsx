@@ -28,7 +28,7 @@ export function ApplicationCard({
   return (
     <LinkCard
       onClick={onClick}
-      icon={<Building2 className="h-5 w-5 text-gray-400" />}
+      icon={<Building2 className="h-5 w-5 text-zinc-400" />}
       title={<span className="text-sm font-semibold text-zinc-100">{app.targetCompany}</span>}
       subtitle={
         <div className="mt-1">

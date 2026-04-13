@@ -40,7 +40,7 @@ function statusClasses(status: ArticleStatus): string {
     case 'rejected':
       return 'bg-yellow-400/10 text-yellow-500 inset-ring inset-ring-yellow-400/20'
     default:
-      return 'bg-gray-400/10 text-gray-400 inset-ring inset-ring-gray-400/20'
+      return 'bg-zinc-400/10 text-zinc-400 inset-ring inset-ring-zinc-400/20'
   }
 }
 
@@ -89,7 +89,7 @@ export function AiArticlesList() {
   if (isLoading) {
     return (
       <div className="flex items-center justify-center py-20">
-        <div className="flex items-center gap-3 text-gray-400">
+        <div className="flex items-center gap-3 text-zinc-400">
           <svg className="h-5 w-5 animate-spin" viewBox="0 0 24 24" fill="none">
             <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
             <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
@@ -117,7 +117,7 @@ export function AiArticlesList() {
 
   if (articles.length === 0) {
     return (
-      <div className="border-2 border-dashed border-white/10 rounded-lg p-12 text-center text-gray-500">
+      <div className="border-2 border-dashed border-white/10 rounded-lg p-12 text-center text-zinc-500">
         No articles found. Push a Markdown draft to trigger the Bedrock pipeline.
       </div>
     )
@@ -145,7 +145,7 @@ export function AiArticlesList() {
                 </p>
               ) : null}
             </div>
-            <div className="mt-1 flex items-center gap-x-2 text-xs/5 text-gray-400">
+            <div className="mt-1 flex items-center gap-x-2 text-xs/5 text-zinc-400">
               <p className="whitespace-nowrap">
                 <time dateTime={article.date}>{formatDate(article.date)}</time>
               </p>
@@ -177,14 +177,14 @@ export function AiArticlesList() {
           </div>
           <div className="flex flex-none items-center gap-x-4">
             <Menu as="div" className="relative flex-none">
-              <MenuButton className="relative block text-gray-400 hover:text-white">
+              <MenuButton className="relative block text-zinc-400 hover:text-white">
                 <span className="absolute -inset-2.5" />
                 <span className="sr-only">Open options</span>
                 <EllipsisVerticalIcon aria-hidden="true" className="size-5" />
               </MenuButton>
               <MenuItems
                 transition
-                className="absolute right-0 z-10 mt-2 w-32 origin-top-right rounded-md bg-gray-800 py-2 outline-1 -outline-offset-1 outline-white/10 transition data-closed:scale-95 data-closed:transform data-closed:opacity-0 data-enter:duration-100 data-enter:ease-out data-leave:duration-75 data-leave:ease-in"
+                className="absolute right-0 z-10 mt-2 w-32 origin-top-right rounded-md bg-zinc-800 py-2 outline-1 -outline-offset-1 outline-white/10 transition data-closed:scale-95 data-closed:transform data-closed:opacity-0 data-enter:duration-100 data-enter:ease-out data-leave:duration-75 data-leave:ease-in"
               >
                 <MenuItem>
                   <button
