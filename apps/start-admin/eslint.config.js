@@ -18,6 +18,7 @@ export default tseslint.config(
       'build/**',
       '.turbo/**',
       'coverage/**',
+      'server.js',
     ],
   },
 

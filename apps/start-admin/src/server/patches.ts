@@ -1,4 +1,3 @@
-/* eslint-disable no-console */
 /**
  * Production HTTP server for TanStack Start (Admin).
  *
