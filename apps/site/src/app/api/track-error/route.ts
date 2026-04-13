@@ -166,4 +166,10 @@ function extractLocation(stack?: string): string {
   return 'unknown'
 }
 
-export const dynamic = 'force-dynamic'
+// ── Route Segment Config ─────────────────────────────────────────────────────
+// Explicitly pin to the Node.js runtime. prom-client (imported transitively
+// via @/lib/observability/metrics) relies on Node-only APIs (process.hrtime,
+// process.version, Buffer) which are not available in the Edge Runtime.
+// Without this, Next.js emits build-time warnings on every affected import.
+export const runtime = 'nodejs';
+export const dynamic = 'force-dynamic';

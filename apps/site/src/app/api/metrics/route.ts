@@ -138,6 +138,11 @@ export async function GET(request: Request) {
   }
 }
 
-// Disable caching for metrics endpoint
+// ── Route Segment Config ─────────────────────────────────────────────────────
+// Explicitly pin to the Node.js runtime. prom-client relies on Node-only APIs
+// (process.version, process.hrtime, Buffer) which are unavailable in the Edge
+// Runtime. Without this declaration Next.js emits build warnings for every
+// import that transitively reaches prom-client.
+export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
