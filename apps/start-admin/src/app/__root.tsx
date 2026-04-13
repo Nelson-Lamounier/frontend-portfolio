@@ -14,6 +14,25 @@ const queryClient = new QueryClient({
   },
 })
 
+/**
+ * Inline script injected into <head> before first paint.
+ * Reads `localStorage` and applies `.dark` to `<html>` synchronously,
+ * preventing a flash of unstyled (light) content on dark-mode reload.
+ * Defaults to `dark` if no preference is stored.
+ */
+const ANTI_FLASH_SCRIPT = `
+(function() {
+  var stored = null;
+  try { stored = localStorage.getItem('start-admin-theme'); } catch (e) {}
+  var isDark = stored === null ? true : stored !== 'light';
+  if (isDark) {
+    document.documentElement.classList.add('dark');
+  } else {
+    document.documentElement.classList.remove('dark');
+  }
+})();
+`
+
 export const Route = createRootRouteWithContext<RouterContext>()({
   beforeLoad: async () => {
     const user = await getUserSessionFn()
@@ -48,10 +67,10 @@ export const Route = createRootRouteWithContext<RouterContext>()({
 function ErrorComponent({ error }: { error: any }) {
   return (
     <RootDocument>
-      <div className="p-4 bg-red-50 text-red-900 h-screen w-screen overflow-auto">
+      <div className="p-4 bg-red-50 dark:bg-red-950 text-red-900 dark:text-red-200 h-screen w-screen overflow-auto">
         <h1 className="text-xl font-bold">Root Error Boundary</h1>
         <p className="mt-2 font-semibold">{error instanceof Error ? error.message : 'Unknown error'}</p>
-        <pre className="mt-4 p-4 bg-black/10 rounded overflow-x-auto text-sm">
+        <pre className="mt-4 p-4 bg-black/10 dark:bg-white/5 rounded overflow-x-auto text-sm">
           {error instanceof Error ? error.stack : JSON.stringify(error)}
         </pre>
       </div>
@@ -62,7 +81,7 @@ function ErrorComponent({ error }: { error: any }) {
 function NotFoundComponent() {
   return (
     <RootDocument>
-      <div className="flex flex-col items-center justify-center min-h-screen bg-zinc-50 dark:bg-zinc-950 text-zinc-900 dark:text-zinc-100 p-4">
+      <div className="flex flex-col items-center justify-center min-h-screen bg-zinc-50 dark:bg-zinc-900 text-zinc-900 dark:text-zinc-100 p-4">
         <h1 className="text-4xl font-bold mb-4">404 - Not Found</h1>
         <p className="text-zinc-500 dark:text-zinc-400 mb-8">The page you are looking for does not exist or has been moved.</p>
         <Link to="/" className="px-4 py-2 bg-teal-600 hover:bg-teal-500 text-white rounded-lg font-medium transition-colors">
@@ -109,13 +128,21 @@ const TanStackDevtools =
         }),
       )
 
+/**
+ * Root document shell rendered on the server.
+ *
+ * The inline `<script>` runs synchronously before CSS is applied,
+ * preventing a flash of light content on dark-mode page load.
+ */
 function RootDocument({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en" className="h-full bg-gray-900" suppressHydrationWarning>
+    <html lang="en" className="h-full antialiased" suppressHydrationWarning>
       <head>
+        {/* Anti-flash: apply .dark before first paint */}
+        <script dangerouslySetInnerHTML={{ __html: ANTI_FLASH_SCRIPT }} />
         <HeadContent />
       </head>
-      <body className="h-full font-sans antialiased text-white">
+      <body className="h-full font-sans bg-zinc-50 dark:bg-zinc-900 text-zinc-900 dark:text-zinc-100">
         {children}
         <Toaster />
         <Scripts />
