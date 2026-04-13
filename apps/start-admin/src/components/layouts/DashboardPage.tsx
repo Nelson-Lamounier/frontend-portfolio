@@ -21,11 +21,11 @@ export function DashboardPage({
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h2 className="text-2xl font-bold leading-7 text-white sm:truncate sm:text-3xl sm:tracking-tight">
+          <h2 className="text-2xl font-bold leading-7 text-zinc-900 dark:text-zinc-100 sm:truncate sm:text-3xl sm:tracking-tight">
             {title}
           </h2>
           {description && (
-            <p className="mt-2 text-sm text-gray-400">
+            <p className="mt-2 text-sm text-zinc-500 dark:text-zinc-400">
               {description}
             </p>
           )}
