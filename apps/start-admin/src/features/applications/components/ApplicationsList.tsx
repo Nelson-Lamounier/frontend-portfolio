@@ -109,13 +109,13 @@ export function ApplicationsList({ initialStage }: { initialStage?: string }) {
         <div className="relative flex-1 group">
           <button
             onClick={() => setPalleteOpen(true)}
-            className="flex w-full items-center justify-between rounded-lg border border-white/10 bg-white/5 py-1.5 pl-3 pr-2 text-sm text-zinc-400 focus:outline-none focus:ring-1 focus:ring-violet-500 hover:bg-white/10 transition-colors"
+            className="flex w-full items-center justify-between rounded-lg border border-zinc-200 dark:border-white/10 bg-zinc-50 dark:bg-white/5 py-1.5 pl-3 pr-2 text-sm text-zinc-500 dark:text-zinc-400 focus:outline-none focus:ring-1 focus:ring-teal-500 hover:bg-zinc-100 dark:hover:bg-white/10 transition-colors"
           >
             <div className="flex items-center">
               <Search className="mr-2 h-4 w-4 text-zinc-500 group-hover:text-zinc-400" />
               <span>Search company or role...</span>
             </div>
-            <kbd className="hidden sm:inline-flex items-center rounded border border-white/10 bg-white/5 px-2 py-0.5 font-sans text-xs text-zinc-400">
+            <kbd className="hidden sm:inline-flex items-center rounded border border-zinc-200 dark:border-white/10 bg-zinc-100 dark:bg-white/5 px-2 py-0.5 font-sans text-xs text-zinc-500 dark:text-zinc-400">
               <abbr title="Command" className="no-underline">⌘</abbr>K
             </kbd>
           </button>
