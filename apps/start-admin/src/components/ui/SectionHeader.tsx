@@ -44,7 +44,7 @@ export function SectionHeader({
       <div className="-mt-4 -ml-4 flex flex-wrap items-center justify-between sm:flex-nowrap">
         <div className="mt-4 ml-4 flex items-center gap-3">
           {expandable && (
-            <div className={`text-gray-500 transition-colors ${isClickable ? 'group-hover:text-white' : ''}`}>
+            <div className={`text-zinc-500 transition-colors ${isClickable ? 'group-hover:text-white' : ''}`}>
               <svg 
                 className={`w-5 h-5 transition-transform duration-200 ${isExpanded ? 'rotate-90' : ''}`} 
                 fill="none" 
@@ -60,7 +60,7 @@ export function SectionHeader({
               {title}
             </h3>
             {description && (
-              <div className={`mt-1 text-sm transition-colors ${isClickable ? 'text-gray-400 group-hover:text-gray-300' : 'text-gray-400'}`}>
+              <div className={`mt-1 text-sm transition-colors ${isClickable ? 'text-zinc-400 group-hover:text-zinc-300' : 'text-zinc-400'}`}>
                 {description}
               </div>
             )}

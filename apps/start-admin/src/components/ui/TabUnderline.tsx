@@ -20,7 +20,7 @@ export default function Example() {
         <select
           defaultValue={tabs.find((tab) => tab.current)?.name}
           aria-label="Select a tab"
-          className="col-start-1 row-start-1 w-full appearance-none rounded-md bg-white/5 py-2 pr-8 pl-3 text-base text-gray-100 outline-1 -outline-offset-1 outline-white/10 *:bg-gray-800 focus:outline-2 focus:-outline-offset-2 focus:outline-indigo-500"
+          className="col-start-1 row-start-1 w-full appearance-none rounded-md bg-white/5 py-2 pr-8 pl-3 text-base text-zinc-100 outline-1 -outline-offset-1 outline-white/10 *:bg-zinc-800 focus:outline-2 focus:-outline-offset-2 focus:outline-indigo-500"
         >
           {tabs.map((tab) => (
             <option key={tab.name}>{tab.name}</option>
@@ -28,7 +28,7 @@ export default function Example() {
         </select>
         <ChevronDownIcon
           aria-hidden="true"
-          className="pointer-events-none col-start-1 row-start-1 mr-2 size-5 self-center justify-self-end fill-gray-400"
+          className="pointer-events-none col-start-1 row-start-1 mr-2 size-5 self-center justify-self-end fill-zinc-400"
         />
       </div>
       <div className="hidden sm:block">
@@ -42,7 +42,7 @@ export default function Example() {
                 className={classNames(
                   tab.current
                     ? 'border-indigo-400 text-indigo-400'
-                    : 'border-transparent text-gray-400 hover:border-white/20 hover:text-white',
+                    : 'border-transparent text-zinc-400 hover:border-white/20 hover:text-white',
                   'flex border-b-2 px-1 py-4 text-sm font-medium whitespace-nowrap',
                 )}
               >
@@ -50,7 +50,7 @@ export default function Example() {
                 {tab.count ? (
                   <span
                     className={classNames(
-                      tab.current ? 'bg-indigo-500/20 text-indigo-400' : 'bg-white/10 text-gray-300',
+                      tab.current ? 'bg-indigo-500/20 text-indigo-400' : 'bg-white/10 text-zinc-300',
                       'ml-3 hidden rounded-full px-2.5 py-0.5 text-xs font-medium md:inline-block',
                     )}
                   >

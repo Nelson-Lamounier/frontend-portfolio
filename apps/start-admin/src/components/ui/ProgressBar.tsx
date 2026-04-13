@@ -46,24 +46,24 @@ export function ProgressBar({ steps }: ProgressBarProps) {
                     </span>
                     <span className="ml-4 flex min-w-0 flex-col">
                       <span className="text-sm font-medium text-white">{step.name}</span>
-                      {step.description && <span className="text-sm text-gray-400">{step.description}</span>}
+                      {step.description && <span className="text-sm text-zinc-400">{step.description}</span>}
                     </span>
                   </Component>
                 </>
               ) : step.status === 'current' ? (
                 <>
                   {!isLast ? (
-                    <div aria-hidden="true" className="absolute top-4 left-4 mt-0.5 -ml-px h-full w-0.5 bg-gray-700" />
+                    <div aria-hidden="true" className="absolute top-4 left-4 mt-0.5 -ml-px h-full w-0.5 bg-zinc-700" />
                   ) : null}
                   <Component {...componentProps} aria-current="step" className="group relative flex w-full items-start text-left">
                     <span aria-hidden="true" className="flex h-9 items-center">
-                      <span className="relative z-10 flex size-8 items-center justify-center rounded-full border-2 border-indigo-500 bg-gray-900">
+                      <span className="relative z-10 flex size-8 items-center justify-center rounded-full border-2 border-indigo-500 bg-zinc-900">
                         <span className="size-2.5 rounded-full bg-indigo-500" />
                       </span>
                     </span>
                     <span className="ml-4 flex min-w-0 flex-col">
                       <span className="text-sm font-medium text-indigo-400">{step.name}</span>
-                      {step.description && <span className="text-sm text-gray-400">{step.description}</span>}
+                      {step.description && <span className="text-sm text-zinc-400">{step.description}</span>}
                     </span>
                   </Component>
                 </>
@@ -74,13 +74,13 @@ export function ProgressBar({ steps }: ProgressBarProps) {
                   ) : null}
                   <Component {...componentProps} className="group relative flex w-full items-start text-left">
                     <span aria-hidden="true" className="flex h-9 items-center">
-                      <span className="relative z-10 flex size-8 items-center justify-center rounded-full border-2 border-white/15 bg-gray-900 group-hover:border-white/25">
+                      <span className="relative z-10 flex size-8 items-center justify-center rounded-full border-2 border-white/15 bg-zinc-900 group-hover:border-white/25">
                         <span className="size-2.5 rounded-full bg-transparent group-hover:bg-white/15" />
                       </span>
                     </span>
                     <span className="ml-4 flex min-w-0 flex-col">
-                      <span className="text-sm font-medium text-gray-400">{step.name}</span>
-                      {step.description && <span className="text-sm text-gray-400">{step.description}</span>}
+                      <span className="text-sm font-medium text-zinc-400">{step.name}</span>
+                      {step.description && <span className="text-sm text-zinc-400">{step.description}</span>}
                     </span>
                   </Component>
                 </>

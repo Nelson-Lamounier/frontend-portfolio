@@ -14,11 +14,11 @@ export interface FullWidthBarProps {
 
 export function FullWidthBar({ steps }: FullWidthBarProps) {
   return (
-    <nav aria-label="Breadcrumb" className="flex border-b border-white/10 bg-gray-800/50">
+    <nav aria-label="Breadcrumb" className="flex border-b border-white/10 bg-zinc-800/50">
       <ol role="list" className="mx-auto flex w-full max-w-7xl space-x-4 px-4 sm:px-6 lg:px-8">
         <li className="flex">
           <div className="flex items-center">
-            <Link to="/applications" className="text-gray-400 hover:text-gray-200 transition-colors">
+            <Link to="/applications" className="text-zinc-400 hover:text-zinc-200 transition-colors">
               <HomeIcon aria-hidden="true" className="size-5 shrink-0" />
               <span className="sr-only">Home</span>
             </Link>
@@ -29,7 +29,7 @@ export function FullWidthBar({ steps }: FullWidthBarProps) {
           // This clever trick forces the container to always reserve enough width for the bold version 
           // of the text so that when it toggles between font-medium and font-bold, it never jumps.
           const className = `text-sm transition-colors outline-none flex flex-col items-center justify-center after:content-[attr(data-text)] after:font-bold after:h-0 after:invisible after:overflow-hidden ${
-             isCurrent ? 'font-bold text-white' : 'font-medium text-gray-400 hover:text-gray-200'
+             isCurrent ? 'font-bold text-white' : 'font-medium text-zinc-400 hover:text-zinc-200'
           }`
 
           return (

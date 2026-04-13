@@ -31,7 +31,7 @@ export function Tabs({ tabs, onTabChange }: TabsProps) {
           </select>
           <ChevronDownIcon
             aria-hidden="true"
-            className="pointer-events-none col-start-1 row-start-1 mr-2 size-5 self-center justify-self-end fill-gray-400"
+            className="pointer-events-none col-start-1 row-start-1 mr-2 size-5 self-center justify-self-end fill-zinc-400"
           />
         </div>
         <div className="hidden sm:block">

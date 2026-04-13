@@ -36,7 +36,7 @@ export function DashboardDrawer({
               transition
               className="pointer-events-auto w-full transform transition duration-500 ease-in-out data-closed:translate-x-full sm:duration-700"
             >
-              <div className="flex h-full flex-col overflow-y-auto bg-gray-900 shadow-2xl py-6 lg:border-l lg:border-white/10">
+              <div className="flex h-full flex-col overflow-y-auto bg-zinc-900 shadow-2xl py-6 lg:border-l lg:border-white/10">
                 {/* Header */}
                 <div className="px-4 sm:px-6">
                   <div className="flex items-start justify-between">
@@ -45,7 +45,7 @@ export function DashboardDrawer({
                         {title}
                       </DialogTitle>
                       {description && (
-                        <p className="mt-1 text-sm text-gray-400">{description}</p>
+                        <p className="mt-1 text-sm text-zinc-400">{description}</p>
                       )}
                     </div>
                     <div className="ml-3 flex h-7 items-center gap-4">
@@ -53,7 +53,7 @@ export function DashboardDrawer({
                       <button
                         type="button"
                         onClick={onClose}
-                        className="rounded-md text-gray-400 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 transition-colors"
+                        className="rounded-md text-zinc-400 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 transition-colors"
                       >
                         <span className="sr-only">Close panel</span>
                         <XMarkIcon aria-hidden="true" className="size-6" />

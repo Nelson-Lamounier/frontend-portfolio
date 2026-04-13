@@ -11,10 +11,10 @@ export interface LinkCardProps {
 
 export function LinkCard({ title, subtitle, icon, onClick, topRight, bottom }: LinkCardProps) {
   return (
-    <div className="group relative flex flex-col justify-between rounded-lg border border-white/10 bg-gray-800/50 px-6 py-5 focus-within:outline-2 focus-within:outline-offset-2 focus-within:outline-indigo-500 hover:border-white/25 transition-colors">
+    <div className="group relative flex flex-col justify-between rounded-lg border border-white/10 bg-zinc-800/50 px-6 py-5 focus-within:outline-2 focus-within:outline-offset-2 focus-within:outline-indigo-500 hover:border-white/25 transition-colors">
       <div className="flex items-center space-x-4">
         {icon && (
-          <div className="shrink-0 flex size-10 items-center justify-center rounded-full bg-gray-700 outline -outline-offset-1 outline-white/10">
+          <div className="shrink-0 flex size-10 items-center justify-center rounded-full bg-zinc-700 outline -outline-offset-1 outline-white/10">
             {icon}
           </div>
         )}
@@ -23,12 +23,12 @@ export function LinkCard({ title, subtitle, icon, onClick, topRight, bottom }: L
             <button onClick={onClick} className="focus:outline-none text-left w-full block">
               <span aria-hidden="true" className="absolute inset-0" />
               <div className="text-sm font-medium text-white">{title}</div>
-              <div className="truncate text-sm text-gray-400 mt-1">{subtitle}</div>
+              <div className="truncate text-sm text-zinc-400 mt-1">{subtitle}</div>
             </button>
           ) : (
             <div>
               <div className="text-sm font-medium text-white">{title}</div>
-              <div className="truncate text-sm text-gray-400 mt-1">{subtitle}</div>
+              <div className="truncate text-sm text-zinc-400 mt-1">{subtitle}</div>
             </div>
           )}
         </div>

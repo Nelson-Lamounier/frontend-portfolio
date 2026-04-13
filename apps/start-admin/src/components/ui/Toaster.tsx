@@ -14,7 +14,7 @@ export function Toaster() {
               ? 'bg-red-500 text-white'
               : t.type === 'success'
                 ? 'bg-emerald-500 text-white'
-                : 'bg-gray-800 text-white'
+                : 'bg-zinc-800 text-white'
           }`}
         >
           <span>{t.message}</span>
