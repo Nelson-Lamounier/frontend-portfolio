@@ -122,20 +122,20 @@ export function ArticleVersionsList({ article, isDraft }: ArticleVersionsListPro
 
   return (
     <>
-      <ul className="divide-y divide-white/5 border border-white/10 rounded-lg bg-zinc-900">
-        <li className="px-4 py-5 hover:bg-white/[0.02] transition-colors sm:px-6 first:rounded-t-lg last:rounded-b-lg">
+      <ul className="divide-y divide-zinc-200 dark:divide-white/5 border border-zinc-200 dark:border-white/10 rounded-lg bg-white dark:bg-zinc-900">
+        <li className="px-4 py-5 hover:bg-zinc-50 dark:hover:bg-white/[0.02] transition-colors sm:px-6 first:rounded-t-lg last:rounded-b-lg">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
                <span
                 className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${
                   isDraft
-                    ? 'bg-amber-900/30 text-amber-300'
-                    : 'bg-teal-900/30 text-teal-300'
+                    ? 'bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300'
+                    : 'bg-teal-100 dark:bg-teal-900/30 text-teal-700 dark:text-teal-300'
                 }`}
               >
                 {isDraft ? 'Draft' : 'Published'}
               </span>
-              <span className="inline-flex items-center text-sm font-semibold text-white">
+              <span className="inline-flex items-center text-sm font-semibold text-zinc-900 dark:text-white">
                 v{article.version ?? 1}
               </span>
               <time dateTime={article.date} className="text-xs text-zinc-500">
@@ -179,14 +179,14 @@ export function ArticleVersionsList({ article, isDraft }: ArticleVersionsListPro
                 placeholder="https://github.com/..."
                 value={githubUrl}
                 onChange={(e) => setGithubUrl(e.target.value)}
-                className="w-48 rounded bg-black/20 border border-white/10 px-2 py-1 text-xs text-zinc-300 placeholder-zinc-600 outline-none focus:border-teal-500 focus:ring-1 focus:ring-teal-500"
+                className="w-48 rounded bg-zinc-100 dark:bg-black/20 border border-zinc-300 dark:border-white/10 px-2 py-1 text-xs text-zinc-700 dark:text-zinc-300 placeholder-zinc-400 dark:placeholder-zinc-600 outline-none focus:border-teal-500 focus:ring-1 focus:ring-teal-500"
               />
               {githubDirty && (
                 <button
                   type="button"
                   onClick={handleGithubSave}
                   disabled={updateMetadata.isPending}
-                  className="rounded bg-indigo-600 px-2 py-1 text-xs font-semibold text-white hover:bg-indigo-500 disabled:opacity-50"
+                  className="rounded bg-teal-600 px-2 py-1 text-xs font-semibold text-white hover:bg-teal-500 disabled:opacity-50"
                 >
                   {updateMetadata.isPending ? 'Saving...' : 'Save'}
                 </button>

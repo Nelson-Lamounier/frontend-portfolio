@@ -126,8 +126,8 @@ export function ArticleEditorDrawerContent({
       {/* Error */}
       {!isLoading && error && (
         <div className="flex flex-1 items-center justify-center px-4">
-          <div className="w-full max-w-md rounded-2xl border border-red-800 bg-red-900/20 p-6 text-center">
-            <p className="text-sm text-red-400">{error}</p>
+          <div className="w-full max-w-md rounded-2xl border border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-900/20 p-6 text-center">
+            <p className="text-sm text-red-600 dark:text-red-400">{error}</p>
             <button
               onClick={() => refetch()}
               className="mt-4 rounded-lg bg-red-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-red-500"
@@ -176,21 +176,21 @@ export function ArticleEditorDrawerContent({
                 value={content}
                 onChange={(e) => setContent(e.target.value)}
                 spellCheck={false}
-                className="h-full w-full resize-none rounded-xl border border-zinc-700 bg-zinc-900 p-4 font-mono text-sm leading-relaxed text-zinc-200 shadow-sm outline-none transition-colors focus:border-teal-500 focus:ring-2 focus:ring-teal-500/20"
+                className="h-full w-full resize-none rounded-xl border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-900 p-4 font-mono text-sm leading-relaxed text-zinc-800 dark:text-zinc-200 shadow-sm outline-none transition-colors focus:border-teal-500 focus:ring-2 focus:ring-teal-500/20"
                 placeholder="Article MDX content…"
               />
             ) : (
-              <div className="h-full rounded-xl border border-zinc-700 bg-zinc-950 p-6 shadow-inner">
+              <div className="h-full rounded-xl border border-zinc-200 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-950 p-6 shadow-inner">
                 <MdxPreview content={content} />
               </div>
             )}
           </div>
 
           {/* Action bar */}
-          <div className="flex items-center justify-end gap-3 border-t border-white/10 pt-3">
+          <div className="flex items-center justify-end gap-3 border-t border-zinc-200 dark:border-white/10 pt-3">
             <button
               onClick={onClose}
-              className="rounded-lg px-4 py-2 text-sm font-medium text-zinc-400 transition-colors hover:text-white"
+              className="rounded-lg px-4 py-2 text-sm font-medium text-zinc-500 dark:text-zinc-400 transition-colors hover:text-zinc-900 dark:hover:text-white"
             >
               Cancel
             </button>

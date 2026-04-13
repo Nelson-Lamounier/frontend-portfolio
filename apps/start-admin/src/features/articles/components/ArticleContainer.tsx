@@ -13,7 +13,7 @@ type ActiveTab = 'all' | 'drafts' | 'in review' | 'published' | 'failed'
 function ArticlesList({ tab, articles }: { readonly tab: ActiveTab; readonly articles: any[] }) {
   if (articles.length === 0) {
     return (
-      <div className="mx-4 sm:mx-6 border-2 border-dashed border-white/10 rounded-lg p-12 text-center text-zinc-500">
+      <div className="mx-4 sm:mx-6 border-2 border-dashed border-zinc-200 dark:border-white/10 rounded-lg p-12 text-center text-zinc-500">
         No {tab !== 'all' ? tab : ''} articles found.
       </div>
     )
@@ -22,7 +22,7 @@ function ArticlesList({ tab, articles }: { readonly tab: ActiveTab; readonly art
   return (
     <div className="flex flex-col gap-4 mx-4 sm:mx-6 mt-6">
       {articles.map((article) => (
-        <div key={article.slug} className="border border-white/10 rounded-lg bg-white/[0.02]">
+        <div key={article.slug} className="border border-zinc-200 dark:border-white/10 rounded-lg bg-white dark:bg-white/[0.02]">
           <ArticleAccordion article={article} isDraft={article.status === 'draft'} />
         </div>
       ))}
@@ -81,7 +81,7 @@ export function ArticleContainer() {
   ]
 
   return (
-    <div className="bg-zinc-900 shadow-sm sm:rounded-lg">
+    <div className="bg-white dark:bg-zinc-900 shadow-sm sm:rounded-lg">
       <Stats stats={stats} />
 
       <CommandPallete
@@ -92,12 +92,12 @@ export function ArticleContainer() {
         placeholder="Select a model..."
       />
 
-      <div className="px-4 py-5 sm:p-6 text-white text-xl font-bold border-b border-white/10 pb-5">
+      <div className="px-4 py-5 sm:p-6 text-zinc-900 dark:text-white text-xl font-bold border-b border-zinc-200 dark:border-white/10 pb-5">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div>Articles History</div>
           <button
             onClick={() => setPaletteOpen(true)}
-            className="flex items-center gap-2 text-sm font-medium text-zinc-400 hover:text-white px-3 py-1.5 rounded-lg border border-white/10 hover:bg-white/5 transition-colors"
+            className="flex items-center gap-2 text-sm font-medium text-zinc-500 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white px-3 py-1.5 rounded-lg border border-zinc-200 dark:border-white/10 hover:bg-zinc-100 dark:hover:bg-white/5 transition-colors"
           >
             <AdjustmentsHorizontalIcon className="size-5" />
             {selectedModel.id === 'all' ? 'Filter by Model' : `Model: ${selectedModel.name}`}
