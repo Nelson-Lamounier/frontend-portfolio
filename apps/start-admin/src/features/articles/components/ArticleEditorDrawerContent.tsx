@@ -52,8 +52,8 @@ export function ArticleEditorDrawerContent({
   // ── Sync fetched data into local state (only on initial load) ───────────────
   useEffect(() => {
     if (articleData && !isInitialised) {
-      setContent(articleData.content)
-      setOriginalContent(articleData.content)
+      setContent(articleData.content ?? '')
+      setOriginalContent(articleData.content ?? '')
       setIsInitialised(true)
     }
   }, [articleData, isInitialised])

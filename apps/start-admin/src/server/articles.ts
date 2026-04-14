@@ -165,10 +165,14 @@ export const getArticlesFn = createServerFn({ method: 'GET' })
   })
 
 /**
- * Retrieves full article metadata from DynamoDB and the MDX body from S3 (via admin-api).
+ * Retrieves the MDX body for an article from S3 via admin-api's content endpoint.
+ *
+ * Uses /content/:slug (not /articles/:slug) — the articles endpoint returns
+ * DynamoDB METADATA which has no `content` field. Content is stored in S3
+ * and served via the dedicated content route.
  *
  * @param data - The article slug
- * @returns Article metadata + content, or null if not found
+ * @returns { slug, contentRef, content } or null if not found
  */
 export const getArticleContentFn = createServerFn({ method: 'GET' })
   .inputValidator(slugSchema)
@@ -176,10 +180,10 @@ export const getArticleContentFn = createServerFn({ method: 'GET' })
     await requireAuth()
 
     try {
-      const body = await apiFetch<{ article: ArticleDetail }>(
-        `/articles/${encodeURIComponent(slug)}`,
+      const body = await apiFetch<{ slug: string; contentRef: string; content: string }>(
+        `/content/${encodeURIComponent(slug)}`,
       )
-      return body.article
+      return body
     } catch (err: unknown) {
       if (err instanceof Error && err.message.includes('[404]')) {
         return null
@@ -249,6 +253,10 @@ export const deleteArticleFn = createServerFn({ method: 'POST' })
 /**
  * Saves article markdown content via admin-api (which writes to S3).
  *
+ * Uses POST /content/:slug — content is stored in S3 via admin-api's content
+ * route. The articles PUT endpoint handles only metadata fields (title, tags,
+ * status, etc.) and does not accept `content`.
+ *
  * @param data.id - The article slug
  * @param data.content - Markdown content body
  * @returns Success indicator
@@ -258,11 +266,10 @@ export const saveArticleContentFn = createServerFn({ method: 'POST' })
   .handler(async ({ data }) => {
     await requireAuth()
 
-    // admin-api PUT /:slug accepts a `content` field and persists it to S3
-    await apiFetch<{ updated: boolean; slug: string }>(
-      `/articles/${encodeURIComponent(data.id)}`,
+    await apiFetch<{ saved: boolean; slug: string; contentRef: string }>(
+      `/content/${encodeURIComponent(data.id)}`,
       {
-        method: 'PUT',
+        method: 'POST',
         body: JSON.stringify({ content: data.content }),
       },
     )
