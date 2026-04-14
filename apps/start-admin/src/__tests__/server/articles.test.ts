@@ -149,13 +149,13 @@ describe('articles server functions', () => {
 
   describe('getArticleContentFn', () => {
     it('should fetch article content from admin-api', async () => {
-      mockResponse({ article: ARTICLE_DETAIL })
+      mockResponse(ARTICLE_DETAIL)
 
       const handler = getArticleContentFn as (i: { data: string }) => Promise<unknown>
       const result = await handler({ data: 'my-draft' })
 
       expect(fetchMock).toHaveBeenCalledWith(
-        `${EXPECTED_API_URL}/articles/my-draft`,
+        `${EXPECTED_API_URL}/content/my-draft`,
         expect.anything(),
       )
       expect(result).toEqual(ARTICLE_DETAIL)
@@ -223,7 +223,7 @@ describe('articles server functions', () => {
   })
 
   describe('saveArticleContentFn', () => {
-    it('should call PUT /:slug with content body', async () => {
+    it('should call POST /content/:slug with content body', async () => {
       mockResponse({ updated: true, slug: 'my-draft' })
 
       const handler = saveArticleContentFn as (
@@ -232,9 +232,9 @@ describe('articles server functions', () => {
       const result = await handler({ data: { id: 'my-draft', content: '# Updated content' } })
 
       expect(fetchMock).toHaveBeenCalledWith(
-        `${EXPECTED_API_URL}/articles/my-draft`,
+        `${EXPECTED_API_URL}/content/my-draft`,
         expect.objectContaining({
-          method: 'PUT',
+          method: 'POST',
           body: JSON.stringify({ content: '# Updated content' }),
         }),
       )
