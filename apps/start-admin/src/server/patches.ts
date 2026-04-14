@@ -190,6 +190,14 @@ const httpServer = createServer(async (req: IncomingMessage, res: ServerResponse
     // Use appendHeader (not setHeader) to preserve multiple Set-Cookie values.
     webRes.headers.forEach((value: string, name: string) => res.appendHeader(name, value));
 
+    // SSR HTML embeds hashed asset URLs — caching the HTML shell causes stale
+    // asset references after deploys (browser requests old hash that no longer
+    // exists). Force no-store on HTML responses so browsers always get fresh HTML.
+    const contentType = res.getHeader('content-type');
+    if (typeof contentType === 'string' && contentType.includes('text/html')) {
+      res.setHeader('Cache-Control', 'no-store');
+    }
+
     if (webRes.body) {
       const reader = webRes.body.getReader();
       for (;;) {
