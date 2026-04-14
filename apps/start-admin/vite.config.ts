@@ -8,7 +8,15 @@ import { tanstackStart } from '@tanstack/react-start/plugin/vite'
 import viteReact from '@vitejs/plugin-react'
 import tailwindcss from '@tailwindcss/vite'
 
-const config = defineConfig({
+// isSsrBuild is true when Vinxi builds the SSR (server) bundle.
+// Tailwind must NOT run in the SSR pass: if it does, it re-processes
+// styles.css and assigns a NEW content hash that is different from the
+// client build's hash. The server bundle then embeds this SSR hash as
+// the stylesheet URL, but only the CLIENT hash exists on disk — causing
+// the "Refused to apply style … text/html" MIME error on every page load.
+// With Tailwind disabled in SSR, Vite reads the stylesheet URL from the
+// client manifest (correct hash) instead of recomputing it.
+const config = defineConfig(({ isSsrBuild }) => ({
   base: '/admin/',
   resolve: {
     alias: {
@@ -33,10 +41,10 @@ const config = defineConfig({
   plugins: [
     devtools(),
     tsconfigPaths({ projects: ['./tsconfig.json'] }),
-    tailwindcss(),
+    !isSsrBuild && tailwindcss(),
     tanstackStart({ router: { routesDirectory: 'app' } }),
     viteReact(),
-  ],
-})
+  ].filter(Boolean),
+}))
 
 export default config
