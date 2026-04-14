@@ -101,16 +101,7 @@ interface ArticleSummary {
   updatedAt?: string
 }
 
-interface ArticleDetail {
-  slug: string
-  title: string
-  description: string
-  status: string
-  author: string
-  date: string
-  contentRef: string
-  content: string
-}
+
 
 // =============================================================================
 // Input Schemas
