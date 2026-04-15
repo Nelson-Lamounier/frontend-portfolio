@@ -167,6 +167,7 @@ export function ResumeSection() {
 
       trackResumeDownload()
     } catch (err) {
+      // eslint-disable-next-line no-console
       console.error('Resume PDF generation failed:', err)
     } finally {
       if (container?.parentNode) document.body.removeChild(container)

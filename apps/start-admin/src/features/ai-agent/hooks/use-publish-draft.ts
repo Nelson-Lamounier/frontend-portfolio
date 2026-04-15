@@ -14,7 +14,9 @@ export function usePublishDraft() {
     mutationFn: async ({ fileName, content }: PublishDraftParams) => {
       const result = await publishDraftFn({ data: { fileName, content } })
       if (!result.success) {
-        throw new Error(result.message)
+        // Surface the underlying admin-api error, not just the generic message
+        const detail = result.error ? ` — ${result.error}` : ''
+        throw new Error(`${result.message}${detail}`)
       }
       return result
     },

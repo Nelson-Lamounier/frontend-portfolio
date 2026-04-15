@@ -77,8 +77,7 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
   // (e.g. CDN/HTTP2 serving CSS before the inline script executes).
   useEffect(() => {
     applyThemeToDom(theme)
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []) // intentionally runs only once on mount
+  }, []) // intentionally runs only once on mount — re-sync DOM on first render
 
   const toggleTheme = useCallback(() => {
     applyTheme(theme === 'dark' ? 'light' : 'dark')

@@ -5,12 +5,16 @@ import { entityToArticle } from '@/lib/types/article.types'
 import {
   getArticlesFn,
   getArticleContentFn,
+  getArticleVersionsFn,
   publishArticleFn,
   unpublishArticleFn,
   deleteArticleFn,
   saveArticleMetadataFn,
   saveArticleContentFn,
+  type ArticleVersion,
 } from '../server/articles'
+
+export type { ArticleVersion }
 
 // =============================================================================
 // Types
@@ -19,12 +23,16 @@ import {
 export interface AdminArticlesData {
   readonly all: ArticleWithSlug[]
   readonly drafts: ArticleWithSlug[]
+  readonly processing: ArticleWithSlug[]
   readonly published: ArticleWithSlug[]
   readonly review: ArticleWithSlug[]
+  readonly flagged: ArticleWithSlug[]
   readonly failed: ArticleWithSlug[]
   readonly draftCount: number
+  readonly processingCount: number
   readonly publishedCount: number
   readonly reviewCount: number
+  readonly flaggedCount: number
   readonly failedCount: number
   readonly totalCount: number
 }
@@ -43,24 +51,53 @@ export function useAdminArticles() {
     queryKey: adminKeys.articles.list('all'),
     queryFn: async (): Promise<AdminArticlesData> => {
       const items = await getArticlesFn({ data: { status: 'all' } })
-      const articles = (items as unknown as Record<string, unknown>[]).map(entityToArticle)
+      const raw = (items as unknown as Record<string, unknown>[])
 
-      const drafts = articles.filter((a) => a.status === 'draft')
-      const published = articles.filter((a) => a.status === 'published')
-      const review = articles.filter((a) => a.status === 'review')
-      const failed = articles.filter((a) => a.status === 'rejected')
+      // Deduplicate by slug — prefer METADATA records over VERSION#v<n> records.
+      // Until the admin-api FilterExpression fix is deployed, both record types
+      // can be returned. A Map keyed by slug keeps the first METADATA entry it
+      // encounters; VERSION records are silently discarded.
+      const slugMap = new Map<string, Record<string, unknown>>()
+      for (const item of raw) {
+        const slug =
+          (item['slug'] as string) ||
+          (typeof item['pk'] === 'string' ? (item['pk'] as string).replace(/^ARTICLE#/, '') : '')
+        if (!slug) continue
+
+        const existing = slugMap.get(slug)
+        const isMetadata = (item['sk'] as string) === 'METADATA'
+        const existingIsMetadata = existing && (existing['sk'] as string) === 'METADATA'
+
+        // Always prefer METADATA over VERSION; keep existing if both are METADATA
+        if (!existing || (!existingIsMetadata && isMetadata)) {
+          slugMap.set(slug, item)
+        }
+      }
+
+      const articles = [...slugMap.values()].map(entityToArticle)
+
+      const drafts     = articles.filter((a) => a.status === 'draft')
+      const processing = articles.filter((a) => a.status === 'processing')
+      const published  = articles.filter((a) => a.status === 'published')
+      const review     = articles.filter((a) => a.status === 'review')
+      const flagged    = articles.filter((a) => a.status === 'flagged')
+      const failed     = articles.filter((a) => a.status === 'rejected')
 
       return {
         all: articles,
         drafts,
+        processing,
         published,
         review,
+        flagged,
         failed,
-        draftCount: drafts.length,
+        draftCount:    drafts.length,
+        processingCount: processing.length,
         publishedCount: published.length,
-        reviewCount: review.length,
-        failedCount: failed.length,
-        totalCount: articles.length,
+        reviewCount:   review.length,
+        flaggedCount:  flagged.length,
+        failedCount:   failed.length,
+        totalCount:    articles.length,
       }
     },
   })
@@ -161,5 +198,21 @@ export function useSaveContent() {
         queryKey: adminKeys.articles.content(variables.slug),
       })
     },
+  })
+}
+
+/**
+ * Fetches the full pipeline version history for an article.
+ * Only fires when the accordion is expanded (slug is non-null).
+ *
+ * @param slug - Article slug, or null to keep the query disabled
+ * @returns TanStack Query result with version history
+ */
+export function useArticleVersions(slug: string | null) {
+  return useQuery({
+    queryKey: [...adminKeys.articles.all, 'versions', slug] as const,
+    queryFn: () => getArticleVersionsFn({ data: slug! }),
+    enabled: slug !== null,
+    staleTime: 30_000, // 30s — version history rarely changes mid-session
   })
 }

@@ -1,8 +1,9 @@
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useEffect, useRef } from 'react'
 import type { ChangeEvent, DragEvent } from 'react'
 import { useNavigate } from '@tanstack/react-router'
 import { Bot } from 'lucide-react'
 import { usePublishDraft } from '../hooks/use-publish-draft'
+import { usePipelineStatus } from '../hooks/use-pipeline-status'
 import { useToastStore } from '@/lib/stores/toast-store'
 import { AiArticlesList } from './AiArticlesList'
 import { MultiColumnLayout } from '#/components/ui/MultiColumnLayout'
@@ -22,15 +23,16 @@ import { AiArticleForm } from './AiArticleForm'
 
 interface AIAgentContainerProps {
   initialMode?: AgentMode
+  initialSlug?: string | null
 }
 
-export function AIAgentContainer({ initialMode = 'test' }: AIAgentContainerProps) {
+export function AIAgentContainer({ initialMode = 'test', initialSlug = null }: AIAgentContainerProps) {
   const { addToast } = useToastStore()
   const navigate = useNavigate()
 
   // ── Shared state ──────────────────────────────────────────────────────────
   const [mode, setMode] = useState<AgentMode>(initialMode)
-  const [pipelineSlug, setPipelineSlug] = useState<string | null>(null)
+  const [pipelineSlug, setPipelineSlug] = useState<string | null>(initialSlug)
 
   // ── Upload mode state ─────────────────────────────────────────────────────
   const [draft, setDraft] = useState<DraftFile | null>(null)
@@ -42,6 +44,41 @@ export function AIAgentContainer({ initialMode = 'test' }: AIAgentContainerProps
 
   // ── TanStack Query hooks ──────────────────────────────────────────────────
   const publishMutation = usePublishDraft()
+  const pipelineStatus = usePipelineStatus(mode === 'pipeline' ? pipelineSlug : null)
+  const reviewNotifiedRef = useRef(false)
+  const flaggedNotifiedRef = useRef(false)
+
+  // Fire a persistent toast the first time this pipeline reaches 'review'.
+  // The ref guards against re-firing on subsequent polls.
+  useEffect(() => {
+    if (
+      pipelineStatus.data?.pipelineState === 'review' &&
+      !reviewNotifiedRef.current
+    ) {
+      reviewNotifiedRef.current = true
+      addToast(
+        'info',
+        `"${pipelineStatus.data.slug ?? pipelineSlug}" is ready for review — check the Articles list.`,
+        10_000,
+      )
+    }
+  }, [pipelineStatus.data?.pipelineState, pipelineStatus.data?.slug, pipelineSlug, addToast])
+
+  // Fire a warning toast the first time this pipeline reaches 'flagged'.
+  // QA agent scored below threshold — article needs revision before publishing.
+  useEffect(() => {
+    if (
+      pipelineStatus.data?.pipelineState === 'flagged' &&
+      !flaggedNotifiedRef.current
+    ) {
+      flaggedNotifiedRef.current = true
+      addToast(
+        'warning',
+        `"${pipelineStatus.data.slug ?? pipelineSlug}" was flagged by QA — revise the draft and re-submit.`,
+        12_000,
+      )
+    }
+  }, [pipelineStatus.data?.pipelineState, pipelineStatus.data?.slug, pipelineSlug, addToast])
 
   // ── Derived values ────────────────────────────────────────────────────────
   const sanitisedFilename = slugifyFilename(pasteFilename)
@@ -66,6 +103,9 @@ export function AIAgentContainer({ initialMode = 'test' }: AIAgentContainerProps
       const lines = content.split('\n')
       const preview = lines.slice(0, PREVIEW_LINE_COUNT).join('\n')
 
+      // File wins — clear paste state so only one source is active
+      setPasteContent('')
+      setPasteFilename('')
       setDraft({
         name: file.name,
         content,
@@ -138,6 +178,7 @@ export function AIAgentContainer({ initialMode = 'test' }: AIAgentContainerProps
             addToast('success', `Draft "${data.slug}" uploaded — pipeline triggered!`)
             setPipelineSlug(data.slug)
             setMode('pipeline')
+            void navigate({ to: '/ai-agent', search: { mode: 'pipeline', slug: data.slug } })
           } else {
             addToast('error', data.message)
           }
@@ -154,7 +195,7 @@ export function AIAgentContainer({ initialMode = 'test' }: AIAgentContainerProps
       {/* Header */}
       <div className="mb-8">
         <div className="flex items-center gap-3">
-          <div className="flex items-center justify-center rounded-xl bg-gradient-to-br from- shadow-lg ">
+          <div className="flex items-center justify-center rounded-xl bg-linear-to-br shadow-lg">
             <Bot className="h-10 w-10 text-white" />
           </div>
           <div>
@@ -195,10 +236,19 @@ export function AIAgentContainer({ initialMode = 'test' }: AIAgentContainerProps
 
 
       {mode === 'pipeline' && pipelineSlug && (
-        <PipelineMode
-          pipelineSlug={pipelineSlug}
-          backToMenu={backToMenu}
-        />
+        <MultiColumnLayout
+          secondaryColumn={
+            <AIAgentDetailsPanel
+              mode="pipeline"
+              pipelineState={pipelineStatus.data?.pipelineState}
+            />
+          }
+        >
+          <PipelineMode
+            pipelineSlug={pipelineSlug}
+            backToMenu={backToMenu}
+          />
+        </MultiColumnLayout>
       )}
 
           <div className="mt-16 sm:mt-24 pt-10 border-t border-white/10">

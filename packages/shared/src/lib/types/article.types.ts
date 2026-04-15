@@ -45,6 +45,7 @@ export type ArticleStatus =
   | 'review'
   | 'published'
   | 'rejected'
+  | 'flagged'
   | 'archived'
 
 // ========================================

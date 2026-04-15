@@ -22,6 +22,7 @@ export type PipelineState =
   | 'review'
   | 'published'
   | 'rejected'
+  | 'flagged'
   | 'failed'
 
 export interface PipelineStatusResponse {
@@ -49,6 +50,7 @@ const TERMINAL_STATES: ReadonlySet<PipelineState> = new Set([
   'review',
   'published',
   'rejected',
+  'flagged',
   'failed',
 ])
 

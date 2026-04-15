@@ -25,8 +25,8 @@ export function DashboardDrawer({
 }: DashboardDrawerProps) {
   return (
     <Dialog open={isOpen} onClose={onClose} className="relative z-30">
-      {/* Backdrop */}
-      <div className="fixed inset-0 bg-black/80 backdrop-blur-sm transition-opacity" />
+      {/* Backdrop — pointer-events-none keeps it invisible to clicks */}
+      <div aria-hidden="true" className="fixed inset-0 bg-black/80 backdrop-blur-sm transition-opacity pointer-events-none" />
 
       <div className="fixed inset-0 overflow-hidden">
         <div className="absolute inset-0 overflow-hidden">

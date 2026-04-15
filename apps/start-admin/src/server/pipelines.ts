@@ -32,7 +32,7 @@ const ADMIN_API_URL =
 // Types
 // =============================================================================
 
-type PipelineState = 'pending' | 'processing' | 'review' | 'published' | 'rejected' | 'failed'
+type PipelineState = 'pending' | 'processing' | 'review' | 'published' | 'rejected' | 'flagged' | 'failed'
 
 // =============================================================================
 // Helpers
@@ -160,6 +160,7 @@ export const getPipelineStatusFn = createServerFn({ method: 'GET' })
       const pipelineState = ((): PipelineState => {
         if (dynamoStatus === 'published') return 'published'
         if (dynamoStatus === 'rejected') return 'rejected'
+        if (dynamoStatus === 'flagged') return 'flagged'
         if (dynamoStatus === 'review') return 'review'
         if (dynamoStatus === 'processing') return 'processing'
         if (dynamoStatus === 'draft') return 'pending'
@@ -178,6 +179,7 @@ export const getPipelineStatusFn = createServerFn({ method: 'GET' })
       }
     } catch (err: unknown) {
       if (err instanceof Error && err.message.includes('[404]')) {
+        // Article not yet in DynamoDB — pipeline just started, keep polling
         return {
           slug,
           pipelineState: 'pending' as PipelineState,
@@ -185,9 +187,11 @@ export const getPipelineStatusFn = createServerFn({ method: 'GET' })
           dynamoMetadata: false,
         }
       }
+      // Infrastructure / auth / network error — state unknown, keep polling
+      // Only DynamoDB returning an unrecognised status string maps to 'failed'
       return {
         slug,
-        pipelineState: 'failed' as PipelineState,
+        pipelineState: 'processing' as PipelineState,
         s3ReviewExists: false,
         dynamoMetadata: false,
       }
@@ -269,24 +273,46 @@ export const triggerStrategistCoachFn = createServerFn({ method: 'POST' })
 /**
  * Triggers a new applications analysis pipeline (Research → Applications) via admin-api.
  *
+ * The Strategist trigger Lambda uses a Zod `.strict()` discriminated union on
+ * `operation`. Only the fields it expects must be sent — extra fields (e.g.
+ * `interviewStage`) cause silent validation failures because the invocation is
+ * asynchronous on the admin-api side.
+ *
+ * Sent to Lambda (analyse operation):
+ *   operation, jobDescription, targetCompany, targetRole, resumeId, includeCoverLetter
+ *
+ * NOT sent (unsupported by AnalyseRequestSchema):
+ *   interviewStage — hardcoded to 'applied' inside the Lambda for analyse runs
+ *
  * @param data.jobDescription - Job description
  * @param data.targetCompany - Target company
  * @param data.targetRole - Target role
- * @param data.interviewStage - Current interview stage
- * @param data.resumeId - Optional specific resume ID
+ * @param data.interviewStage - Stored locally; NOT forwarded to the Lambda
+ * @param data.resumeId - Resume ID (required by Lambda)
  * @param data.includeCoverLetter - Whether to generate cover letter
- * @returns Trigger response with pipelineId and slug
+ * @returns Trigger response with pipelineId and applicationSlug
  */
 export const triggerApplicationsAnalysisFn = createServerFn({ method: 'POST' })
   .inputValidator(analyseTriggerSchema)
   .handler(async ({ data }) => {
     await requireAuth()
 
+    // Build the exact payload the Lambda's AnalyseRequestSchema expects.
+    // The schema uses .strict() so only these fields are allowed.
+    const lambdaPayload: Record<string, unknown> = {
+      operation: 'analyse',
+      jobDescription: data.jobDescription,
+      targetCompany: data.targetCompany,
+      targetRole: data.targetRole,
+      resumeId: data.resumeId ?? '',
+      includeCoverLetter: data.includeCoverLetter ?? true,
+    }
+
     const body = await apiFetch<TriggerResponse>(
       '/api/admin/pipelines/strategist',
       {
         method: 'POST',
-        body: JSON.stringify(data),
+        body: JSON.stringify(lambdaPayload),
       },
     )
 

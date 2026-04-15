@@ -2,18 +2,19 @@
  * @format
  * Draft publish server function for the admin dashboard.
  *
- * Handles uploading a markdown draft to S3 and invoking the Article Pipeline
- * Trigger Lambda to start the Bedrock article generation Step Functions
- * state machine.
+ * Uploads a new markdown draft to S3 via the admin-api BFF, which writes it
+ * to the `drafts/<slug>.md` key on the assets bucket. The S3 bucket has an
+ * event notification configured to invoke the Article Pipeline Trigger Lambda
+ * (trigger-handler.ts) automatically — no manual Lambda invocation needed.
  *
  * All operations are delegated to the `admin-api` BFF service:
- * - Draft upload: `POST /api/admin/content/draft` — admin-api writes to S3
- * - Pipeline trigger: `POST /api/admin/pipelines/article` — admin-api invokes Lambda
+ * - Draft upload: `POST /api/admin/drafts/:slug` — admin-api writes to S3,
+ *   S3 event fires the pipeline trigger Lambda automatically.
  *
  * Protected by JWT authentication via `requireAuth()`.
  *
- * @see admin-api/src/routes/content.ts   — content/draft endpoint
- * @see admin-api/src/routes/pipelines.ts — pipeline trigger endpoints
+ * @see admin-api/src/routes/drafts.ts                            — draft upload endpoint
+ * @see bedrock-applications/article-pipeline/src/handlers/trigger-handler.ts — S3 event handler
  */
 
 import { createServerFn } from '@tanstack/react-start'
@@ -122,13 +123,16 @@ interface PublishDraftResult {
 // =============================================================================
 
 /**
- * Uploads a markdown draft to S3 and triggers the article pipeline via admin-api.
+ * Uploads a markdown draft to S3 via admin-api and lets the S3 event
+ * notification fire the article pipeline trigger Lambda automatically.
  *
  * Flow:
  *   1. Derives a slug from the filename (local — no network required)
- *   2. Delegates draft upload to `POST /api/admin/content/draft` on admin-api
- *   3. Delegates pipeline trigger to `POST /api/admin/pipelines/article` on admin-api
- *   4. Returns the slug for frontend pipeline tracking
+ *   2. Uploads draft to `POST /api/admin/drafts/:slug` on admin-api,
+ *      which writes `drafts/<slug>.md` to the assets S3 bucket.
+ *   3. Returns the slug for frontend pipeline tracking.
+ *      (The S3 event notification → trigger Lambda → Step Functions
+ *       chain runs asynchronously in the background.)
  *
  * @param data.fileName - Draft filename (e.g. `my-article.md`)
  * @param data.content - Raw markdown content
@@ -150,22 +154,14 @@ export const publishDraftFn = createServerFn({ method: 'POST' })
     }
 
     try {
-      // Step 1: Upload draft content to S3 via admin-api content route
-      // admin-api POST /api/admin/content/:slug writes the content to S3
-      await apiFetch<{ saved: boolean; slug: string }>(
-        `/api/admin/content/${encodeURIComponent(slug)}`,
+      // Upload the draft to S3 at drafts/<slug>.md via the dedicated draft
+      // endpoint. The assets bucket has an S3 event notification that fires
+      // the article pipeline trigger Lambda automatically on PUT to drafts/*.
+      await apiFetch<{ uploaded: boolean; slug: string; key: string }>(
+        `/api/admin/drafts/${encodeURIComponent(slug)}`,
         {
           method: 'POST',
           body: JSON.stringify({ content: data.content }),
-        },
-      )
-
-      // Step 2: Trigger the article pipeline Lambda via admin-api
-      await apiFetch<{ queued: boolean; pipeline: string; slug?: string }>(
-        '/api/admin/pipelines/article',
-        {
-          method: 'POST',
-          body: JSON.stringify({ slug }),
         },
       )
 
@@ -179,7 +175,7 @@ export const publishDraftFn = createServerFn({ method: 'POST' })
       return {
         success: false,
         slug,
-        message: 'Pipeline trigger failed',
+        message: 'Draft upload failed',
         error: message,
       }
     }

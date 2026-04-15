@@ -101,6 +101,20 @@ interface ArticleSummary {
   updatedAt?: string
 }
 
+/** Single pipeline version record from GET /articles/:slug/versions */
+export interface ArticleVersion {
+  sk: string                    // e.g. "VERSION#v3"
+  version: number               // e.g. 3
+  status: string                // pipeline status at time of this run
+  createdAt: string             // ISO timestamp
+  model?: string                // Claude model used
+  contentRef?: string           // S3 key for this version's content
+  qaTotalScore?: number         // QA evaluation score (0–100)
+  qaRecommendation?: 'approve' | 'revise' | 'reject'
+  qaIssues?: string[]
+  kbPassages?: number           // number of KB passages used
+}
+
 
 
 // =============================================================================
@@ -108,7 +122,11 @@ interface ArticleSummary {
 // =============================================================================
 
 const getArticlesSchema = z
-  .object({ status: z.enum(['all', 'draft', 'review', 'published', 'rejected']).default('all') })
+  .object({
+    status: z
+      .enum(['all', 'draft', 'processing', 'review', 'flagged', 'published', 'rejected'])
+      .default('all'),
+  })
   .default({ status: 'all' })
 
 const slugSchema = z.string().min(1, 'Article slug is required')
@@ -125,7 +143,7 @@ const saveMetadataSchema = z.object({
   author: z.string().optional(),
   category: z.string().optional(),
   tags: z.array(z.string()).optional(),
-  status: z.enum(['draft', 'review', 'published', 'rejected']).optional(),
+  status: z.enum(['draft', 'processing', 'review', 'flagged', 'published', 'rejected']).optional(),
   publishedAt: z.string().optional(),
   seo: z
     .object({
@@ -288,4 +306,27 @@ export const saveArticleMetadataFn = createServerFn({ method: 'POST' })
       },
     )
     return { success: true }
+  })
+
+/**
+ * Fetches the full pipeline version history for an article slug.
+ * Calls GET /articles/:slug/versions on admin-api, which invokes the
+ * version-history Lambda to query VERSION#v<n> records from DynamoDB.
+ *
+ * @param data - The article slug
+ * @returns { slug, totalVersions, versions[] }
+ */
+export const getArticleVersionsFn = createServerFn({ method: 'GET' })
+  .inputValidator(slugSchema)
+  .handler(async ({ data: slug }) => {
+    await requireAuth()
+
+    const body = await apiFetch<{
+      success: boolean
+      slug: string
+      totalVersions: number
+      versions: ArticleVersion[]
+    }>(`/articles/${encodeURIComponent(slug)}/versions`)
+
+    return body
   })

@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { Menu, MenuButton, MenuItem, MenuItems } from '@headlessui/react'
 import { EllipsisVerticalIcon } from '@heroicons/react/20/solid'
+import { Eye, X } from 'lucide-react'
 import { useAdminArticles } from '@/hooks/use-admin-articles'
 import type { ArticleWithSlug, ArticleStatus } from '@/lib/types/article.types'
 
@@ -21,6 +22,7 @@ function statusLabel(status: ArticleStatus): string {
     review: 'In Review',
     published: 'Published',
     rejected: 'Rejected',
+    flagged: 'Flagged',
     archived: 'Archived',
   }
   return labels[status]
@@ -36,6 +38,8 @@ function statusClasses(status: ArticleStatus): string {
   switch (status) {
     case 'published':
       return 'bg-green-400/10 text-green-400 inset-ring inset-ring-green-500/20'
+    case 'flagged':
+      return 'bg-orange-400/10 text-orange-400 inset-ring inset-ring-orange-400/20'
     case 'archived':
     case 'rejected':
       return 'bg-yellow-400/10 text-yellow-500 inset-ring inset-ring-yellow-400/20'
@@ -64,11 +68,11 @@ function formatDate(dateStr: string): string {
 
 export function AiArticlesList() {
   const { data, isLoading, error, refetch } = useAdminArticles()
+  const [reviewBannerDismissed, setReviewBannerDismissed] = useState(false)
 
-  const articles: ArticleWithSlug[] = [
-    ...(data?.drafts ?? []),
-    ...(data?.published ?? []),
-  ].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
+  const articles: ArticleWithSlug[] = (data?.all ?? [])
+    .slice()
+    .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
 
   const [currentPage, setCurrentPage] = useState(1)
   const [editingArticle, setEditingArticle] = useState<ArticleWithSlug | null>(null)
@@ -123,8 +127,42 @@ export function AiArticlesList() {
     )
   }
 
+  const reviewCount = data?.reviewCount ?? 0
+  const showReviewBanner = reviewCount > 0 && !reviewBannerDismissed
+
   return (
     <>
+      {/* Review-ready notification — data-driven, shown whenever articles await approval */}
+      {showReviewBanner && (
+        <div className="mb-6 rounded-xl border border-teal-500/20 bg-teal-500/5 p-5">
+          <div className="flex items-start gap-4">
+            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-teal-500/15">
+              <Eye className="h-5 w-5 text-teal-400" />
+            </div>
+            <div className="min-w-0 flex-1">
+              <p className="text-sm font-semibold text-teal-300">
+                {reviewCount === 1
+                  ? '1 article is ready for review'
+                  : `${reviewCount} articles are ready for review`}
+              </p>
+              <p className="mt-1 text-xs text-zinc-500">
+                The Bedrock pipeline has finished generating{' '}
+                {reviewCount === 1 ? 'an article' : 'articles'}. Open the article
+                below to approve or reject before it goes live.
+              </p>
+            </div>
+            <button
+              type="button"
+              aria-label="Dismiss"
+              onClick={() => setReviewBannerDismissed(true)}
+              className="shrink-0 rounded-md p-1 text-zinc-500 transition hover:bg-zinc-800 hover:text-zinc-300"
+            >
+              <X className="h-4 w-4" />
+            </button>
+          </div>
+        </div>
+      )}
+
       <ul role="list" className="divide-y divide-white/5">
         {paginatedArticles.map((article) => (
         <li key={article.slug} className="flex items-center justify-between gap-x-6 py-5">

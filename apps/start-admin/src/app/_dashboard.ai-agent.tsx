@@ -5,7 +5,8 @@ import { DashboardPage } from '@/components/layouts/DashboardPage'
 import { FullWidthBar, type FullWidthBarStep } from '../components/ui/FullWidthBar'
 
 const searchSchema = z.object({
-  mode: z.enum(['test']).catch('test').default('test'),
+  mode: z.enum(['test', 'pipeline']).catch('test').default('test'),
+  slug: z.string().optional(),
 })
 
 export const Route = createFileRoute('/_dashboard/ai-agent')({
@@ -14,27 +15,38 @@ export const Route = createFileRoute('/_dashboard/ai-agent')({
 })
 
 function AIAgentRoute() {
-  const { mode } = Route.useSearch()
+  const { mode, slug } = Route.useSearch()
   const navigate = useNavigate({ from: Route.fullPath })
-  
-  // Create dynamic steps based on the current URL router state
+
   const steps: FullWidthBarStep[] = [
     {
       name: 'Create Article',
       current: mode === 'test',
       onClick: () => navigate({ search: { mode: 'test' } }),
     },
+    ...(mode === 'pipeline' && slug
+      ? [
+          {
+            name: 'Article Processing',
+            current: mode === 'pipeline',
+            onClick: () => navigate({ search: { mode: 'pipeline', slug } }),
+          } satisfies FullWidthBarStep,
+        ]
+      : []),
   ]
 
   return (
-    <DashboardPage 
-      title="AI Agent" 
+    <DashboardPage
+      title="AI Agent"
       description="Bedrock-powered content generation and transformation"
       fullWidth={true}
       headerBottom={<FullWidthBar steps={steps} />}
     >
-      <AIAgentContainer key={mode} initialMode={mode as any} />
+      <AIAgentContainer
+        key={slug ?? mode}
+        initialMode={mode === 'pipeline' ? 'pipeline' : 'test'}
+        initialSlug={slug ?? null}
+      />
     </DashboardPage>
   )
 }
-
