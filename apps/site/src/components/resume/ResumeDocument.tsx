@@ -2,11 +2,13 @@
  * ResumeDocument — Presentational component for resume rendering.
  *
  * Single-column, ATS-friendly layout following industry standards.
- * Guaranteed 2-page A4 layout (794x1123 pixels per page).
+ * Guaranteed 2-page A4 layout (794×1123 pixels per page).
  *
- * Uses Tailwind CSS for on-screen rendering.
- * The PDF capture in ResumeDownloadButton.tsx mirrors this layout
- * with inline styles (html2canvas cannot capture Tailwind).
+ * Used by ResumeSection for on-screen preview inside the modal.
+ * The PDF capture mirrors this layout with inline styles via
+ * resume-dom-builder (html2canvas cannot capture Tailwind classes).
+ *
+ * Isolated to apps/site — not shared with start-admin.
  */
 
 import type { ResumeData } from '@/lib/resumes/resume-data'
@@ -32,7 +34,7 @@ export function ResumeDocument({ data }: ResumeDocumentProps) {
     <div className="mx-auto w-[794px] font-['Helvetica_Neue',_Helvetica,_Arial,_sans-serif] leading-snug">
       {/* ═══════ PAGE 1 ═══════ */}
       <div className="w-[794px] h-[1123px] bg-white text-zinc-900 overflow-hidden relative">
-        {/* ──── HEADER ──── */}
+        {/* ── Header ── */}
         <header className="px-10 pt-10 pb-6 border-b-[1.5px] border-zinc-800">
           <h1 className="text-[24px] font-bold tracking-tight text-zinc-900">
             {profile.name}
@@ -54,24 +56,19 @@ export function ResumeDocument({ data }: ResumeDocumentProps) {
         </header>
 
         <div className="px-10 py-6 space-y-6">
-          {/* ──── PROFESSIONAL SUMMARY ──── */}
+          {/* ── Professional Summary ── */}
           <section>
             <SectionHeading>Professional Summary</SectionHeading>
-            <p className="text-[10.5px] leading-[1.6] text-zinc-800">
-              {summary}
-            </p>
+            <p className="text-[10.5px] leading-[1.6] text-zinc-800">{summary}</p>
           </section>
 
-          {/* ──── KEY ACHIEVEMENTS ──── */}
+          {/* ── Key Achievements ── */}
           {keyAchievements && keyAchievements.length > 0 && (
             <section>
               <SectionHeading>Key Achievements</SectionHeading>
               <ul className="space-y-1.5 list-disc pl-4">
                 {keyAchievements.map((item, i) => (
-                  <li
-                    key={i}
-                    className="text-[10px] leading-[1.6] text-zinc-800"
-                  >
+                  <li key={i} className="text-[10px] leading-[1.6] text-zinc-800">
                     {item.achievement}
                   </li>
                 ))}
@@ -79,19 +76,14 @@ export function ResumeDocument({ data }: ResumeDocumentProps) {
             </section>
           )}
 
-          {/* ──── CERTIFICATIONS ──── */}
+          {/* ── Certifications ── */}
           {certifications && certifications.length > 0 && (
             <section>
               <SectionHeading>Certifications</SectionHeading>
               <div className="space-y-2">
                 {certifications.map((cert) => (
-                  <div
-                    key={cert.name}
-                    className="flex items-baseline justify-between"
-                  >
-                    <span className="text-[10px] font-bold text-zinc-900">
-                      {cert.name}
-                    </span>
+                  <div key={cert.name} className="flex items-baseline justify-between">
+                    <span className="text-[10px] font-bold text-zinc-900">{cert.name}</span>
                     <span className="text-[9.5px] text-zinc-600">
                       {cert.issuer} · {cert.year}
                     </span>
@@ -101,7 +93,7 @@ export function ResumeDocument({ data }: ResumeDocumentProps) {
             </section>
           )}
 
-          {/* ──── EDUCATION ──── */}
+          {/* ── Education ── */}
           {education && education.length > 0 && (
             <section>
               <SectionHeading>Education</SectionHeading>
@@ -109,20 +101,14 @@ export function ResumeDocument({ data }: ResumeDocumentProps) {
                 {education.map((edu) => (
                   <div key={edu.degree}>
                     <div className="flex items-baseline justify-between">
-                      <span className="text-[10.5px] font-bold text-zinc-900">
-                        {edu.degree}
-                      </span>
+                      <span className="text-[10.5px] font-bold text-zinc-900">{edu.degree}</span>
                       <span className="text-[9.5px] font-medium text-zinc-600 shrink-0 ml-4">
                         {edu.period}
                       </span>
                     </div>
-                    <p className="text-[9.5px] text-zinc-700 mt-0.5">
-                      {edu.institution}
-                    </p>
+                    <p className="text-[9.5px] text-zinc-700 mt-0.5">{edu.institution}</p>
                     {edu.details && (
-                      <p className="text-[9px] text-zinc-600 mt-0.5">
-                        {edu.details}
-                      </p>
+                      <p className="text-[9px] text-zinc-600 mt-0.5">{edu.details}</p>
                     )}
                   </div>
                 ))}
@@ -130,7 +116,7 @@ export function ResumeDocument({ data }: ResumeDocumentProps) {
             </section>
           )}
 
-          {/* ──── KEY PROJECTS ──── */}
+          {/* ── Key Projects ── */}
           {projects && projects.length > 0 && (
             <section>
               <SectionHeading>Key Projects</SectionHeading>
@@ -138,12 +124,8 @@ export function ResumeDocument({ data }: ResumeDocumentProps) {
                 {projects.map((proj) => (
                   <div key={proj.name}>
                     <div className="flex items-baseline justify-between">
-                      <h3 className="text-[10.5px] font-bold text-zinc-900">
-                        {proj.name}
-                      </h3>
-                      <a href={toHref(proj.github)} target="_blank" rel="noopener noreferrer" className="text-[9px] text-zinc-500 shrink-0 ml-4 hover:underline">
-                        {proj.github}
-                      </a>
+                      <h3 className="text-[10.5px] font-bold text-zinc-900">{proj.name}</h3>
+                      <a href={toHref(proj.github)} target="_blank" rel="noopener noreferrer" className="text-[9px] text-zinc-500 shrink-0 ml-4 hover:underline">{proj.github}</a>
                     </div>
                     <p className="mt-1 text-[9.5px] leading-[1.6] text-zinc-700">
                       {proj.description}
@@ -154,8 +136,7 @@ export function ResumeDocument({ data }: ResumeDocumentProps) {
             </section>
           )}
         </div>
-        
-        {/* Page 1 Bottom Margin Indicator */}
+
         <div className="absolute bottom-4 w-full text-center text-[8px] text-zinc-400">
           Page 1 of 2
         </div>
@@ -164,7 +145,7 @@ export function ResumeDocument({ data }: ResumeDocumentProps) {
       {/* ═══════ PAGE 2 ═══════ */}
       <div className="w-[794px] h-[1123px] bg-white text-zinc-900 overflow-hidden relative">
         <div className="px-10 pt-10 pb-10 space-y-6">
-          {/* ──── PROFESSIONAL EXPERIENCE ──── */}
+          {/* ── Professional Experience ── */}
           <section>
             <SectionHeading>Professional Experience</SectionHeading>
             <div className="space-y-4">
@@ -172,13 +153,8 @@ export function ResumeDocument({ data }: ResumeDocumentProps) {
                 <div key={`${exp.company}-${exp.period}`}>
                   <div className="flex items-baseline justify-between">
                     <div>
-                      <span className="text-[11px] font-bold text-zinc-900">
-                        {exp.title}
-                      </span>
-                      <span className="text-[10px] font-medium text-zinc-600">
-                        {' '}
-                        — {exp.company}
-                      </span>
+                      <span className="text-[11px] font-bold text-zinc-900">{exp.title}</span>
+                      <span className="text-[10px] font-medium text-zinc-600"> — {exp.company}</span>
                     </div>
                     <span className="text-[9.5px] font-medium text-zinc-600 shrink-0 ml-4">
                       {exp.period}
@@ -186,10 +162,7 @@ export function ResumeDocument({ data }: ResumeDocumentProps) {
                   </div>
                   <ul className="mt-1.5 space-y-1 list-disc pl-4">
                     {exp.highlights.map((h, i) => (
-                      <li
-                        key={i}
-                        className="text-[9.5px] leading-[1.5] text-zinc-700"
-                      >
+                      <li key={i} className="text-[9.5px] leading-[1.5] text-zinc-700">
                         {h}
                       </li>
                     ))}
@@ -199,16 +172,14 @@ export function ResumeDocument({ data }: ResumeDocumentProps) {
             </div>
           </section>
 
-          {/* ──── TECHNICAL SKILLS ──── */}
+          {/* ── Technical Skills ── */}
           {skills && skills.length > 0 && (
             <section>
               <SectionHeading>Technical Skills</SectionHeading>
               <div className="grid grid-cols-2 gap-x-8 gap-y-4">
                 {skills.map((group) => (
                   <div key={group.category}>
-                    <h3 className="text-[10px] font-bold text-zinc-900 mb-1">
-                      {group.category}
-                    </h3>
+                    <h3 className="text-[10px] font-bold text-zinc-900 mb-1">{group.category}</h3>
                     <p className="text-[9.5px] leading-[1.6] text-zinc-700">
                       {group.skills.join(' · ')}
                     </p>
@@ -218,8 +189,7 @@ export function ResumeDocument({ data }: ResumeDocumentProps) {
             </section>
           )}
         </div>
-        
-        {/* Page 2 Bottom Margin Indicator */}
+
         <div className="absolute bottom-4 w-full text-center text-[8px] text-zinc-400">
           Page 2 of 2
         </div>
@@ -228,7 +198,6 @@ export function ResumeDocument({ data }: ResumeDocumentProps) {
   )
 }
 
-/* ─── Shared section heading ─── */
 function SectionHeading({ children }: { children: React.ReactNode }) {
   return (
     <h2 className="text-[12px] font-bold uppercase tracking-[1.5px] text-zinc-900 mb-2.5 pb-1.5 border-b-[1.5px] border-zinc-200">

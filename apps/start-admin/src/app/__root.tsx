@@ -5,6 +5,7 @@ import type { RouterContext } from '../router'
 import { getUserSessionFn } from '../server/auth'
 import { Toaster } from '../components/ui/Toaster'
 import { initialiseFaroAdmin } from '../lib/observability/faro-admin'
+import { ThemeProvider } from '../contexts/ThemeContext'
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -82,9 +83,10 @@ function NotFoundComponent() {
   return (
     <RootDocument>
       <div className="flex flex-col items-center justify-center min-h-screen bg-zinc-50 dark:bg-zinc-900 text-zinc-900 dark:text-zinc-100 p-4">
-        <h1 className="text-4xl font-bold mb-4">404 - Not Found</h1>
-        <p className="text-zinc-500 dark:text-zinc-400 mb-8">The page you are looking for does not exist or has been moved.</p>
-        <Link to="/" className="px-4 py-2 bg-teal-600 hover:bg-teal-500 text-white rounded-lg font-medium transition-colors">
+        <p className="text-5xl font-bold text-zinc-200 dark:text-zinc-700">404</p>
+        <h1 className="mt-4 text-xl font-bold">Page not found</h1>
+        <p className="mt-2 text-sm text-zinc-500 dark:text-zinc-400">The page you are looking for does not exist or has been moved.</p>
+        <Link to="/" className="mt-8 px-4 py-2 bg-teal-600 hover:bg-teal-500 text-white rounded-lg font-medium transition-colors">
           Return to Dashboard
         </Link>
       </div>
@@ -98,12 +100,14 @@ function RootComponent() {
   }, [])
 
   return (
-    <QueryClientProvider client={queryClient}>
-      <Outlet />
-      <Suspense fallback={null}>
-        <TanStackDevtools />
-      </Suspense>
-    </QueryClientProvider>
+    <ThemeProvider>
+      <QueryClientProvider client={queryClient}>
+        <Outlet />
+        <Suspense fallback={null}>
+          <TanStackDevtools />
+        </Suspense>
+      </QueryClientProvider>
+    </ThemeProvider>
   )
 }
 

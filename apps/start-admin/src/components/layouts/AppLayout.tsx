@@ -210,7 +210,7 @@ export default function AppLayout({ children, disableMainWrapper = false }: AppL
 /** Teal brand monogram logo mark used in both mobile and desktop sidebars. */
 function SidebarLogo() {
   return (
-    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 36 36" className="h-8 w-8" aria-label="NL Admin">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 36 36" width="32" height="32" className="h-8 w-8" aria-label="NL Admin">
       <circle cx="18" cy="18" r="18" fill="#0d9488" />
       <text
         x="18"

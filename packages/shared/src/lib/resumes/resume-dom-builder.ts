@@ -14,6 +14,21 @@
 
 import type { ResumeData } from './resume-data'
 
+/**
+ * Normalise a raw string value into a full href suitable for a PDF link.
+ *
+ * Rules:
+ *   - Already has a scheme (http/https/mailto) → use as-is
+ *   - Looks like an email (contains @ but no /) → prepend mailto:
+ *   - Otherwise → prepend https://
+ */
+export function toHref(value: string): string {
+  if (!value) return ''
+  if (/^(https?:|mailto:)/.test(value)) return value
+  if (value.includes('@') && !value.includes('/')) return `mailto:${value}`
+  return `https://${value}`
+}
+
 /* ─── colour tokens (zinc styling to match ResumeDocument) ─── */
 const HEADING = '#18181b'     // zinc-900
 const BODY = '#27272a'        // zinc-800
@@ -91,13 +106,13 @@ export function buildResumeDomForPdf(data: ResumeData): HTMLDivElement {
       <div style="margin-top: 12px; font-size: 10px; color: ${MUTED}; display: flex; flex-wrap: wrap; align-items: center; gap: 8px;">
         <span>${data.profile.location}</span>
         <span style="color: #d4d4d8;">|</span>
-        <span>${data.profile.email}</span>
+        <span data-pdf-link="${toHref(data.profile.email)}">${data.profile.email}</span>
         <span style="color: #d4d4d8;">|</span>
-        <span>${data.profile.linkedin}</span>
+        <span data-pdf-link="${toHref(data.profile.linkedin)}">${data.profile.linkedin}</span>
         <span style="color: #d4d4d8;">|</span>
-        <span>${data.profile.github}</span>
+        <span data-pdf-link="${toHref(data.profile.github)}">${data.profile.github}</span>
         <span style="color: #d4d4d8;">|</span>
-        <span>${data.profile.website}</span>
+        <span data-pdf-link="${toHref(data.profile.website)}">${data.profile.website}</span>
       </div>
     </header>
   `
@@ -190,7 +205,7 @@ export function buildResumeDomForPdf(data: ResumeData): HTMLDivElement {
       <div style="margin-bottom: 16px;">
         <div style="display: flex; align-items: baseline; justify-content: space-between;">
           <h3 style="font-size: 10.5px; font-weight: 700; color: ${HEADING}; margin: 0;">${proj.name}</h3>
-          <span style="font-size: 9px; color: #71717a; flex-shrink: 0; margin-left: 16px;">${proj.github}</span>
+          <span data-pdf-link="${toHref(proj.github)}" style="font-size: 9px; color: #71717a; flex-shrink: 0; margin-left: 16px;">${proj.github}</span>
         </div>
         <p style="font-size: 9.5px; line-height: 1.6; color: ${BODY_LIGHT}; margin: 4px 0 0 0;">${proj.description}</p>
       </div>

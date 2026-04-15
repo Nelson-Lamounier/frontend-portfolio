@@ -15278,7 +15278,17 @@ __metadata:
   languageName: node
   linkType: hard
 
-"html2canvas@npm:^1.0.0-rc.5, html2canvas@npm:^1.4.1":
+"html2canvas-pro@npm:^2.0.2":
+  version: 2.0.2
+  resolution: "html2canvas-pro@npm:2.0.2"
+  dependencies:
+    css-line-break: "npm:^2.1.0"
+    text-segmentation: "npm:^1.0.3"
+  checksum: 10c0/15268678f32010437a91b65cfc8420cbba3090b5f1871e581cebcc4cce6f957126aae39b9587dd8495a728f4a3fad307b7314d289e6d593c4ea378b771a6bee0
+  languageName: node
+  linkType: hard
+
+"html2canvas@npm:^1.0.0-rc.5":
   version: 1.4.1
   resolution: "html2canvas@npm:1.4.1"
   dependencies:
@@ -21046,7 +21056,7 @@ __metadata:
     fast-glob: "npm:^3.3.3"
     feed: "npm:^5.1.0"
     framer-motion: "npm:^12.0.0"
-    html2canvas: "npm:^1.4.1"
+    html2canvas-pro: "npm:^2.0.2"
     jest: "npm:^30.2.0"
     jest-environment-jsdom: "npm:^30.2.0"
     jspdf: "npm:4.2.1"
@@ -21277,7 +21287,7 @@ __metadata:
     "@vitejs/plugin-react": "npm:^5.1.4"
     esbuild: "npm:^0.28.0"
     eslint: "npm:^9.28.0"
-    html2canvas: "npm:^1.4.1"
+    html2canvas-pro: "npm:^2.0.2"
     jsdom: "npm:^28.1.0"
     jspdf: "npm:^4.2.1"
     lucide-react: "npm:^0.545.0"

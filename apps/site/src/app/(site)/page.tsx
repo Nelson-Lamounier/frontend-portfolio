@@ -18,6 +18,7 @@ import logsedwick from '@/images/logos/sedwick.png'
 import { getAllArticles } from '@/lib/articles/article-service'
 import type { ArticleWithSlug } from '@/lib/types/article.types'
 import { formatDate } from '@/lib/formatDate'
+import { ResumeSection } from '@/components/resume/ResumeSection'
 
 // ISR: revalidate every hour so runtime env vars (DYNAMODB_TABLE_NAME)
 // are picked up after the Docker build, which has no DynamoDB access.
@@ -183,6 +184,7 @@ function Resume() {
           <Role key={roleIndex} role={role} />
         ))}
       </ol>
+      <ResumeSection />
     </div>
   )
 }

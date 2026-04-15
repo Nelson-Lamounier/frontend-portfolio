@@ -1,7 +1,7 @@
 import { Menu, MenuButton, MenuItem, MenuItems, Transition } from '@headlessui/react'
 import { Bars3Icon, BellIcon, MoonIcon, SunIcon } from '@heroicons/react/24/outline'
 import { Fragment } from 'react'
-import { useTheme } from '../../hooks/useTheme'
+import { useTheme } from '../../contexts/ThemeContext'
 
 /**
  * Props for the {@link HeaderNav} component.
@@ -58,6 +58,7 @@ export function HeaderNav({ onOpenSidebar, onSignOut, userAvatar, userEmail }: H
             className="-m-2.5 p-2.5 text-zinc-500 dark:text-zinc-400 hover:text-teal-600 dark:hover:text-teal-400 transition-colors"
             title={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
             aria-label={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
+            suppressHydrationWarning
           >
             <span className="sr-only">{theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}</span>
             {theme === 'dark' ? (

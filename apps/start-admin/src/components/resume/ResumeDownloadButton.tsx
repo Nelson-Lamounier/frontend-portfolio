@@ -27,7 +27,7 @@ export function ResumeDownloadButton() {
     try {
       const [html2canvasModule, jspdfModule, domBuilderModule] =
         await Promise.all([
-          import('html2canvas'),
+          import('html2canvas-pro'),
           import('jspdf'),
           import('@/lib/resumes/resume-dom-builder'),
         ])
@@ -60,6 +60,12 @@ export function ResumeDownloadButton() {
         backgroundColor: PDF_BG,
         width: A4_WIDTH,
         height: actualHeight,
+        // Strip all page stylesheets from the clone so Tailwind's oklch /
+        // color-mix() values never reach html2canvas's CSS parser.
+        // The resume uses inline styles only, so output is unaffected.
+        onclone: (clonedDoc: Document) => {
+          clonedDoc.querySelectorAll('style, link[rel="stylesheet"]').forEach((el) => el.remove())
+        },
       })
 
       // 3. Generate multi-page PDF
@@ -105,7 +111,26 @@ export function ResumeDownloadButton() {
         pdf.addImage(pageImgData, 'PNG', 0, 0, pdfWidth, pdfHeight)
       }
 
-      // 4. Download using blob URL
+      // 4. Overlay clickable PDF link annotations
+      //    html2canvas flattens everything to an image — pdf.link() adds
+      //    invisible clickable rectangles at the exact positions of [data-pdf-link] elements.
+      const rootRect = resumeEl.getBoundingClientRect()
+      const xScale = pdfWidth / A4_WIDTH   // mm per px (horizontal)
+      const yScale = pdfHeight / A4_HEIGHT // mm per px (vertical)
+
+      resumeEl.querySelectorAll<HTMLElement>('[data-pdf-link]').forEach((el) => {
+        const href = el.dataset.pdfLink
+        if (!href) return
+        const rect = el.getBoundingClientRect()
+        const relX = rect.left - rootRect.left
+        const relY = rect.top - rootRect.top
+        const pageIndex = Math.floor(relY / A4_HEIGHT)
+        const yOnPage = relY - pageIndex * A4_HEIGHT
+        pdf.setPage(pageIndex + 1)
+        pdf.link(relX * xScale, yOnPage * yScale, rect.width * xScale, rect.height * yScale, { url: href })
+      })
+
+      // 5. Download using blob URL
       const pdfBlob = pdf.output('blob')
       const blobUrl = URL.createObjectURL(pdfBlob)
       const downloadLink = document.createElement('a')

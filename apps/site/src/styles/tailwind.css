@@ -7,6 +7,18 @@
 
 @custom-variant dark (&:where(.dark, .dark *));
 
+@layer base {
+  /*
+   * Reserve scrollbar gutter width permanently so the browser never shifts
+   * page content left when a scrollbar appears (e.g. after CommentSection
+   * loads and page height grows past the viewport). Without this, the ~15px
+   * scrollbar track causes a visible left-right layout jump on article pages.
+   */
+  html {
+    scrollbar-gutter: stable;
+  }
+}
+
 @theme {
   --text-xs: 0.8125rem;
   --text-xs--line-height: 1.5rem;

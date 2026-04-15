@@ -80,26 +80,28 @@ export function ResumesPipeline() {
     if (!previewResume || downloading) return
     setDownloading(true)
 
+    let container: HTMLDivElement | null = null
+
     try {
-      const [html2canvasModule, jspdfModule] =
-        await Promise.all([
-          import('html2canvas'),
-          import('jspdf'),
-        ])
+      const [html2canvasModule, jspdfModule] = await Promise.all([
+        import('html2canvas-pro'),
+        import('jspdf'),
+      ])
       const html2canvas = html2canvasModule.default
       const { jsPDF } = jspdfModule
 
-      const container = document.createElement('div')
-      container.style.position = 'fixed'
-      container.style.left = '-9999px'
-      container.style.top = '0'
-      container.style.zIndex = '-9999'
+      // Mount the resume DOM off-screen so html2canvas can capture it
+      container = document.createElement('div')
+      container.style.cssText = 'position:fixed;left:-9999px;top:0;z-index:-9999'
       document.body.appendChild(container)
 
       const resumeEl = buildResumeDomForPdf(previewResume.data)
       container.appendChild(resumeEl)
 
-      await new Promise((resolve) => setTimeout(resolve, 200)) // ensure layout
+      // Wait for browser to lay out the element before capturing
+      await new Promise((r) => requestAnimationFrame(r))
+      await new Promise((r) => setTimeout(r, 200))
+
       const actualHeight = resumeEl.scrollHeight
 
       const canvas = await html2canvas(resumeEl, {
@@ -109,20 +111,22 @@ export function ResumesPipeline() {
         backgroundColor: PDF_BG,
         width: A4_WIDTH,
         height: actualHeight,
+        // Strip all page stylesheets from the clone so Tailwind's oklch /
+        // color-mix() values never reach html2canvas's CSS parser.
+        // The resume uses inline styles only, so output is unaffected.
+        onclone: (clonedDoc: Document) => {
+          clonedDoc.querySelectorAll('style, link[rel="stylesheet"]').forEach((el) => el.remove())
+        },
       })
 
-      const pdf = new jsPDF({
-        orientation: 'portrait',
-        unit: 'mm',
-        format: 'a4',
-      })
-
+      const pdf = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' })
       const pdfWidth = pdf.internal.pageSize.getWidth()
       const pdfHeight = pdf.internal.pageSize.getHeight()
       const pageCount = Math.round(actualHeight / A4_HEIGHT)
 
       for (let page = 0; page < pageCount; page++) {
         if (page > 0) pdf.addPage()
+
         const srcY = page * (A4_HEIGHT * 2)
         const srcH = Math.min(A4_HEIGHT * 2, canvas.height - srcY)
 
@@ -134,33 +138,44 @@ export function ResumesPipeline() {
         if (ctx) {
           ctx.fillStyle = PDF_BG
           ctx.fillRect(0, 0, pageCanvas.width, pageCanvas.height)
-          ctx.drawImage(
-            canvas,
-            0, srcY, A4_WIDTH * 2, srcH,
-            0, 0, A4_WIDTH * 2, srcH,
-          )
+          ctx.drawImage(canvas, 0, srcY, A4_WIDTH * 2, srcH, 0, 0, A4_WIDTH * 2, srcH)
         }
 
-        const pageImgData = pageCanvas.toDataURL('image/png')
-        pdf.addImage(pageImgData, 'PNG', 0, 0, pdfWidth, pdfHeight)
+        pdf.addImage(pageCanvas.toDataURL('image/png'), 'PNG', 0, 0, pdfWidth, pdfHeight)
       }
 
-      const pdfBlob = pdf.output('blob')
-      const blobUrl = URL.createObjectURL(pdfBlob)
+      // Overlay clickable link annotations (invisible rectangles over link text)
+      const rootRect = resumeEl.getBoundingClientRect()
+      const xScale = pdfWidth / A4_WIDTH
+      const yScale = pdfHeight / A4_HEIGHT
+
+      resumeEl.querySelectorAll<HTMLElement>('[data-pdf-link]').forEach((el) => {
+        const href = el.dataset.pdfLink
+        if (!href) return
+        const rect = el.getBoundingClientRect()
+        const relX = rect.left - rootRect.left
+        const relY = rect.top - rootRect.top
+        const pageIndex = Math.floor(relY / A4_HEIGHT)
+        const yOnPage = relY - pageIndex * A4_HEIGHT
+        pdf.setPage(pageIndex + 1)
+        pdf.link(relX * xScale, yOnPage * yScale, rect.width * xScale, rect.height * yScale, { url: href })
+      })
+
+      const blobUrl = URL.createObjectURL(pdf.output('blob'))
       const downloadLink = document.createElement('a')
       downloadLink.href = blobUrl
-      downloadLink.download = 'nelson_lamounier_resume.pdf'
+      downloadLink.download = 'Nelson_Lamounier_Resume.pdf'
       document.body.appendChild(downloadLink)
       downloadLink.click()
-      downloadLink.remove()
+      document.body.removeChild(downloadLink)
       setTimeout(() => URL.revokeObjectURL(blobUrl), 1000)
 
-      container.remove()
       addToast('success', 'PDF downloaded successfully.')
     } catch (err) {
       console.error('Resume PDF generation failed:', err)
-      addToast('error', 'Failed to generate PDF.')
+      addToast('error', `Failed to generate PDF: ${err instanceof Error ? err.message : String(err)}`)
     } finally {
+      if (container?.parentNode) document.body.removeChild(container)
       setDownloading(false)
     }
   }, [previewResume, downloading, addToast])

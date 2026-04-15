@@ -20,6 +20,7 @@ import { Route as DashboardCommentsRouteImport } from './app/_dashboard.comments
 import { Route as DashboardCalendarRouteImport } from './app/_dashboard.calendar'
 import { Route as DashboardArticlesRouteImport } from './app/_dashboard.articles'
 import { Route as DashboardAiAgentRouteImport } from './app/_dashboard.ai-agent'
+import { Route as DashboardSplatRouteImport } from './app/_dashboard.$'
 import { Route as DashboardApplicationsIndexRouteImport } from './app/_dashboard.applications.index'
 import { Route as DashboardResumesNewRouteImport } from './app/_dashboard.resumes.new'
 import { Route as DashboardApplicationsNewRouteImport } from './app/_dashboard.applications.new'
@@ -82,6 +83,11 @@ const DashboardAiAgentRoute = DashboardAiAgentRouteImport.update({
   path: '/ai-agent',
   getParentRoute: () => DashboardRoute,
 } as any)
+const DashboardSplatRoute = DashboardSplatRouteImport.update({
+  id: '/$',
+  path: '/$',
+  getParentRoute: () => DashboardRoute,
+} as any)
 const DashboardApplicationsIndexRoute =
   DashboardApplicationsIndexRouteImport.update({
     id: '/applications/',
@@ -126,6 +132,7 @@ const DashboardResumesEditIdRoute = DashboardResumesEditIdRouteImport.update({
 export interface FileRoutesByFullPath {
   '/': typeof DashboardIndexRoute
   '/login': typeof LoginRoute
+  '/$': typeof DashboardSplatRoute
   '/ai-agent': typeof DashboardAiAgentRoute
   '/articles': typeof DashboardArticlesRoute
   '/calendar': typeof DashboardCalendarRoute
@@ -144,6 +151,7 @@ export interface FileRoutesByFullPath {
 }
 export interface FileRoutesByTo {
   '/login': typeof LoginRoute
+  '/$': typeof DashboardSplatRoute
   '/ai-agent': typeof DashboardAiAgentRoute
   '/articles': typeof DashboardArticlesRoute
   '/calendar': typeof DashboardCalendarRoute
@@ -165,6 +173,7 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/_dashboard': typeof DashboardRouteWithChildren
   '/login': typeof LoginRoute
+  '/_dashboard/$': typeof DashboardSplatRoute
   '/_dashboard/ai-agent': typeof DashboardAiAgentRoute
   '/_dashboard/articles': typeof DashboardArticlesRoute
   '/_dashboard/calendar': typeof DashboardCalendarRoute
@@ -187,6 +196,7 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/login'
+    | '/$'
     | '/ai-agent'
     | '/articles'
     | '/calendar'
@@ -205,6 +215,7 @@ export interface FileRouteTypes {
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/login'
+    | '/$'
     | '/ai-agent'
     | '/articles'
     | '/calendar'
@@ -225,6 +236,7 @@ export interface FileRouteTypes {
     | '__root__'
     | '/_dashboard'
     | '/login'
+    | '/_dashboard/$'
     | '/_dashboard/ai-agent'
     | '/_dashboard/articles'
     | '/_dashboard/calendar'
@@ -328,6 +340,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof DashboardAiAgentRouteImport
       parentRoute: typeof DashboardRoute
     }
+    '/_dashboard/$': {
+      id: '/_dashboard/$'
+      path: '/$'
+      fullPath: '/$'
+      preLoaderRoute: typeof DashboardSplatRouteImport
+      parentRoute: typeof DashboardRoute
+    }
     '/_dashboard/applications/': {
       id: '/_dashboard/applications/'
       path: '/applications'
@@ -394,6 +413,7 @@ const DashboardResumesRouteWithChildren =
   DashboardResumesRoute._addFileChildren(DashboardResumesRouteChildren)
 
 interface DashboardRouteChildren {
+  DashboardSplatRoute: typeof DashboardSplatRoute
   DashboardAiAgentRoute: typeof DashboardAiAgentRoute
   DashboardArticlesRoute: typeof DashboardArticlesRoute
   DashboardCalendarRoute: typeof DashboardCalendarRoute
@@ -410,6 +430,7 @@ interface DashboardRouteChildren {
 }
 
 const DashboardRouteChildren: DashboardRouteChildren = {
+  DashboardSplatRoute: DashboardSplatRoute,
   DashboardAiAgentRoute: DashboardAiAgentRoute,
   DashboardArticlesRoute: DashboardArticlesRoute,
   DashboardCalendarRoute: DashboardCalendarRoute,
