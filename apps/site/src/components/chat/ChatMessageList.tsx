@@ -35,7 +35,7 @@ function useLoadingMessage(isLoading: boolean): string {
     }
     const id = setInterval(() => {
       setIndex((i) => (i + 1) % LOADING_MESSAGES.length)
-    }, 2000)
+    }, 2500)
     return () => clearInterval(id)
   }, [isLoading])
 
