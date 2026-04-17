@@ -101,8 +101,9 @@ export const getLoginUrlFn = createServerFn({ method: 'POST' }).handler(
     authUrl.searchParams.set('response_type', 'code')
     authUrl.searchParams.set('scope', 'email openid profile')
 
-    const scheme = process.env.NODE_ENV === 'production' ? 'https' : 'http'
-    const host = process.env.VITE_APP_URL?.replace(/^https?:\/\//, '') || 'localhost:5001'
+    const appUrl = process.env.VITE_APP_URL || 'http://localhost:5001'
+    const scheme = appUrl.startsWith('https://') ? 'https' : 'http'
+    const host = appUrl.replace(/^https?:\/\//, '')
     const redirectUri = `${scheme}://${host}/admin/auth/callback`
 
     authUrl.searchParams.set('redirect_uri', redirectUri)
@@ -122,8 +123,9 @@ export const logoutFn = createServerFn({ method: 'POST' }).handler(async () => {
 
   const domain = process.env.AUTH_COGNITO_DOMAIN
   const clientId = process.env.AUTH_COGNITO_ID || process.env.AUTH_COGNITO_CLIENT_ID
-  const scheme = process.env.NODE_ENV === 'production' ? 'https' : 'http'
-  const host = process.env.VITE_APP_URL?.replace(/^https?:\/\//, '') || 'localhost:5001'
+  const appUrl = process.env.VITE_APP_URL || 'http://localhost:5001'
+  const scheme = appUrl.startsWith('https://') ? 'https' : 'http'
+  const host = appUrl.replace(/^https?:\/\//, '')
   const logoutUri = `${scheme}://${host}/admin/login`
 
   let logoutUrl = '/admin/login'
@@ -171,8 +173,9 @@ export const handleAuthCallbackFn = createServerFn({ method: 'POST' })
       throw new Error('OAuth state mismatch — potential CSRF attack')
     }
 
-    const scheme = process.env.NODE_ENV === 'production' ? 'https' : 'http'
-    const host = process.env.VITE_APP_URL?.replace(/^https?:\/\//, '') || 'localhost:5001'
+    const appUrl = process.env.VITE_APP_URL || 'http://localhost:5001'
+    const scheme = appUrl.startsWith('https://') ? 'https' : 'http'
+    const host = appUrl.replace(/^https?:\/\//, '')
     const redirectUri = `${scheme}://${host}/admin/auth/callback`
 
     const { exchangeCognitoCode } = await import('@/lib/auth/tanstack-auth')

@@ -7,6 +7,7 @@ import {
 } from 'lucide-react'
 import { useForm } from '@tanstack/react-form'
 import { useApplicationsTrigger } from '../hooks/use-applications-trigger'
+import { usePipelineNotificationsStore } from '@/lib/stores/pipeline-notifications-store'
 import type { InterviewStage } from '@/lib/types/applications.types'
 import { INTERVIEW_STAGE_OPTIONS, MIN_JD_LENGTH } from './ApplicationTypes'
 import { FormInput } from '../../../components/ui/Field'
@@ -27,6 +28,7 @@ export interface NewAnalysisPanelProps {
 
 export function NewAnalysisPanel({ preselectedResumeId, onSuccess: _onSuccess }: NewAnalysisPanelProps) {
   const trigger = useApplicationsTrigger()
+  const addNotification = usePipelineNotificationsStore((s) => s.addNotification)
   const [submittedSlug, setSubmittedSlug] = useState<string | null>(null)
 
   const [initialDraft] = useState(() => {
@@ -57,11 +59,14 @@ export function NewAnalysisPanel({ preselectedResumeId, onSuccess: _onSuccess }:
         return
       }
 
+      const company = value.targetCompany.trim()
+      const role = value.targetRole.trim()
+
       trigger.mutate(
         {
           jobDescription: value.jobDescription,
-          targetCompany: value.targetCompany.trim(),
-          targetRole: value.targetRole.trim(),
+          targetCompany: company,
+          targetRole: role,
           interviewStage: value.interviewStage,
           resumeId: preselectedResumeId,
           includeCoverLetter: value.includeCoverLetter,
@@ -71,6 +76,13 @@ export function NewAnalysisPanel({ preselectedResumeId, onSuccess: _onSuccess }:
             localStorage.removeItem('application-form-draft')
             form.reset()
             setSubmittedSlug(data.applicationSlug)
+            addNotification({
+              type: 'application',
+              slug: data.applicationSlug,
+              label: `${company} — ${role}`,
+              status: 'running',
+              link: `/applications/${encodeURIComponent(data.applicationSlug)}`,
+            })
             // We now skip calling onSuccess() to let the ProgressBars take over navigation
           },
         },

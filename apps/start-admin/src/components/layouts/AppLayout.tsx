@@ -26,6 +26,7 @@ import {
 } from 'lucide-react'
 import { Link } from '@tanstack/react-router'
 import { HeaderNav } from '../ui/HeaderNav'
+import { PipelineNotificationWatcher } from '../ui/PipelineNotificationWatcher'
 import avatarImage from '@/images/avatar.jpg'
 
 /** Primary sidebar navigation links. */
@@ -112,6 +113,9 @@ export default function AppLayout({ children, disableMainWrapper = false }: AppL
 
   return (
     <>
+      {/* Background pipeline notification watchers — renders null */}
+      <PipelineNotificationWatcher />
+
       {/* =========================================================
           Mobile Off-Canvas Sidebar
          ========================================================= */}

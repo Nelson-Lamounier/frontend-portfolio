@@ -140,7 +140,10 @@ export async function getAllArticles(_options?: {
       span.setStatus({ code: SpanStatusCode.ERROR, message: errMsg })
       slog({ service: 'article-service', operation: 'getAllArticles', source: 'dynamodb-sdk', error: errMsg, latencyMs: Date.now() - start, level: 'error' })
       trackArticleRequest('getAllArticles', 'dynamodb-sdk', 'error', (Date.now() - start) / 1000)
-      throw error
+      // Return empty array instead of throwing so Next.js prerender/ISR
+      // succeeds at Docker build time (no credentials) — ISR fetches real
+      // data at runtime when EC2 Instance Profile credentials are available.
+      return []
     } finally {
       span.end()
     }
@@ -341,7 +344,7 @@ export async function getArticlesByTag(tag: string): Promise<ArticleWithSlug[]> 
     } catch (error) {
       const errMsg = error instanceof Error ? error.message : String(error)
       slog({ service: 'article-service', operation: 'getArticlesByTag', source: 'dynamodb-sdk', tag, error: errMsg, latencyMs: Date.now() - start, level: 'error' })
-      throw error
+      return []
     } finally {
       span.end()
     }

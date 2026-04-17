@@ -292,6 +292,23 @@ export const triggerStrategistCoachFn = createServerFn({ method: 'POST' })
  * @param data.includeCoverLetter - Whether to generate cover letter
  * @returns Trigger response with pipelineId and applicationSlug
  */
+/**
+ * Requeues a failed application analysis via the SQS Dead Letter Queue.
+ * The admin-api reads the original execution input from the DLQ and
+ * re-submits it to the Step Functions state machine.
+ *
+ * @see admin-api/src/routes/applications.ts — POST /api/admin/applications/:slug/requeue
+ */
+export const requeueApplicationFn = createServerFn({ method: 'POST' })
+  .inputValidator(z.object({ slug: z.string().min(1) }))
+  .handler(async ({ data }) => {
+    await requireAuth()
+    return apiFetch<{ success: boolean; message: string }>(
+      `/api/admin/applications/${encodeURIComponent(data.slug)}/requeue`,
+      { method: 'POST' },
+    )
+  })
+
 export const triggerApplicationsAnalysisFn = createServerFn({ method: 'POST' })
   .inputValidator(analyseTriggerSchema)
   .handler(async ({ data }) => {

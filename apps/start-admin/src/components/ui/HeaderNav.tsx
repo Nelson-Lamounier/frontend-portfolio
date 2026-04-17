@@ -1,7 +1,8 @@
 import { Menu, MenuButton, MenuItem, MenuItems, Transition } from '@headlessui/react'
-import { Bars3Icon, BellIcon, MoonIcon, SunIcon } from '@heroicons/react/24/outline'
+import { Bars3Icon, MoonIcon, SunIcon } from '@heroicons/react/24/outline'
 import { Fragment } from 'react'
 import { useTheme } from '../../contexts/ThemeContext'
+import { NotificationPanel } from './NotificationPanel'
 
 /**
  * Props for the {@link HeaderNav} component.
@@ -69,13 +70,7 @@ export function HeaderNav({ onOpenSidebar, onSignOut, userAvatar, userEmail }: H
           </button>
 
           {/* Notifications */}
-          <button
-            type="button"
-            className="-m-2.5 p-2.5 text-zinc-500 dark:text-zinc-400 hover:text-teal-600 dark:hover:text-teal-400 transition-colors"
-          >
-            <span className="sr-only">View notifications</span>
-            <BellIcon className="h-6 w-6" aria-hidden="true" />
-          </button>
+          <NotificationPanel />
 
           {/* Desktop separator */}
           <div className="hidden lg:block lg:h-6 lg:w-px lg:bg-zinc-200 dark:lg:bg-zinc-700/50" aria-hidden="true" />

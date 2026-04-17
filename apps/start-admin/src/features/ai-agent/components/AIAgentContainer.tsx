@@ -5,6 +5,7 @@ import { Bot } from 'lucide-react'
 import { usePublishDraft } from '../hooks/use-publish-draft'
 import { usePipelineStatus } from '../hooks/use-pipeline-status'
 import { useToastStore } from '@/lib/stores/toast-store'
+import { usePipelineNotificationsStore } from '@/lib/stores/pipeline-notifications-store'
 import { AiArticlesList } from './AiArticlesList'
 import { MultiColumnLayout } from '#/components/ui/MultiColumnLayout'
 import { AIAgentDetailsPanel } from './AIAgentDetailsPanel'
@@ -28,6 +29,7 @@ interface AIAgentContainerProps {
 
 export function AIAgentContainer({ initialMode = 'test', initialSlug = null }: AIAgentContainerProps) {
   const { addToast } = useToastStore()
+  const addNotification = usePipelineNotificationsStore((s) => s.addNotification)
   const navigate = useNavigate()
 
   // ── Shared state ──────────────────────────────────────────────────────────
@@ -176,6 +178,13 @@ export function AIAgentContainer({ initialMode = 'test', initialSlug = null }: A
         onSuccess: (data) => {
           if (data.success) {
             addToast('success', `Draft "${data.slug}" uploaded — pipeline triggered!`)
+            addNotification({
+              type: 'article',
+              slug: data.slug,
+              label: data.slug,
+              status: 'running',
+              link: `/ai-agent?mode=pipeline&slug=${encodeURIComponent(data.slug)}`,
+            })
             setPipelineSlug(data.slug)
             setMode('pipeline')
             void navigate({ to: '/ai-agent', search: { mode: 'pipeline', slug: data.slug } })

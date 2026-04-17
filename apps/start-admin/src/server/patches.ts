@@ -119,9 +119,10 @@ function tryServeStatic(urlPath: string, res: ServerResponse): boolean {
   }
   if (!stat.isFile()) return false;
 
-  // Vite content-hashes files in assets/, so they are safe to cache immutably.
-  // Top-level files (favicon.ico, robots.txt) can mutate between deploys.
-  const isImmutableAsset = stripped.startsWith('/assets/');
+  // Hashed assets (e.g. main-BPTnT1y8.js) are safe to cache immutably.
+  // styles.css has a fixed name (no hash) and must not be cached immutably —
+  // a new deploy could change its content.
+  const isImmutableAsset = stripped.startsWith('/assets/') && /-[\w-]{8,}\.\w+$/.test(stripped);
   const mime = MIME_TYPES[extname(filePath)] ?? 'application/octet-stream';
 
   res.writeHead(200, {

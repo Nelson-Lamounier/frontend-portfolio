@@ -24,53 +24,23 @@ const SECURITY_HEADERS: Record<string, string> = {
 // =============================================================================
 
 /**
- * Next.js middleware — runs on every matched request.
+ * Next.js middleware — runs in Edge Runtime on every matched request.
  *
  * Responsibilities:
  * 1. Security headers: applied to every response
- * 2. Metrics tracking: request timing for Prometheus
  *
- * Note: Authentication is handled exclusively by start-admin (TanStack Start).
- * This public site has no login flow or protected routes.
+ * Note: prom-client uses Node.js APIs incompatible with Edge Runtime.
+ * Metrics are tracked in Node.js API routes (/api/metrics, /api/track-error)
+ * which run in the Node.js runtime where prom-client works correctly.
  *
  * @param request - Incoming Next.js request
  */
-export default async function middleware(request: NextRequest) {
-  const { pathname } = request.nextUrl
-
-  // ── Build response with security headers ──────────────────────────────
-  const start = Date.now()
+export default function middleware(_request: NextRequest) {
   const response = NextResponse.next()
-  const duration = (Date.now() - start) / 1000
 
   for (const [header, value] of Object.entries(SECURITY_HEADERS)) {
     response.headers.set(header, value)
   }
-
-  // ── Track metrics asynchronously (fire and forget) ────────────────────
-  Promise.all([
-    import('@/lib/observability/metrics'),
-    import('@/lib/observability/request-tracker'),
-  ])
-    .then(([{ trackRequestDuration, trackApiCall }, { trackRequestSize }]) => {
-      const status = response.status
-      const method = request.method
-      const path = pathname
-
-      // Track request duration (Prometheus histogram)
-      trackRequestDuration(method, path, status, duration)
-
-      // Track request/response sizes (Prometheus histogram)
-      trackRequestSize(request, response)
-
-      // Track API calls specifically
-      if (path.startsWith('/api/')) {
-        trackApiCall(path, method, status)
-      }
-    })
-    .catch(() => {
-      // Silently fail — don't break the request
-    })
 
   return response
 }
