@@ -138,11 +138,11 @@ export function ChatMessageList({ messages, isLoading, onSuggestionClick }: Chat
         >
           <div
             className={`
-              max-w-[85%] rounded-2xl px-3.5 py-2.5 text-sm leading-relaxed
+              rounded-2xl px-3.5 py-2.5 text-sm leading-relaxed
               ${
                 msg.role === 'user'
-                  ? 'bg-teal-600 text-white rounded-br-md'
-                  : 'bg-zinc-100 text-zinc-800 dark:bg-zinc-700 dark:text-zinc-100 rounded-bl-md'
+                  ? 'max-w-[85%] bg-teal-600 text-white rounded-br-md'
+                  : 'w-full bg-zinc-100 text-zinc-800 dark:bg-zinc-700 dark:text-zinc-100 rounded-bl-md'
               }
             `}
           >
