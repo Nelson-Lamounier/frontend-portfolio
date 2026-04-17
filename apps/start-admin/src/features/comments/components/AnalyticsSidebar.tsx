@@ -1,7 +1,8 @@
 import { Sparkline } from './Sparkline'
+import type { CommentData } from './CommentItem'
 
 interface AnalyticsSidebarProps {
-  comments: any[]
+  comments: CommentData[]
   totalSaves?: number
   totalShares?: number
   likesHistory?: number[]

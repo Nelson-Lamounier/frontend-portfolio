@@ -198,10 +198,10 @@ export function ResumeForm({
       }
 
       if (mode === 'create') {
-        await (createResumeFn as any)({ data: { label, data } })
+        await createResumeFn({ data: { label, data: data as unknown as Record<string, unknown> } })
       } else {
         if (!resumeId) throw new Error('resumeId required for update')
-        await (updateResumeFn as any)({ data: { id: resumeId, label, data } })
+        await updateResumeFn({ data: { resumeId, label, data: data as unknown as Record<string, unknown> } })
       }
 
       if (onSuccess) {

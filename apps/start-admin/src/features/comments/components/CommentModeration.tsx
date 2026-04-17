@@ -9,7 +9,7 @@ import {
 } from '@/hooks/use-admin-comments'
 
 import { CommentInput } from './CommentInput'
-import { CommentItem } from './CommentItem'
+import { CommentItem, type CommentData } from './CommentItem'
 import { AnalyticsSidebar } from './AnalyticsSidebar'
 
 export function CommentModeration() {
@@ -21,8 +21,8 @@ export function CommentModeration() {
 
   const [sortBy, setSortBy] = useState<'newest' | 'oldest' | 'top'>('newest')
 
-  const handleApprove = (comment: any) => {
-    const compositeId = `${comment.articleSlug}__COMMENT#${comment.createdAt}#${comment.commentId}`
+  const handleApprove = (comment: CommentData) => {
+    const compositeId = `${comment.articleSlug}__COMMENT#${String(comment.createdAt)}#${comment.commentId}`
     moderateComment(
       { compositeId, action: 'approve' },
       {
@@ -32,8 +32,8 @@ export function CommentModeration() {
     )
   }
 
-  const handleReject = (comment: any) => {
-    const compositeId = `${comment.articleSlug}__COMMENT#${comment.createdAt}#${comment.commentId}`
+  const handleReject = (comment: CommentData) => {
+    const compositeId = `${comment.articleSlug}__COMMENT#${String(comment.createdAt)}#${comment.commentId}`
     moderateComment(
       { compositeId, action: 'reject' },
       {
@@ -43,12 +43,12 @@ export function CommentModeration() {
     )
   }
 
-  const handleDelete = (comment: any) => {
+  const handleDelete = (comment: CommentData) => {
     if (!window.confirm('Are you sure you want to permanently delete this comment?')) {
       return
     }
 
-    const compositeId = `${comment.articleSlug}__COMMENT#${comment.createdAt}#${comment.commentId}`
+    const compositeId = `${comment.articleSlug}__COMMENT#${String(comment.createdAt)}#${comment.commentId}`
     deleteComment(compositeId, {
       onSuccess: () => addToast('success', 'Comment deleted.'),
       onError: () => addToast('error', 'Failed to delete comment.'),
@@ -161,7 +161,7 @@ export function CommentModeration() {
                   <span className="hidden sm:inline">Sort by:</span>
                   <select
                     value={sortBy}
-                    onChange={(e) => setSortBy(e.target.value as any)}
+                    onChange={(e) => setSortBy(e.target.value as typeof sortBy)}
                     className="rounded-md border-0 bg-white/5 py-1.5 pl-3 pr-8 text-sm text-white focus:ring-2 focus:ring-inset focus:ring-teal-500 sm:text-sm sm:leading-6"
                   >
                     <option value="newest">Newest</option>

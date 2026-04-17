@@ -5,6 +5,7 @@ import { ResumeDocument } from '@/components/resume/ResumeDocument'
 import { Button } from '../../../components/ui/Button'
 import type { AdminResumeWithData } from '../../applications/hooks/use-resume-versions'
 import { DashboardDrawer } from '../../../components/ui/DashboardDrawer'
+import type { ResumeData } from '@/lib/resumes/resume-data'
 
 interface ResumePreviewDrawerProps {
   readonly isOpen: boolean
@@ -54,7 +55,7 @@ export function ResumePreviewDrawer({
             style={{ width: '794px', transform: 'scale(0.95)', transformOrigin: 'top center' }}
           >
             <div className="flex flex-col gap-6 [&>div>div]:rounded-lg [&>div>div]:shadow-2xl [&>div>div]:ring-1 [&>div>div]:ring-white/10 relative z-10 bg-white">
-              <ResumeDocument data={resume.data} />
+              <ResumeDocument data={resume.data as unknown as ResumeData} />
             </div>
           </div>
         </div>

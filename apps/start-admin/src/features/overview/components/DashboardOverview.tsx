@@ -60,7 +60,7 @@ export function DashboardOverview() {
     { id: 'overview', name: 'Platform Overview' },
     { id: 'articles', name: 'Content Management' },
     { id: 'resumes', name: 'Career Documents' },
-  ]
+  ] as const
 
   // ── TanStack Query hooks ────────────────────────────────────────────────
   const {
@@ -240,10 +240,10 @@ export function DashboardOverview() {
       id: 3,
       name: 'AI Pipeline',
       count: pipelineCount,
-      articles: (pipelineArticles ?? []).slice(0, 4).map((a: any) => ({
-        title: a.title || a.pk?.replace('ARTICLE#', '') || 'Untitled',
-        detail: a.updatedAt ? new Date(a.updatedAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }) : '—',
-        status: a.status || 'draft',
+      articles: (pipelineArticles ?? []).slice(0, 4).map((a) => ({
+        title: a.title ? a.title : (a.pk ? a.pk.replace('ARTICLE#', '') : 'Untitled'),
+        detail: typeof a.updatedAt === 'string' ? new Date(a.updatedAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }) : '—',
+        status: typeof a.status === 'string' ? a.status : 'draft',
       })),
     },
   ]
@@ -254,7 +254,7 @@ export function DashboardOverview() {
     { label: 'Moderate Comments', href: '/comments', description: `${pendingComments} pending` },
     { label: 'Manage Resumes', href: '/resumes', description: `${totalResumes} version${totalResumes === 1 ? '' : 's'}` },
     { label: 'AI Reports', href: '/reports', description: 'View AI metrics' },
-  ]
+  ] as const
 
   // =====================================================================
   // Render
@@ -272,7 +272,8 @@ export function DashboardOverview() {
                 {quickActions.map((action) => (
                   <button
                     key={action.label}
-                    onClick={() => navigate({ to: action.href } as any)}
+                    // @ts-expect-error - router types for dynamic hrefs
+                    onClick={() => navigate({ to: action.href })}
                     className="text-zinc-500 dark:text-zinc-300 hover:text-zinc-900 dark:hover:text-white"
                   >
                     {action.label}
@@ -295,7 +296,7 @@ export function DashboardOverview() {
               {sections.map((section) => (
                 <button
                   key={section.id}
-                  onClick={() => setActiveSection(section.id as any)}
+                  onClick={() => setActiveSection(section.id)}
                   className={classNames(
                     activeSection === section.id
                       ? 'bg-teal-500/10 text-teal-700 dark:text-teal-400 border border-teal-500/20'
@@ -504,7 +505,8 @@ export function DashboardOverview() {
                 <button
                   key={action.label}
                   type="button"
-                  onClick={() => navigate({ to: action.href } as any)}
+                  // @ts-expect-error - router types for dynamic hrefs
+                  onClick={() => navigate({ to: action.href })}
                   className="group flex items-center gap-4 rounded-xl border border-zinc-200 dark:border-white/10 bg-zinc-50 dark:bg-zinc-800/50 p-4 text-left transition-all hover:border-teal-500/30 hover:bg-zinc-100 dark:hover:bg-white/5"
                 >
                   <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-teal-500/10 text-teal-700 dark:text-teal-400 ring-1 ring-inset ring-teal-500/20">

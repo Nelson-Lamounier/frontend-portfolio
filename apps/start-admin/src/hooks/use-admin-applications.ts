@@ -20,14 +20,9 @@ export function useApplications(status = 'all') {
   const query = useQuery<ApplicationSummary[]>({
     queryKey: adminKeys.applications.applications(status),
     queryFn: async () => {
-      try {
-        const data = await getApplicationsFn({ data: { status } })
-        if (Array.isArray(data)) return data
-        return []
-      } catch (err) {
-        console.error('Backend fetch failed:', err)
-        throw err
-      }
+      const data = await getApplicationsFn({ data: { status } })
+      if (Array.isArray(data)) return data
+      return []
     },
     refetchInterval: (queryResult) => {
       if (timedOut) return false

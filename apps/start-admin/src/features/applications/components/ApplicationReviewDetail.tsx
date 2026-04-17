@@ -46,8 +46,8 @@ export function ApplicationReviewDetail({ detail }: ApplicationReviewDetailProps
             onPreviewResume={() => setIsPreviewOpen(true)}
             showPreviewCoverLetter={!!detail.analysis?.coverLetter}
             onPreviewCoverLetter={detail.analysis?.coverLetter ? () => setIsCoverLetterPreviewOpen(true) : undefined}
-            onPublish={() => console.log('Publish application')}
-            onDelete={() => console.log('Delete application')}
+            onPublish={() => {/* console.log('Publish application') */}}
+            onDelete={() => {/* console.log('Delete application') */}}
           />
         </div>
       </div>
@@ -337,8 +337,8 @@ export function ApplicationReviewDetail({ detail }: ApplicationReviewDetailProps
               initialLabel="Tailored Resume"
               initialData={detail.analysis.tailoredResume}
               onCancel={() => setIsEditResumeOpen(false)}
-              onSubmit={async (label, data) => {
-                console.log('Resume updated', { label, data })
+              onSubmit={async (_label, _data) => {
+                /* console.log('Resume updated', { label, data }) */
                 setIsEditResumeOpen(false)
               }}
             />
@@ -358,8 +358,8 @@ export function ApplicationReviewDetail({ detail }: ApplicationReviewDetailProps
             <CoverLetterForm
               initialContent={detail.analysis.coverLetter}
               onCancel={() => setIsEditCoverLetterOpen(false)}
-              onSubmit={async (content) => {
-                console.log('Cover letter updated', content)
+              onSubmit={async (_content) => {
+                /* console.log('Cover letter updated', content) */
                 setIsEditCoverLetterOpen(false)
               }}
             />

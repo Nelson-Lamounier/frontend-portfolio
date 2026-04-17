@@ -17,7 +17,7 @@ export type CommandPalleteItem = {
   id: string
   name: string
   description?: string
-  icon?: any
+  icon?: React.ElementType
   color?: string
 }
 

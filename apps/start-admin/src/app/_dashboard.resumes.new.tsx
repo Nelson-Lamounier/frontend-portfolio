@@ -35,8 +35,8 @@ function CreateResumePage() {
   const { addToast } = useToastStore()
 
   const createMutation = useMutation({
-    mutationFn: (variables: { label: string; data: any }) =>
-      (createResumeFn as any)({ data: { label: variables.label, data: variables.data } }),
+    mutationFn: (variables: { label: string; data: Record<string, unknown> }) =>
+      createResumeFn({ data: { label: variables.label, data: variables.data } }),
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: ['admin-resumes'] })
       addToast('success', 'Resume created successfully.')
@@ -55,7 +55,7 @@ function CreateResumePage() {
         <ResumeForm
           mode="create"
           onSubmit={async (label, data) => {
-            await createMutation.mutateAsync({ label, data })
+            await createMutation.mutateAsync({ label, data: data as unknown as Record<string, unknown> })
           }}
           onCancel={handleClose}
         />

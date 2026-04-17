@@ -11,6 +11,7 @@ import {
 import { Stats } from '../../../components/ui/Stats'
 import { useQuery } from '@tanstack/react-query'
 import { finopsQueries, articlePipelineQueries } from '../queries'
+import type { ArticleSummary } from '../../../server/articles'
 
 const secondaryNavigation = [
   { name: 'Last 7 days', days: 7 },
@@ -189,18 +190,18 @@ export default function ReportContainer() {
   ]
 
   // Compute Pipelines
-  const draftArticles = articles?.filter((a: any) => a.status === 'draft') || []
-  const reviewArticles = articles?.filter((a: any) => a.status === 'review') || []
-  const publishedArticles = articles?.filter((a: any) => a.status === 'published') || []
+  const draftArticles = articles?.filter((a: ArticleSummary) => a.status === 'draft') || []
+  const reviewArticles = articles?.filter((a: ArticleSummary) => a.status === 'review') || []
+  const publishedArticles = articles?.filter((a: ArticleSummary) => a.status === 'published') || []
 
   const pipelines = [
     {
       id: 1,
       name: 'Draft',
       count: draftArticles.length,
-      articles: draftArticles.slice(0, 5).map((a: any) => ({
+      articles: draftArticles.slice(0, 5).map((a: ArticleSummary) => ({
         title: a.title || a.pk.replace('ARTICLE#', ''),
-        detail: `Updated: ${new Date(a.updatedAt).toLocaleDateString()}`,
+        detail: `Updated: ${a.updatedAt ? new Date(a.updatedAt).toLocaleDateString() : 'Unknown'}`,
         status: 'draft',
       })),
     },
@@ -208,9 +209,9 @@ export default function ReportContainer() {
       id: 2,
       name: 'In Review',
       count: reviewArticles.length,
-      articles: reviewArticles.slice(0, 5).map((a: any) => ({
+      articles: reviewArticles.slice(0, 5).map((a: ArticleSummary) => ({
         title: a.title || a.pk.replace('ARTICLE#', ''),
-        detail: `Updated: ${new Date(a.updatedAt).toLocaleDateString()}`,
+        detail: `Updated: ${a.updatedAt ? new Date(a.updatedAt).toLocaleDateString() : 'Unknown'}`,
         status: 'review',
       })),
     },
@@ -218,9 +219,9 @@ export default function ReportContainer() {
       id: 3,
       name: 'Published',
       count: publishedArticles.length,
-      articles: publishedArticles.slice(0, 5).map((a: any) => ({
+      articles: publishedArticles.slice(0, 5).map((a: ArticleSummary) => ({
         title: a.title || a.pk.replace('ARTICLE#', ''),
-        detail: `Published: ${new Date(a.publishedAt || a.updatedAt).toLocaleDateString()}`,
+        detail: `Published: ${a.publishedAt || a.updatedAt ? new Date(a.publishedAt || a.updatedAt!).toLocaleDateString() : 'Unknown'}`,
         status: 'published',
       })),
     },
@@ -228,20 +229,20 @@ export default function ReportContainer() {
 
   // Recent generation activity from Articles (just grabbing the latest ones as proxy for generations)
   const recentArticles = articles 
-    ? [...articles].sort((a: any, b: any) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime()).slice(0, 10)
+    ? [...articles].sort((a: ArticleSummary, b: ArticleSummary) => new Date(b.updatedAt || 0).getTime() - new Date(a.updatedAt || 0).getTime()).slice(0, 10)
     : []
 
   const days = [
     {
       date: `Recent Activity (Last ${Math.min(recentArticles.length, 10)} records)`,
       dateTime: new Date().toISOString(),
-      transactions: recentArticles.map((a: any) => ({
+      transactions: recentArticles.map((a: ArticleSummary) => ({
         id: a.pk,
         slug: a.pk.replace('ARTICLE#', ''),
         amount: 'N/A tokens',
         tax: 'N/A',
         status: a.status || 'draft',
-        client: a.category || 'Uncategorised',
+        client: (a as unknown as Record<string, string>).category || 'Uncategorised',
         description: a.excerpt || 'No description available',
         title: a.title || a.pk.replace('ARTICLE#', ''),
         icon: ArrowUpCircleIcon,
@@ -285,7 +286,7 @@ export default function ReportContainer() {
               {tabs.map((tab) => (
                 <button
                   key={tab.id}
-                  onClick={() => setActiveTab(tab.id as any)}
+                  onClick={() => setActiveTab(tab.id as typeof activeTab)}
                   className={classNames(
                     activeTab === tab.id
                       ? 'bg-indigo-500/10 text-indigo-400 border border-indigo-500/20'

@@ -1,6 +1,7 @@
 import { useEffect, useState, useMemo } from 'react'
 import { evaluate } from '@mdx-js/mdx'
 import * as _jsx_runtime from 'react/jsx-runtime'
+import type { EvaluateOptions } from '@mdx-js/mdx'
 import remarkGfm from 'remark-gfm'
 
 // Lightweight mock components matching the site design
@@ -67,14 +68,14 @@ const components = {
   ProcessTimeline,
   Mermaid,
   MermaidChart: Mermaid,
-  pre: ({ children }: any) => (
+  pre: ({ children }: { children?: React.ReactNode }) => (
     <pre className="overflow-x-auto rounded-xl border border-zinc-800 bg-zinc-900 p-4 font-mono text-sm shadow-sm ring-1 ring-inset ring-white/10">
       {children}
     </pre>
   ),
-  table: ({ children }: any) => <div className="overflow-x-auto"><table className="w-full text-sm">{children}</table></div>,
-  th: ({ children }: any) => <th className="border-b border-zinc-800 p-4 text-left font-semibold text-zinc-200">{children}</th>,
-  td: ({ children }: any) => <td className="border-b border-zinc-800/50 p-4 text-zinc-400">{children}</td>,
+  table: ({ children }: { children?: React.ReactNode }) => <div className="overflow-x-auto"><table className="w-full text-sm">{children}</table></div>,
+  th: ({ children }: { children?: React.ReactNode }) => <th className="border-b border-zinc-800 p-4 text-left font-semibold text-zinc-200">{children}</th>,
+  td: ({ children }: { children?: React.ReactNode }) => <td className="border-b border-zinc-800/50 p-4 text-zinc-400">{children}</td>,
 }
 
 interface MdxPreviewProps {
@@ -82,7 +83,7 @@ interface MdxPreviewProps {
 }
 
 export function MdxPreview({ content }: MdxPreviewProps) {
-  const [MDXContent, setMDXContent] = useState<any>(null)
+  const [MDXContent, setMDXContent] = useState<React.ElementType | null>(null)
   const [error, setError] = useState<string | null>(null)
 
   // Pre-process for Mermaid charts just like site
@@ -99,7 +100,7 @@ export function MdxPreview({ content }: MdxPreviewProps) {
     evaluate(sanitizedSource, {
       ..._jsx_runtime,
       remarkPlugins: [remarkGfm],
-    } as any)
+    } as EvaluateOptions)
       .then((mod) => {
         if (active) {
           setMDXContent(() => mod.default)

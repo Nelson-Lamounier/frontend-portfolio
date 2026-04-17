@@ -74,12 +74,12 @@ export function initialiseFaroAdmin(): Faro | null {
       ],
     })
 
-    console.log('[Faro] ✅ Admin RUM initialised — sending telemetry to', collectorUrl)
+    // console.log('[Faro] ✅ Admin RUM initialised — sending telemetry to', collectorUrl)
 
     return faroInstance
-  } catch (error) {
+  } catch {
     // Non-fatal — app continues without RUM
-    console.warn('[Faro] ⚠️ Failed to initialise admin RUM:', error)
+    // console.warn('[Faro] ⚠️ Failed to initialise admin RUM:', error)
     return null
   }
 }

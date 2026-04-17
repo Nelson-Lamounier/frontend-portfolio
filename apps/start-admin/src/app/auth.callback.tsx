@@ -16,17 +16,17 @@ export const Route = createFileRoute('/auth/callback')({
   validateSearch: callbackSearchSchema,
   beforeLoad: async ({ search }) => {
     if (search.error) {
-      console.error('[auth-callback] Cognito OAuth error:', search.error)
+      // console.error('[auth-callback] Cognito OAuth error:', search.error)
       throw redirect({ to: '/login' })
     }
 
     if (!search.code) {
-      console.error('[auth-callback] Missing authorisation code in callback')
+      // console.error('[auth-callback] Missing authorisation code in callback')
       throw redirect({ to: '/login' })
     }
 
     if (!search.state) {
-      console.error('[auth-callback] Missing OAuth state parameter — potential CSRF')
+      // console.error('[auth-callback] Missing OAuth state parameter — potential CSRF')
       throw redirect({ to: '/login' })
     }
 
@@ -50,9 +50,9 @@ export const Route = createFileRoute('/auth/callback')({
         }
       }
 
-      const message = err instanceof Error ? err.message : String(err)
-      const stack = err instanceof Error ? err.stack : undefined
-      console.error('[auth-callback] Token exchange failed:', { message, stack })
+      // const message = err instanceof Error ? err.message : String(err)
+      // const stack = err instanceof Error ? err.stack : undefined
+      // console.error('[auth-callback] Token exchange failed:', { message, stack })
       throw redirect({ to: '/login' })
     }
 

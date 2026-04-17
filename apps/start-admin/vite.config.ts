@@ -34,7 +34,7 @@ function copyStylesFixedName(isSsrBuild: boolean): Plugin {
         const hashed = readdirSync(assetsDir).find((f) => /^[\w-]+-[\w-]+\.css$/.test(f))
         if (hashed) {
           copyFileSync(join(assetsDir, hashed), join(assetsDir, 'styles.css'))
-          console.log(`\n  ✓ Copied ${hashed} → assets/styles.css (fixed name for SSR)`)
+          // console.log(`\n  ✓ Copied ${hashed} → assets/styles.css (fixed name for SSR)`)
         }
       } catch {
         // dist/client/assets may not exist yet during early build phases

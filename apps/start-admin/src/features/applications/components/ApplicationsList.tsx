@@ -29,7 +29,7 @@ export function ApplicationsList({ initialStage }: { initialStage?: string }) {
 
   useEffect(() => {
     if (initialStage) {
-      setStatusFilter(initialStage as any)
+      setStatusFilter(initialStage as ApplicationStatus | 'all')
     }
   }, [initialStage, setStatusFilter])
 

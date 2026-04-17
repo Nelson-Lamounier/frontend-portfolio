@@ -22,7 +22,7 @@ export interface AdminResume {
 }
 
 export interface AdminResumeWithData extends AdminResume {
-  readonly data: any
+  readonly data: Record<string, unknown>
 }
 
 /** Resumes rarely change mid-session — cache aggressively */

@@ -87,7 +87,7 @@ async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> {
 // =============================================================================
 
 /** Response envelope returned by GET /articles and GET /articles/:slug. */
-interface ArticleSummary {
+export interface ArticleSummary {
   pk: string
   sk?: string
   title?: string

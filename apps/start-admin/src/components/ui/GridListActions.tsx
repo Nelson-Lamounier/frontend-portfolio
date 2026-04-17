@@ -41,11 +41,13 @@ export function GridListActions({ actions }: GridListActionsProps) {
           <div className="mt-8">
             <h3 className="text-base font-semibold text-zinc-900 dark:text-white">
               {action.href ? (
-                <Link to={action.href as any} className="focus:outline-hidden" onClick={action.onClick}>
-                  {/* Extend touch target to entire panel */}
-                  <span aria-hidden="true" className="absolute inset-0" />
-                  {action.title}
-                </Link>
+                <>
+                  <Link to={action.href} className="focus:outline-hidden" onClick={action.onClick}>
+                    {/* Extend touch target to entire panel */}
+                    <span aria-hidden="true" className="absolute inset-0" />
+                    {action.title}
+                  </Link>
+                </>
               ) : (
                 <button
                   type="button"

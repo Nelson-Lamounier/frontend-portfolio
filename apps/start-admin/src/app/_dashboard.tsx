@@ -17,7 +17,7 @@ export const Route = createFileRoute('/_dashboard')({
 
 function DashboardLayout() {
   const matches = useMatches()
-  const disableMainWrapper = matches.some((match) => (match.staticData as any)?.disableMainWrapper)
+  const disableMainWrapper = matches.some((match) => (match.staticData as { disableMainWrapper?: boolean })?.disableMainWrapper)
 
   return (
     <AppLayout disableMainWrapper={disableMainWrapper}>

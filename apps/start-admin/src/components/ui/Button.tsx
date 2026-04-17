@@ -126,7 +126,7 @@ export function HeaderLink({
 
   if (to) {
     return (
-      <Link to={to as any} className={className}>
+      <Link to={to} className={className}>
         {children}
       </Link>
     )

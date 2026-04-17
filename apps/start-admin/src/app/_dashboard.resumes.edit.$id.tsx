@@ -4,6 +4,7 @@ import { ResumeForm } from '../features/resumes/components/ResumeForm'
 import { getResumeFn, updateResumeFn } from '../server/resumes'
 import { useToastStore } from '@/lib/stores/toast-store'
 import { DashboardDrawer } from '../components/ui/DashboardDrawer'
+import type { ResumeData } from '@/lib/resumes/resume-data'
 
 export const Route = createFileRoute('/_dashboard/resumes/edit/$id')({
   component: EditResumePage,
@@ -38,12 +39,12 @@ function EditResumePage() {
 
   const { data: resume, isLoading, error } = useQuery({
     queryKey: ['admin-resume', id],
-    queryFn: () => (getResumeFn as any)({ data: id }),
+    queryFn: () => getResumeFn({ data: id }),
   })
 
   const updateMutation = useMutation({
-    mutationFn: (variables: { label: string; data: any }) => 
-      (updateResumeFn as any)({ data: { resumeId: id, label: variables.label, data: variables.data } }),
+    mutationFn: (variables: { label: string; data: Record<string, unknown> }) => 
+      updateResumeFn({ data: { resumeId: id, label: variables.label, data: variables.data } }),
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: ['admin-resumes'] })
       void queryClient.invalidateQueries({ queryKey: ['admin-resume', id] })
@@ -84,9 +85,9 @@ function EditResumePage() {
             mode="edit"
             resumeId={resume.resumeId}
             initialLabel={resume.label}
-            initialData={resume.data}
+            initialData={resume.data as unknown as ResumeData}
             onSubmit={async (label, data) => {
-              await updateMutation.mutateAsync({ label, data })
+              await updateMutation.mutateAsync({ label, data: data as unknown as Record<string, unknown> })
             }}
             onCancel={handleClose}
           />

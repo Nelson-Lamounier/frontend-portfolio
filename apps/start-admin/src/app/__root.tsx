@@ -71,7 +71,7 @@ export const Route = createRootRouteWithContext<RouterContext>()({
   component: RootComponent,
 })
 
-function ErrorComponent({ error }: { error: any }) {
+function ErrorComponent({ error }: { error: unknown }) {
   return (
     <RootDocument>
       <div className="p-4 bg-red-50 dark:bg-red-950 text-red-900 dark:text-red-200 h-screen w-screen overflow-auto">

@@ -18,6 +18,7 @@ import {
   getResumeFn,
 } from '../../../server/resumes'
 import type { ResumeSummary } from '@/lib/resumes/dynamodb-resumes'
+import type { ResumeData } from '@/lib/resumes/resume-data'
 import { useToastStore } from '@/lib/stores/toast-store'
 import { buildResumeDomForPdf, A4_WIDTH, A4_HEIGHT, PDF_BG } from '@/lib/resumes/resume-dom-builder'
 
@@ -46,12 +47,12 @@ export function ResumesPipeline() {
     isLoading: isPreviewLoading,
   } = useQuery({
     queryKey: ['admin-resume-preview', previewId],
-    queryFn: () => (getResumeFn as any)({ data: previewId || '' }),
+    queryFn: () => getResumeFn({ data: previewId || '' }),
     enabled: !!previewId,
   })
 
   const activateMutation = useMutation({
-    mutationFn: (id: string) => (setActiveResumeFn as any)({ data: id }),
+    mutationFn: (id: string) => setActiveResumeFn({ data: id }),
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: ['admin-resumes'] })
       addToast('success', 'Resume published successfully.')
@@ -60,7 +61,7 @@ export function ResumesPipeline() {
   })
 
   const deleteMutation = useMutation({
-    mutationFn: (id: string) => (deleteResumeFn as any)({ data: id }),
+    mutationFn: (id: string) => deleteResumeFn({ data: id }),
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: ['admin-resumes'] })
       addToast('success', 'Resume deleted successfully.')
@@ -95,7 +96,7 @@ export function ResumesPipeline() {
       container.style.cssText = 'position:fixed;left:-9999px;top:0;z-index:-9999'
       document.body.appendChild(container)
 
-      const resumeEl = buildResumeDomForPdf(previewResume.data)
+      const resumeEl = buildResumeDomForPdf(previewResume.data as unknown as ResumeData)
       container.appendChild(resumeEl)
 
       // Wait for browser to lay out the element before capturing
@@ -172,7 +173,7 @@ export function ResumesPipeline() {
 
       addToast('success', 'PDF downloaded successfully.')
     } catch (err) {
-      console.error('Resume PDF generation failed:', err)
+      // console.error('Resume PDF generation failed:', err)
       addToast('error', `Failed to generate PDF: ${err instanceof Error ? err.message : String(err)}`)
     } finally {
       if (container?.parentNode) document.body.removeChild(container)

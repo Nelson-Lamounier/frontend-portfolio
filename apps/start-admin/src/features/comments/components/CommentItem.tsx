@@ -8,14 +8,29 @@ import {
   TrashIcon
 } from '@heroicons/react/20/solid'
 
+export interface CommentData {
+  id?: string
+  commentId?: string
+  name?: string
+  author?: { name?: string }
+  createdAt?: string | number | Date
+  articleSlug?: string
+  status?: string
+  email?: string
+  body?: React.ReactNode
+  isLikedByMe?: boolean
+  likes?: number
+  replies?: CommentData[]
+}
+
 interface CommentItemProps {
-  comment: any
+  comment: CommentData
   onLike?: (id: string) => void
   onReply?: (parentId: string, body: string) => void
   onFlag?: (id: string) => void
-  onApprove?: (comment: any) => void
-  onReject?: (comment: any) => void
-  onDelete?: (comment: any) => void
+  onApprove?: (comment: CommentData) => void
+  onReject?: (comment: CommentData) => void
+  onDelete?: (comment: CommentData) => void
   isModerating?: boolean
   isDeleting?: boolean
   level?: number
@@ -42,12 +57,13 @@ export function CommentItem({
   const handleReplyPrompt = () => {
     if (!onReply) return
     const body = window.prompt(`Reply to ${comment.name || comment.author?.name}:`)
-    if (body?.trim()) {
-      onReply(comment.commentId || comment.id, body)
+    const cid = comment.commentId || comment.id
+    if (cid && body?.trim()) {
+      onReply(cid, body)
     }
   }
   
-  const d = new Date(comment.createdAt)
+  const d = new Date(comment.createdAt ?? Date.now())
   const dateStr = isNaN(d.getTime()) 
     ? 'Unknown Date' 
     : d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute:'2-digit' })
@@ -89,7 +105,7 @@ export function CommentItem({
           <div className="flex items-center gap-x-4">
             <button
               type="button"
-              onClick={() => onLike && onLike(comment.commentId || comment.id)}
+              onClick={() => { const cid = comment.commentId || comment.id; if(onLike && cid) onLike(cid) }}
               className={classNames(
                 comment.isLikedByMe ? 'text-teal-400' : 'text-zinc-400 hover:text-zinc-300',
                 "flex items-center gap-x-1.5 text-sm font-medium"
@@ -108,7 +124,7 @@ export function CommentItem({
             </button>
             <button
               type="button"
-              onClick={() => onFlag && onFlag(comment.commentId || comment.id)}
+              onClick={() => { const cid = comment.commentId || comment.id; if(onFlag && cid) onFlag(cid) }}
               className="flex items-center gap-x-1.5 text-sm font-medium text-zinc-400 hover:text-zinc-300"
             >
               <FlagIcon className="h-4 w-4" />
@@ -153,7 +169,7 @@ export function CommentItem({
         {/* Recursive Replies */}
         {comment.replies && comment.replies.length > 0 && (
           <div className="mt-4 flex flex-col gap-y-4">
-            {comment.replies.map((reply: any) => (
+            {comment.replies.map((reply: CommentData) => (
               <CommentItem
                 key={reply.id || reply.commentId}
                 comment={reply}

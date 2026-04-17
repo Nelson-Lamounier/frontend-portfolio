@@ -2,6 +2,7 @@ import React from 'react'
 
 
 interface FieldInfoProps {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   field: any
 }
 
@@ -22,6 +23,7 @@ export function FieldInfo({ field }: FieldInfoProps) {
 
 interface FormInputProps extends React.InputHTMLAttributes<HTMLInputElement> {
   label: string
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   field: any
 }
 
@@ -49,6 +51,7 @@ export function FormInput({ label, field, className = '', ...props }: FormInputP
 
 interface FormTextareaProps extends React.TextareaHTMLAttributes<HTMLTextAreaElement> {
   label: string
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   field: any
 }
 
