@@ -18,12 +18,34 @@ import type { ChatMessage } from '@/lib/types/chat.types'
 // SAMPLE QUESTIONS
 // =============================================================================
 
+interface SampleQuestion {
+  readonly label: string
+  readonly sublabel: string
+  readonly prompt: string
+}
+
 /** Pre-fabricated questions that showcase the assistant's capabilities */
-const SAMPLE_QUESTIONS: readonly string[] = [
-  'What projects are in your portfolio?',
-  'Tell me about your AWS infrastructure',
-  'What certifications do you hold?',
-  'How is your Kubernetes cluster set up?',
+const SAMPLE_QUESTIONS: readonly SampleQuestion[] = [
+  {
+    label: 'Portfolio projects',
+    sublabel: 'What has Nelson built?',
+    prompt: 'What projects are in your portfolio?',
+  },
+  {
+    label: 'AWS infrastructure',
+    sublabel: 'CDK, VPC, Kubernetes',
+    prompt: 'Tell me about your AWS infrastructure',
+  },
+  {
+    label: 'Certifications',
+    sublabel: 'Credentials and qualifications',
+    prompt: 'What certifications do you hold?',
+  },
+  {
+    label: 'Kubernetes setup',
+    sublabel: 'Cluster bootstrap and ops',
+    prompt: 'How is your Kubernetes cluster set up?',
+  },
 ] as const
 
 // =============================================================================
@@ -75,30 +97,34 @@ export function ChatMessageList({ messages, isLoading, onSuggestionClick }: Chat
             I can answer questions about projects, skills, certifications, and infrastructure.
           </p>
 
-          <div className="w-full space-y-2">
-            <p className="text-[11px] font-medium text-zinc-400 dark:text-zinc-500 uppercase tracking-wider">
+          <div className="w-full">
+            <p className="text-[11px] font-medium text-zinc-400 dark:text-zinc-500 uppercase tracking-wider mb-2">
               Try asking
             </p>
-            {SAMPLE_QUESTIONS.map((question) => (
-              <button
-                key={question}
-                type="button"
-                onClick={() => onSuggestionClick?.(question)}
-                className="
-                  w-full text-left text-xs px-3 py-2.5
-                  rounded-xl border border-zinc-200 dark:border-zinc-600
-                  bg-zinc-50 dark:bg-zinc-700/50
-                  text-zinc-700 dark:text-zinc-300
-                  hover:bg-teal-50 hover:border-teal-300
-                  dark:hover:bg-teal-900/20 dark:hover:border-teal-600
-                  hover:text-teal-700 dark:hover:text-teal-300
-                  transition-all duration-150 cursor-pointer
-                "
-              >
-                <span className="mr-1.5 text-teal-500">→</span>
-                {question}
-              </button>
-            ))}
+            <div className="grid grid-cols-2 gap-2">
+              {SAMPLE_QUESTIONS.map((q) => (
+                <button
+                  key={q.prompt}
+                  type="button"
+                  onClick={() => onSuggestionClick?.(q.prompt)}
+                  className="
+                    text-left px-3 py-2.5
+                    rounded-xl border border-zinc-200 dark:border-zinc-600
+                    bg-zinc-50 dark:bg-zinc-700/50
+                    hover:bg-teal-50 hover:border-teal-300
+                    dark:hover:bg-teal-900/20 dark:hover:border-teal-600
+                    transition-all duration-150 cursor-pointer group
+                  "
+                >
+                  <p className="text-xs font-semibold text-zinc-700 dark:text-zinc-200 group-hover:text-teal-700 dark:group-hover:text-teal-300 leading-tight">
+                    {q.label}
+                  </p>
+                  <p className="text-[11px] text-zinc-400 dark:text-zinc-500 group-hover:text-teal-500 dark:group-hover:text-teal-500 mt-0.5 leading-tight">
+                    {q.sublabel}
+                  </p>
+                </button>
+              ))}
+            </div>
           </div>
         </div>
       )}
