@@ -20,6 +20,7 @@ import type {
   ApplicationStatus,
   ApplicationDetail,
 } from '@/lib/types/applications.types'
+import type { ResumeData } from '@/lib/resumes/resume-data'
 import { requireAuth } from './auth-guard'
 
 // =============================================================================
@@ -175,3 +176,63 @@ export const updateApplicationStatusFn = createServerFn({ method: 'POST' })
     )
     return { success: body.success, status: body.status }
   })
+
+// =============================================================================
+// Tailored Resumes
+// =============================================================================
+
+/** A tailored resume extracted from a completed application analysis */
+export interface TailoredResumeSummary {
+  readonly slug: string
+  readonly targetCompany: string
+  readonly targetRole: string
+  readonly updatedAt: string
+  readonly data: ResumeData
+}
+
+/**
+ * Fetches all applications and extracts AI-generated tailored resumes.
+ *
+ * Fetches full application detail in parallel for all apps that have
+ * completed analysis (any status past 'analysing'), then filters to those
+ * with a populated `analysis.tailoredResume`.
+ *
+ * @returns Tailored resumes sorted newest-first
+ */
+export const getTailoredResumesFn = createServerFn({ method: 'GET' }).handler(async () => {
+  await requireAuth()
+
+  const { applications } = await apiFetch<{ applications: ApplicationSummary[]; count: number }>(
+    '/applications',
+  )
+
+  const candidates = applications.filter((a) => a.status !== 'analysing')
+
+  const detailResults = await Promise.allSettled(
+    candidates.map((app) =>
+      apiFetch<{ application: ApplicationDetail }>(
+        `/applications/${encodeURIComponent(app.slug)}`,
+      ),
+    ),
+  )
+
+  const tailored: TailoredResumeSummary[] = []
+  detailResults.forEach((result, i) => {
+    if (
+      result.status === 'fulfilled' &&
+      result.value.application.analysis?.tailoredResume
+    ) {
+      tailored.push({
+        slug: candidates[i].slug,
+        targetCompany: candidates[i].targetCompany,
+        targetRole: candidates[i].targetRole,
+        updatedAt: candidates[i].updatedAt,
+        data: result.value.application.analysis.tailoredResume,
+      })
+    }
+  })
+
+  return tailored.sort(
+    (a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime(),
+  )
+})

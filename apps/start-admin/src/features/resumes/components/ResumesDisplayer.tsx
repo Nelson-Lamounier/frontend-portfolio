@@ -9,6 +9,7 @@ import {
   Plus,
   FileText,
   ArrowUpCircle,
+  Download,
 } from 'lucide-react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import {
@@ -16,37 +17,51 @@ import {
   setActiveResumeFn,
   deleteResumeFn,
   getResumeFn,
+  createResumeFn,
 } from '../../../server/resumes'
+import { getTailoredResumesFn } from '../../../server/applications'
+import type { TailoredResumeSummary } from '../../../server/applications'
 import type { ResumeSummary } from '@/lib/resumes/dynamodb-resumes'
 import type { ResumeData } from '@/lib/resumes/resume-data'
 import { useToastStore } from '@/lib/stores/toast-store'
 import { buildResumeDomForPdf, A4_WIDTH, A4_HEIGHT, PDF_BG } from '@/lib/resumes/resume-dom-builder'
+import { adminKeys } from '@/lib/api/query-keys'
 
 import { Link } from '@tanstack/react-router'
 import { SectionHeader } from '../../../components/ui/SectionHeader'
 import { Button } from '../../../components/ui/Button'
-import { ResumePreviewDrawer } from './ResumePreviewDrawer'
+import { DashboardDrawer } from '../../../components/ui/DashboardDrawer'
+import { ResumeDocument } from '../../../components/resume/ResumeDocument'
 
-export function ResumesPipeline() {
+export function ResumesDisplayer() {
   const { addToast } = useToastStore()
   const queryClient = useQueryClient()
 
   // TanStack Query hooks — list
   const { data: resumes = [], isLoading, error: queryError, refetch } = useQuery({
-    queryKey: ['admin-resumes'],
+    queryKey: adminKeys.resumes.list(),
     queryFn: () => getResumesFn(),
   })
 
-  // Preview state
+  // TanStack Query — AI-generated tailored resumes from applications
+  const { data: tailoredResumes = [] } = useQuery({
+    queryKey: [...adminKeys.applications.all, 'tailored-resumes'],
+    queryFn: () => getTailoredResumesFn(),
+  })
+
+  // Preview state — manually created resumes (fetched by ID)
   const [previewId, setPreviewId] = useState<string | null>(null)
   const [downloading, setDownloading] = useState(false)
 
-  // TanStack Query hooks — detail
+  // Preview state — tailored resumes (data already in-memory from list)
+  const [previewTailored, setPreviewTailored] = useState<TailoredResumeSummary | null>(null)
+
+  // TanStack Query hooks — detail for manually created resumes
   const {
     data: previewResume,
     isLoading: isPreviewLoading,
   } = useQuery({
-    queryKey: ['admin-resume-preview', previewId],
+    queryKey: adminKeys.resumes.detail(previewId ?? ''),
     queryFn: () => getResumeFn({ data: previewId || '' }),
     enabled: !!previewId,
   })
@@ -54,7 +69,7 @@ export function ResumesPipeline() {
   const activateMutation = useMutation({
     mutationFn: (id: string) => setActiveResumeFn({ data: id }),
     onSuccess: () => {
-      void queryClient.invalidateQueries({ queryKey: ['admin-resumes'] })
+      void queryClient.invalidateQueries({ queryKey: adminKeys.resumes.all })
       addToast('success', 'Resume published successfully.')
     },
     onError: (err: Error) => addToast('error', err.message),
@@ -63,8 +78,27 @@ export function ResumesPipeline() {
   const deleteMutation = useMutation({
     mutationFn: (id: string) => deleteResumeFn({ data: id }),
     onSuccess: () => {
-      void queryClient.invalidateQueries({ queryKey: ['admin-resumes'] })
+      void queryClient.invalidateQueries({ queryKey: adminKeys.resumes.all })
       addToast('success', 'Resume deleted successfully.')
+    },
+    onError: (err: Error) => addToast('error', err.message),
+  })
+
+  // Promotes an AI-generated tailored resume to a standalone RESUME entity then activates it
+  const publishTailoredMutation = useMutation({
+    mutationFn: async (tr: TailoredResumeSummary) => {
+      const created = await createResumeFn({
+        data: {
+          label: `${tr.targetCompany} — ${tr.targetRole}`,
+          data: tr.data as unknown as Record<string, unknown>,
+        },
+      })
+      await setActiveResumeFn({ data: created.resumeId })
+      return created
+    },
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: adminKeys.resumes.all })
+      addToast('success', 'Resume published successfully.')
     },
     onError: (err: Error) => addToast('error', err.message),
   })
@@ -77,8 +111,8 @@ export function ResumesPipeline() {
     setPreviewId((prev) => (prev === resumeId ? null : resumeId))
   }
 
-  const handleDownloadPdf = useCallback(async () => {
-    if (!previewResume || downloading) return
+  const generatePdf = useCallback(async (resumeData: ResumeData, filename: string) => {
+    if (downloading) return
     setDownloading(true)
 
     let container: HTMLDivElement | null = null
@@ -91,15 +125,13 @@ export function ResumesPipeline() {
       const html2canvas = html2canvasModule.default
       const { jsPDF } = jspdfModule
 
-      // Mount the resume DOM off-screen so html2canvas can capture it
       container = document.createElement('div')
       container.style.cssText = 'position:fixed;left:-9999px;top:0;z-index:-9999'
       document.body.appendChild(container)
 
-      const resumeEl = buildResumeDomForPdf(previewResume.data as unknown as ResumeData)
+      const resumeEl = buildResumeDomForPdf(resumeData)
       container.appendChild(resumeEl)
 
-      // Wait for browser to lay out the element before capturing
       await new Promise((r) => requestAnimationFrame(r))
       await new Promise((r) => setTimeout(r, 200))
 
@@ -145,7 +177,6 @@ export function ResumesPipeline() {
         pdf.addImage(pageCanvas.toDataURL('image/png'), 'PNG', 0, 0, pdfWidth, pdfHeight)
       }
 
-      // Overlay clickable link annotations (invisible rectangles over link text)
       const rootRect = resumeEl.getBoundingClientRect()
       const xScale = pdfWidth / A4_WIDTH
       const yScale = pdfHeight / A4_HEIGHT
@@ -165,7 +196,7 @@ export function ResumesPipeline() {
       const blobUrl = URL.createObjectURL(pdf.output('blob'))
       const downloadLink = document.createElement('a')
       downloadLink.href = blobUrl
-      downloadLink.download = 'Nelson_Lamounier_Resume.pdf'
+      downloadLink.download = filename
       document.body.appendChild(downloadLink)
       downloadLink.click()
       document.body.removeChild(downloadLink)
@@ -173,13 +204,24 @@ export function ResumesPipeline() {
 
       addToast('success', 'PDF downloaded successfully.')
     } catch (err) {
-      // console.error('Resume PDF generation failed:', err)
       addToast('error', `Failed to generate PDF: ${err instanceof Error ? err.message : String(err)}`)
     } finally {
       if (container?.parentNode) document.body.removeChild(container)
       setDownloading(false)
     }
-  }, [previewResume, downloading, addToast])
+  }, [downloading, addToast])
+
+  const handleDownloadPdf = useCallback(() => {
+    if (!previewResume) return
+    return generatePdf(previewResume.data as unknown as ResumeData, 'Nelson_Lamounier_Resume.pdf')
+  }, [previewResume, generatePdf])
+
+  const handleDownloadTailoredPdf = useCallback(() => {
+    if (!previewTailored) return
+    const filename = `Nelson_Lamounier_${previewTailored.targetCompany}_${previewTailored.targetRole}.pdf`
+      .replace(/\s+/g, '_')
+    return generatePdf(previewTailored.data, filename)
+  }, [previewTailored, generatePdf])
 
   function handleActivate(resumeId: string): void {
     activateMutation.mutate(resumeId)
@@ -226,7 +268,7 @@ export function ResumesPipeline() {
         <Link
           to="/resumes/edit/$id"
           params={{ id: resume.resumeId }}
-          className="inline-flex items-center justify-center gap-2 px-3 py-1 text-xs font-medium text-blue-400 border border-blue-400/30 bg-blue-400/10 rounded hover:bg-blue-400/20 transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-blue-500 disabled:pointer-events-none disabled:opacity-50"
+          className="inline-flex items-center justify-center gap-2 px-3 py-1 text-xs font-medium text-blue-400 border border-blue-400/30 bg-blue-400/10 rounded hover:bg-blue-400/20 transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-blue-500"
         >
           <Pencil className="size-3" />
           Edit
@@ -269,9 +311,9 @@ export function ResumesPipeline() {
         <p className="mt-2 text-xs">Create your first role-tailored resume to get started.</p>
         <Link
           to="/resumes/new"
-          className="mt-6 inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-teal-500 disabled:pointer-events-none disabled:opacity-50 h-8 px-3 bg-teal-500 text-teal-950 hover:bg-teal-600/90"
+          className="mt-6 inline-flex items-center justify-center gap-2 px-3 py-1 text-xs font-medium text-white bg-teal-600 rounded hover:bg-teal-500 transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-teal-500"
         >
-          <Plus className="size-4 mr-2" />
+          <Plus className="size-4" />
           Create Resume
         </Link>
       </div>
@@ -280,6 +322,17 @@ export function ResumesPipeline() {
 
   return (
     <div className="mt-8 space-y-12">
+      {/* 0. Header actions */}
+      <div className="flex justify-end">
+        <Link
+          to="/resumes/new"
+          className="inline-flex items-center justify-center gap-2 px-3 py-1 text-xs font-medium text-white bg-teal-600 rounded hover:bg-teal-500 transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-teal-500"
+        >
+          <Plus className="size-4" />
+          New Resume
+        </Link>
+      </div>
+
       {/* 1. Active Resume */}
       <section>
         <h2 className="mb-4 flex items-center gap-2 text-xs font-medium uppercase tracking-wider text-teal-500">
@@ -300,13 +353,43 @@ export function ResumesPipeline() {
       </section>
 
       {/* 2. PDF Preview Drawer */}
-      <ResumePreviewDrawer
+      <DashboardDrawer
         isOpen={!!previewId && !!previewResume}
         onClose={() => setPreviewId(null)}
-        resume={previewResume}
-        onDownload={handleDownloadPdf}
-        isDownloading={downloading}
-      />
+        title="PDF Preview"
+        description={previewResume?.label ?? 'Resume'}
+        unstyledContent
+        actions={
+          previewResume && (
+            <Button
+              variant="primary"
+              size="sm"
+              onClick={handleDownloadPdf}
+              disabled={downloading}
+            >
+              <Download className="mr-2 size-4" />
+              {downloading ? 'Generating…' : 'Download PDF'}
+            </Button>
+          )
+        }
+      >
+        {previewResume ? (
+          <div className="h-full overflow-y-auto no-scrollbar rounded-xl border border-white/10 bg-black/40 p-6 shadow-inner">
+            <div
+              className="mx-auto origin-top"
+              style={{ width: '794px', transform: 'scale(0.95)', transformOrigin: 'top center' }}
+            >
+              <div className="flex flex-col gap-6 [&>div>div]:rounded-lg [&>div>div]:shadow-2xl [&>div>div]:ring-1 [&>div>div]:ring-white/10 relative z-10 bg-white">
+                <ResumeDocument data={previewResume.data as unknown as ResumeData} />
+              </div>
+            </div>
+          </div>
+        ) : (
+          <div className="flex h-full items-center justify-center text-zinc-500">
+            Loading preview...
+          </div>
+        )}
+      </DashboardDrawer>
 
       {/* 3. Inactive Versions */}
       {inactiveResumes.length > 0 && (
@@ -326,6 +409,75 @@ export function ResumesPipeline() {
           </div>
         </section>
       )}
+
+      {/* 4. AI-Generated Tailored Resumes */}
+      {tailoredResumes.length > 0 && (
+        <section>
+          <h2 className="mb-4 text-xs font-medium uppercase tracking-wider text-indigo-400">
+            AI-Generated Tailored Resumes ({tailoredResumes.length})
+          </h2>
+          <div className="space-y-4">
+            {tailoredResumes.map((tr) => (
+              <SectionHeader
+                key={tr.slug}
+                title={`${tr.targetCompany} — ${tr.targetRole}`}
+                description={`Generated: ${new Date(tr.updatedAt).toLocaleDateString('en-GB')}`}
+                action={
+                  <div className="flex flex-wrap items-center gap-2">
+                    <Button
+                      variant={previewTailored?.slug === tr.slug ? 'primary' : 'ghost'}
+                      onClick={() => setPreviewTailored((prev) => prev?.slug === tr.slug ? null : tr)}
+                    >
+                      {previewTailored?.slug === tr.slug
+                        ? <><EyeOff className="size-4 mr-2" />Hide</>
+                        : <><Eye className="size-4 mr-2" />Preview</>
+                      }
+                    </Button>
+                    <Button
+                      variant="secondary"
+                      onClick={() => publishTailoredMutation.mutate(tr)}
+                      disabled={publishTailoredMutation.isPending}
+                    >
+                      <ArrowUpCircle className="size-4 mr-2" />
+                      {publishTailoredMutation.isPending ? 'Publishing…' : 'Publish'}
+                    </Button>
+                  </div>
+                }
+              />
+            ))}
+          </div>
+        </section>
+      )}
+
+      {/* 5. Tailored Resume Preview Drawer */}
+      <DashboardDrawer
+        isOpen={!!previewTailored}
+        onClose={() => setPreviewTailored(null)}
+        title="AI Tailored Resume"
+        description={previewTailored ? `${previewTailored.targetCompany} — ${previewTailored.targetRole}` : ''}
+        unstyledContent
+        actions={
+          previewTailored && (
+            <Button variant="primary" size="sm" onClick={handleDownloadTailoredPdf} disabled={downloading}>
+              <Download className="mr-2 size-4" />
+              {downloading ? 'Generating…' : 'Download PDF'}
+            </Button>
+          )
+        }
+      >
+        {previewTailored ? (
+          <div className="h-full overflow-y-auto no-scrollbar rounded-xl border border-white/10 bg-black/40 p-6 shadow-inner">
+            <div
+              className="mx-auto origin-top"
+              style={{ width: '794px', transform: 'scale(0.95)', transformOrigin: 'top center' }}
+            >
+              <div className="flex flex-col gap-6 [&>div>div]:rounded-lg [&>div>div]:shadow-2xl [&>div>div]:ring-1 [&>div>div]:ring-white/10 relative z-10 bg-white">
+                <ResumeDocument data={previewTailored.data} />
+              </div>
+            </div>
+          </div>
+        ) : null}
+      </DashboardDrawer>
     </div>
   )
 }

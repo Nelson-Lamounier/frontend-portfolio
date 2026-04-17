@@ -50,6 +50,33 @@ export interface CostResultItem {
   Estimated?: boolean
 }
 
+/** Flat stats returned by GET /finops/realtime (BedrockMultiAgent CloudWatch namespace). */
+export interface RealtimeUsageStats {
+  inputTokens: number
+  outputTokens: number
+  thinkingTokens: number
+  processingDuration: number
+  bedrockConverseDuration: number
+  invocations: number
+}
+
+/** Flat stats returned by GET /finops/chatbot (BedrockChatbot CloudWatch namespace). */
+export interface ChatbotUsageStats {
+  invocationCount: number
+  invocationLatency: number
+  invocationErrors: number
+  promptLength: number
+  responseLength: number
+  blockedInputs: number
+  redactedOutputs: number
+}
+
+/** Flat stats returned by GET /finops/self-healing (SelfHealing CloudWatch namespace). */
+export interface SelfHealingStats {
+  inputTokens: number
+  outputTokens: number
+}
+
 // =============================================================================
 // Helpers
 // =============================================================================
@@ -119,7 +146,7 @@ export const getRealtimeUsageFn = createServerFn({ method: 'GET' })
   .handler(async ({ data }) => {
     await requireAuth()
 
-    return apiFetch<Record<string, number>>(`/finops/realtime?days=${data.days}`)
+    return apiFetch<RealtimeUsageStats>(`/finops/realtime?days=${data.days}`)
   })
 
 /**
@@ -150,7 +177,7 @@ export const getChatbotUsageFn = createServerFn({ method: 'GET' })
   .handler(async ({ data }) => {
     await requireAuth()
 
-    return apiFetch<Record<string, number>>(`/finops/chatbot?days=${data.days}`)
+    return apiFetch<ChatbotUsageStats>(`/finops/chatbot?days=${data.days}`)
   })
 
 /**
@@ -164,5 +191,5 @@ export const getSelfHealingUsageFn = createServerFn({ method: 'GET' })
   .handler(async ({ data }) => {
     await requireAuth()
 
-    return apiFetch<Record<string, number>>(`/finops/self-healing?days=${data.days}`)
+    return apiFetch<SelfHealingStats>(`/finops/self-healing?days=${data.days}`)
   })

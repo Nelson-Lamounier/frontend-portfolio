@@ -12,7 +12,7 @@
  *   Page 2 — Professional Experience, Technical Skills
  */
 
-import type { ResumeData } from './resume-data'
+import type { ResumeData, ResumeProfile } from './resume-data'
 
 /**
  * Normalise a raw string value into a full href suitable for a PDF link.
@@ -305,5 +305,161 @@ export function buildResumeDomForPdf(data: ResumeData): HTMLDivElement {
 
   root.appendChild(page2)
 
+  return root
+}
+
+// =============================================================================
+// Cover Letter DOM Builder
+// =============================================================================
+
+const CLOSING_RE = /^(sincerely|best regards|warm regards|kind regards|yours truly|yours faithfully|respectfully|with regards|regards)/i
+
+interface ParsedCoverLetter {
+  salutation: string
+  body: string[]
+  closing: string
+  signature: string
+}
+
+function parseLetter(raw: string): ParsedCoverLetter {
+  const paragraphs = raw.split(/\n{2,}/).map((p) => p.trim()).filter(Boolean)
+
+  let salutation = ''
+  let closing = ''
+  let signature = ''
+  const body: string[] = []
+  let salutationIdx = -1
+  let closingIdx = -1
+
+  for (let i = 0; i < paragraphs.length; i++) {
+    if (!salutation && /^dear\b/i.test(paragraphs[i])) {
+      salutation = paragraphs[i]
+      salutationIdx = i
+    }
+    if (CLOSING_RE.test(paragraphs[i].split('\n')[0])) {
+      closingIdx = i
+      const parts = paragraphs[i].split('\n')
+      closing = parts[0]
+      signature = parts.slice(1).join('\n').trim()
+    }
+  }
+
+  const start = salutationIdx >= 0 ? salutationIdx + 1 : 0
+  for (let i = start; i < paragraphs.length; i++) {
+    if (i === closingIdx) break
+    body.push(paragraphs[i])
+  }
+
+  return { salutation, body, closing, signature }
+}
+
+/**
+ * Builds a cover letter as a plain DOM element with inline styles for PDF capture.
+ * Mirrors the CoverLetterDocument.tsx layout using inline styles (html2canvas compatible).
+ */
+export function buildCoverLetterDomForPdf(
+  content: string,
+  profile?: ResumeProfile,
+  targetCompany?: string,
+  targetRole?: string,
+): HTMLDivElement {
+  const { salutation, body, closing, signature } = parseLetter(content)
+
+  const date = new Date().toLocaleDateString('en-IE', {
+    year: 'numeric',
+    month: 'long',
+    day: 'numeric',
+  })
+
+  const root = document.createElement('div')
+  root.style.cssText = `
+    width: ${A4_WIDTH}px;
+    min-height: ${A4_HEIGHT}px;
+    background: ${BG};
+    color: ${BODY};
+    font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+    line-height: 1.5;
+    box-sizing: border-box;
+  `
+
+  // ──── LETTERHEAD ────
+  if (profile) {
+    root.innerHTML += `
+      <header style="padding: ${PAGE_PADDING_TOP}px ${PAGE_PADDING_X}px 24px ${PAGE_PADDING_X}px; border-bottom: 1.5px solid #27272a;">
+        <h1 style="font-size: 24px; font-weight: 700; letter-spacing: -0.3px; color: ${HEADING}; margin: 0;">
+          ${profile.name}
+        </h1>
+        <p style="margin: 4px 0 0 0; font-size: 13px; font-weight: 500; color: ${MUTED}; text-transform: uppercase; letter-spacing: 0.8px;">
+          ${profile.title}
+        </p>
+        <div style="margin-top: 12px; font-size: 10px; color: ${MUTED}; display: flex; flex-wrap: wrap; align-items: center; gap: 8px;">
+          <span>${profile.location}</span>
+          <span style="color: #d4d4d8;">|</span>
+          <span data-pdf-link="${toHref(profile.email)}">${profile.email}</span>
+          <span style="color: #d4d4d8;">|</span>
+          <span data-pdf-link="${toHref(profile.linkedin)}">${profile.linkedin}</span>
+          <span style="color: #d4d4d8;">|</span>
+          <span data-pdf-link="${toHref(profile.github)}">${profile.github}</span>
+          <span style="color: #d4d4d8;">|</span>
+          <span data-pdf-link="${toHref(profile.website)}">${profile.website}</span>
+        </div>
+      </header>
+    `
+  } else {
+    root.innerHTML += `
+      <header style="padding: ${PAGE_PADDING_TOP}px ${PAGE_PADDING_X}px 24px ${PAGE_PADDING_X}px; border-bottom: 1.5px solid #27272a;">
+        <p style="margin: 0; font-size: 13px; font-weight: 600; color: ${MUTED}; text-transform: uppercase; letter-spacing: 0.8px;">Cover Letter</p>
+      </header>
+    `
+  }
+
+  const bodyEl = document.createElement('div')
+  bodyEl.style.cssText = `padding: 32px ${PAGE_PADDING_X}px ${PAGE_PADDING_BOTTOM}px ${PAGE_PADDING_X}px; box-sizing: border-box;`
+
+  // ──── DATE ────
+  bodyEl.innerHTML += `<p style="font-size: 10.5px; color: ${MUTED}; margin: 0 0 20px 0;">${date}</p>`
+
+  // ──── RECIPIENT BLOCK ────
+  const recipientLines: string[] = ['Hiring Manager']
+  if (targetCompany) recipientLines.push(targetCompany)
+  const reSubject = targetRole ? `Re: <strong>${targetRole}</strong>` : ''
+
+  bodyEl.innerHTML += `
+    <div style="margin-bottom: 20px;">
+      ${recipientLines.map((l) => `<p style="font-size: 10.5px; color: ${BODY}; margin: 0; line-height: 1.6;">${l}</p>`).join('')}
+      ${reSubject ? `<p style="font-size: 10.5px; color: ${BODY}; margin: 0; line-height: 1.6;">${reSubject}</p>` : ''}
+    </div>
+  `
+
+  // ──── SALUTATION ────
+  if (salutation) {
+    bodyEl.innerHTML += `<p style="font-size: 10.5px; font-weight: 600; color: ${HEADING}; margin: 0 0 16px 0;">${salutation}</p>`
+  }
+
+  // ──── BODY PARAGRAPHS ────
+  if (body.length > 0) {
+    bodyEl.innerHTML += body
+      .map((p) => `<p style="font-size: 10.5px; line-height: 1.75; color: ${BODY}; margin: 0 0 14px 0;">${p}</p>`)
+      .join('')
+  }
+
+  // ──── CLOSING ────
+  if (closing) {
+    bodyEl.innerHTML += `<p style="font-size: 10.5px; color: ${HEADING}; margin: 8px 0 24px 0;">${closing}</p>`
+  }
+
+  // ──── SIGNATURE ────
+  const sigName = signature || profile?.name || ''
+  const sigTitle = profile?.title || ''
+  if (sigName) {
+    bodyEl.innerHTML += `
+      <div>
+        <p style="font-size: 10.5px; font-weight: 600; color: ${HEADING}; margin: 0;">${sigName}</p>
+        ${sigTitle ? `<p style="font-size: 10px; color: ${MUTED}; margin: 2px 0 0 0;">${sigTitle}</p>` : ''}
+      </div>
+    `
+  }
+
+  root.appendChild(bodyEl)
   return root
 }

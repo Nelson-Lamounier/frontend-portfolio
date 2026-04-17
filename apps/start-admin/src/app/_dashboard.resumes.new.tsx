@@ -1,5 +1,6 @@
 import { createFileRoute, useNavigate } from '@tanstack/react-router'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
+import { adminKeys } from '@/lib/api/query-keys'
 import { ResumeForm } from '../features/resumes/components/ResumeForm'
 import { createResumeFn } from '../server/resumes'
 import { useToastStore } from '@/lib/stores/toast-store'
@@ -38,7 +39,7 @@ function CreateResumePage() {
     mutationFn: (variables: { label: string; data: Record<string, unknown> }) =>
       createResumeFn({ data: { label: variables.label, data: variables.data } }),
     onSuccess: () => {
-      void queryClient.invalidateQueries({ queryKey: ['admin-resumes'] })
+      void queryClient.invalidateQueries({ queryKey: adminKeys.resumes.all })
       addToast('success', 'Resume created successfully.')
       navigate({ to: '/resumes' })
     },

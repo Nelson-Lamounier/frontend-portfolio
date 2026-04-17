@@ -1,5 +1,5 @@
 import { createFileRoute, Outlet } from '@tanstack/react-router'
-import { ResumesPipeline } from '@/features/resumes/components/ResumesPipeline'
+import { ResumesDisplayer } from '@/features/resumes/components/ResumesDisplayer'
 import { DashboardPage } from '@/components/layouts/DashboardPage'
 
 export const Route = createFileRoute('/_dashboard/resumes')({
@@ -13,7 +13,7 @@ function ResumesRoute() {
       description="Manage your role-tailored resume PDFs. The active version is served on the public site."
     >
       <div className="mx-auto relative">
-        <ResumesPipeline />
+        <ResumesDisplayer />
         <Outlet />
       </div>
     </DashboardPage>

@@ -1,5 +1,6 @@
 import { createFileRoute, useNavigate } from '@tanstack/react-router'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import { adminKeys } from '@/lib/api/query-keys'
 import { ResumeForm } from '../features/resumes/components/ResumeForm'
 import { getResumeFn, updateResumeFn } from '../server/resumes'
 import { useToastStore } from '@/lib/stores/toast-store'
@@ -38,7 +39,7 @@ function EditResumePage() {
   const { addToast } = useToastStore()
 
   const { data: resume, isLoading, error } = useQuery({
-    queryKey: ['admin-resume', id],
+    queryKey: adminKeys.resumes.detail(id),
     queryFn: () => getResumeFn({ data: id }),
   })
 
@@ -46,9 +47,7 @@ function EditResumePage() {
     mutationFn: (variables: { label: string; data: Record<string, unknown> }) => 
       updateResumeFn({ data: { resumeId: id, label: variables.label, data: variables.data } }),
     onSuccess: () => {
-      void queryClient.invalidateQueries({ queryKey: ['admin-resumes'] })
-      void queryClient.invalidateQueries({ queryKey: ['admin-resume', id] })
-      void queryClient.invalidateQueries({ queryKey: ['admin-resume-preview', id] })
+      void queryClient.invalidateQueries({ queryKey: adminKeys.resumes.all })
       addToast('success', 'Resume saved successfully.')
       navigate({ to: '/resumes' })
     },

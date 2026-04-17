@@ -6,30 +6,88 @@ import {
 } from 'lucide-react'
 import type { ApplicationDetail } from '@/lib/types/applications.types'
 import { useState, useCallback } from 'react'
+import { useMutation, useQueryClient } from '@tanstack/react-query'
+import { useNavigate } from '@tanstack/react-router'
+import { adminKeys } from '@/lib/api/query-keys'
+import { useToastStore } from '@/lib/stores/toast-store'
 import { ResumePreviewDrawer } from '../../resumes/components/ResumePreviewDrawer'
 import { ResumeForm } from '../../resumes/components/ResumeForm'
 import { CoverLetterForm } from './CoverLetterForm'
 import { DashboardDrawer } from '../../../components/ui/DashboardDrawer'
 import DropDownOptions from '../../../components/ui/DropDownOptions'
 import type { AdminResumeWithData } from '../../applications/hooks/use-resume-versions'
+import { createResumeFn, setActiveResumeFn } from '../../../server/resumes'
+import { deleteApplicationFn } from '../../../server/applications'
+import { buildResumeDomForPdf, buildCoverLetterDomForPdf } from '@/lib/resumes/resume-dom-builder'
+import { usePdfDownload } from '../../../hooks/use-pdf-download'
+import type { ResumeData } from '@/lib/resumes/resume-data'
 
 interface ApplicationReviewDetailProps {
   readonly detail: ApplicationDetail
 }
 
 export function ApplicationReviewDetail({ detail }: ApplicationReviewDetailProps) {
+  const navigate = useNavigate()
+  const queryClient = useQueryClient()
+  const { addToast } = useToastStore()
 
   const [isPreviewOpen, setIsPreviewOpen] = useState(false)
   const [isCoverLetterPreviewOpen, setIsCoverLetterPreviewOpen] = useState(false)
   const [isEditResumeOpen, setIsEditResumeOpen] = useState(false)
   const [isEditCoverLetterOpen, setIsEditCoverLetterOpen] = useState(false)
-  const [isDownloading, setIsDownloading] = useState(false)
+  const { downloading: isDownloading, generatePdf } = usePdfDownload()
 
-  const handleDownloadPreview = useCallback(() => {
-    setIsDownloading(true)
-    // Add real PDF download logic here if needed
-    setTimeout(() => setIsDownloading(false), 1000)
-  }, [])
+  const handleDownloadResume = useCallback(() => {
+    if (!detail.analysis?.tailoredResume) return
+    const resume = detail.analysis.tailoredResume as unknown as ResumeData
+    const company = detail.targetCompany.replace(/\s+/g, '_')
+    const role = detail.targetRole.replace(/\s+/g, '_')
+    void generatePdf(
+      () => buildResumeDomForPdf(resume),
+      `Nelson_Lamounier_Resume_${company}_${role}.pdf`,
+    )
+  }, [detail, generatePdf])
+
+  const handleDownloadCoverLetter = useCallback(() => {
+    if (!detail.analysis?.coverLetter) return
+    const company = detail.targetCompany.replace(/\s+/g, '_')
+    void generatePdf(
+      () => buildCoverLetterDomForPdf(
+        detail.analysis!.coverLetter!,
+        detail.analysis?.tailoredResume?.profile,
+        detail.targetCompany,
+        detail.targetRole,
+      ),
+      `Nelson_Lamounier_Cover_Letter_${company}.pdf`,
+    )
+  }, [detail, generatePdf])
+
+  const publishMutation = useMutation({
+    mutationFn: async () => {
+      const created = await createResumeFn({
+        data: {
+          label: `${detail.targetCompany} — ${detail.targetRole}`,
+          data: detail.analysis!.tailoredResume as unknown as Record<string, unknown>,
+        },
+      })
+      await setActiveResumeFn({ data: created.resumeId })
+    },
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: adminKeys.resumes.all })
+      addToast('success', 'Resume published to the public site.')
+    },
+    onError: (err: Error) => addToast('error', err.message),
+  })
+
+  const deleteMutation = useMutation({
+    mutationFn: () => deleteApplicationFn({ data: detail.slug }),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: adminKeys.applications.all })
+      addToast('success', 'Application deleted.')
+      void navigate({ to: '/applications/list' })
+    },
+    onError: (err: Error) => addToast('error', err.message),
+  })
 
   return (
     <div>
@@ -46,8 +104,8 @@ export function ApplicationReviewDetail({ detail }: ApplicationReviewDetailProps
             onPreviewResume={() => setIsPreviewOpen(true)}
             showPreviewCoverLetter={!!detail.analysis?.coverLetter}
             onPreviewCoverLetter={detail.analysis?.coverLetter ? () => setIsCoverLetterPreviewOpen(true) : undefined}
-            onPublish={() => {/* console.log('Publish application') */}}
-            onDelete={() => {/* console.log('Delete application') */}}
+            onPublish={detail.analysis?.tailoredResume ? () => publishMutation.mutate() : undefined}
+            onDelete={() => deleteMutation.mutate()}
           />
         </div>
       </div>
@@ -266,8 +324,8 @@ export function ApplicationReviewDetail({ detail }: ApplicationReviewDetailProps
                     </div>
                   </div>
                   <div className="ml-4 shrink-0 flex gap-4">
-                    <button type="button" onClick={() => setIsPreviewOpen(true)} className="font-medium text-blue-500 hover:text-blue-400 transition-colors">
-                      Download
+                    <button type="button" onClick={handleDownloadResume} disabled={isDownloading} className="font-medium text-blue-500 hover:text-blue-400 transition-colors disabled:opacity-50">
+                      {isDownloading ? 'Generating…' : 'Download'}
                     </button>
                   </div>
                 </li>
@@ -281,8 +339,8 @@ export function ApplicationReviewDetail({ detail }: ApplicationReviewDetailProps
                       </div>
                     </div>
                     <div className="ml-4 shrink-0 flex gap-4">
-                      <button type="button" onClick={() => setIsCoverLetterPreviewOpen(true)} className="font-medium text-blue-500 hover:text-blue-400 transition-colors">
-                        Download
+                      <button type="button" onClick={handleDownloadCoverLetter} disabled={isDownloading} className="font-medium text-blue-500 hover:text-blue-400 transition-colors disabled:opacity-50">
+                        {isDownloading ? 'Generating…' : 'Download'}
                       </button>
                     </div>
                   </li>
@@ -298,7 +356,7 @@ export function ApplicationReviewDetail({ detail }: ApplicationReviewDetailProps
           isOpen={isPreviewOpen}
           onClose={() => setIsPreviewOpen(false)}
           isDownloading={isDownloading}
-          onDownload={handleDownloadPreview}
+          onDownload={handleDownloadResume}
           resume={{
             id: 'tailored',
             resumeId: 'tailored',
@@ -318,8 +376,11 @@ export function ApplicationReviewDetail({ detail }: ApplicationReviewDetailProps
           isOpen={isCoverLetterPreviewOpen}
           onClose={() => setIsCoverLetterPreviewOpen(false)}
           isDownloading={isDownloading}
-          onDownload={handleDownloadPreview}
+          onDownload={handleDownloadCoverLetter}
           coverLetter={detail.analysis.coverLetter}
+          coverLetterProfile={detail.analysis.tailoredResume?.profile}
+          coverLetterCompany={detail.targetCompany}
+          coverLetterRole={detail.targetRole}
         />
       )}
 

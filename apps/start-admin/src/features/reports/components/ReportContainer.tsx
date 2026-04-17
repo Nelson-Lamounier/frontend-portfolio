@@ -12,6 +12,7 @@ import { Stats } from '../../../components/ui/Stats'
 import { useQuery } from '@tanstack/react-query'
 import { finopsQueries, articlePipelineQueries } from '../queries'
 import type { ArticleSummary } from '../../../server/articles'
+import type { RealtimeUsageStats, ChatbotUsageStats, SelfHealingStats } from '../../../server/finops'
 
 const secondaryNavigation = [
   { name: 'Last 7 days', days: 7 },
@@ -47,10 +48,25 @@ export default function ReportContainer() {
   const { data: chatbotUsage, isLoading: isChatbotLoading } = useQuery(finopsQueries.chatbotUsage(period))
   const { data: selfHealingUsage, isLoading: isSelfHealingLoading } = useQuery(finopsQueries.selfHealingUsage(period))
 
-  // Compute stats
+  // ── Pricing constants (Claude Sonnet — Bedrock on-demand rates) ──────────────
+  const inputCostPer1M = 3    // $ per 1M input tokens
+  const outputCostPer1M = 15  // $ per 1M output/thinking tokens
+
+  // ── Pipeline (BedrockMultiAgent) ─────────────────────────────────────────────
+  const typedRealtime = realtimeUsage as RealtimeUsageStats | undefined
   const totalArticles = articles?.length || 0
-  const invocations = realtimeUsage?.invocations || 0
-  
+  const invocations = typedRealtime?.invocations || 0
+  const avgGenTime = typedRealtime?.processingDuration || 0
+  const avgBedrockMs = typedRealtime?.bedrockConverseDuration || 0
+  const pipelineInputTokens = typedRealtime?.inputTokens || 0
+  const pipelineOutputTokens = typedRealtime?.outputTokens || 0
+  const pipelineThinkingTokens = typedRealtime?.thinkingTokens || 0
+  const pipelineTotalTokens = pipelineInputTokens + pipelineOutputTokens + pipelineThinkingTokens
+  const pipelineInputCost = (pipelineInputTokens / 1_000_000) * inputCostPer1M
+  const pipelineOutputCost = (pipelineOutputTokens / 1_000_000) * outputCostPer1M
+  const pipelineThinkingCost = (pipelineThinkingTokens / 1_000_000) * outputCostPer1M
+  const pipelineTokenCost = pipelineInputCost + pipelineOutputCost + pipelineThinkingCost
+
   // Compute Total Costs from Cost Explorer
   let totalCost = 0
   if (billedCosts) {
@@ -65,72 +81,104 @@ export default function ReportContainer() {
   }
 
   const avgCostPerArticle = totalArticles > 0 ? (totalCost / totalArticles) : 0
-  const avgGenTime = realtimeUsage?.processingDuration || 0
-  const avgBedrockMs = realtimeUsage?.bedrockConverseDuration || 0
-  
+
   const stats = [
-    { 
-      name: 'Total Articles', 
-      value: isArticlesLoading ? '...' : totalArticles.toString(), 
-      change: `Data across the entire DynamoDB table`, changeType: 'positive' 
+    {
+      name: 'Total Articles',
+      value: isArticlesLoading ? '...' : totalArticles.toString(),
+      change: `Data across the entire DynamoDB table`, changeType: 'positive'
     },
-    { 
-      name: 'Agent Invocations', 
-      value: isRealtimeLoading ? '...' : invocations.toString(), 
-      change: `${period} Days (CloudWatch)`, changeType: 'positive' 
+    {
+      name: 'Agent Invocations',
+      value: isRealtimeLoading ? '...' : invocations.toString(),
+      change: `${period} Days (CloudWatch)`, changeType: 'positive'
     },
-    { 
-      name: 'Avg Cost / Article', 
-      value: isCostsLoading ? '...' : `$${avgCostPerArticle.toFixed(3)}`, 
-      change: `Total Billed: $${totalCost.toFixed(2)} (Cost Explorer)`, changeType: 'negative' 
+    {
+      name: 'Avg Cost / Article',
+      value: isCostsLoading ? '...' : `$${avgCostPerArticle.toFixed(3)}`,
+      change: `Total Billed: $${totalCost.toFixed(2)} (Cost Explorer)`, changeType: 'negative'
     },
-    { 
-      name: 'Avg Processing Time', 
-      value: isRealtimeLoading ? '...' : `${(avgGenTime / 1000).toFixed(2)}s`, 
-      change: `Bedrock wait: ${(avgBedrockMs / 1000).toFixed(2)}s (CloudWatch)`, changeType: 'positive' 
+    {
+      name: 'Avg Processing Time',
+      value: isRealtimeLoading ? '...' : `${(avgGenTime / 1000).toFixed(2)}s`,
+      change: `Bedrock wait: ${(avgBedrockMs / 1000).toFixed(2)}s (CloudWatch)`, changeType: 'positive'
     },
   ]
 
-  const chatbotInvocations = chatbotUsage?.invocationCount || 0
-  const avgPromptLen = chatbotUsage?.promptLength || 0
-  const avgResponseLen = chatbotUsage?.responseLength || 0
-  const blocked = chatbotUsage?.blockedInputs || 0
-  const redacted = chatbotUsage?.redactedOutputs || 0
-  const totalInterceptions = blocked + redacted
-  const chatbotLatency = chatbotUsage?.invocationLatency || 0
+  const bedrockTokenStats = [
+    {
+      name: 'Input Tokens',
+      value: isRealtimeLoading ? '...' : pipelineInputTokens.toLocaleString(),
+      change: `Est. $${pipelineInputCost.toFixed(4)} @ $${inputCostPer1M}/M tokens`,
+      changeType: 'positive' as const,
+    },
+    {
+      name: 'Output Tokens',
+      value: isRealtimeLoading ? '...' : pipelineOutputTokens.toLocaleString(),
+      change: `Est. $${pipelineOutputCost.toFixed(4)} @ $${outputCostPer1M}/M tokens`,
+      changeType: 'negative' as const,
+    },
+    {
+      name: 'Thinking Tokens',
+      value: isRealtimeLoading ? '...' : pipelineThinkingTokens.toLocaleString(),
+      change: `Est. $${pipelineThinkingCost.toFixed(4)} (extended thinking, output rate)`,
+      changeType: 'negative' as const,
+    },
+    {
+      name: 'Total Token Cost',
+      value: isRealtimeLoading ? '...' : `$${pipelineTokenCost.toFixed(4)}`,
+      change: `${pipelineTotalTokens.toLocaleString()} total tokens processed`,
+      changeType: 'negative' as const,
+    },
+  ]
 
-  // Estimated Chatbot Avg Cost based on Sonnet 3
-  const inputCostPer1M = 3
-  const outputCostPer1M = 15
+  // ── Chatbot (BedrockChatbot) ──────────────────────────────────────────────────
+  const typedChatbot = chatbotUsage as ChatbotUsageStats | undefined
+  const chatbotInvocations = typedChatbot?.invocationCount || 0
+  const avgPromptLen = typedChatbot?.promptLength || 0
+  const avgResponseLen = typedChatbot?.responseLength || 0
+  const blocked = typedChatbot?.blockedInputs || 0
+  const redacted = typedChatbot?.redactedOutputs || 0
+  const chatbotErrors = typedChatbot?.invocationErrors || 0
+  const totalInterceptions = blocked + redacted
+  const chatbotLatency = typedChatbot?.invocationLatency || 0
   const estPromptTokens = avgPromptLen / 4
   const estResponseTokens = avgResponseLen / 4
   const avgChatbotCost = ((estPromptTokens / 1_000_000) * inputCostPer1M) + ((estResponseTokens / 1_000_000) * outputCostPer1M)
 
   const chatbotStats = [
-    { 
-      name: 'Total Chat Requests', 
-      value: isChatbotLoading ? '...' : chatbotInvocations.toString(), 
-      change: `${period} Days (CloudWatch)`, changeType: 'positive' 
+    {
+      name: 'Total Chat Requests',
+      value: isChatbotLoading ? '...' : chatbotInvocations.toString(),
+      change: `${period} Days (CloudWatch)`, changeType: 'positive'
     },
-    { 
-      name: 'Est. Cost / Request', 
-      value: isChatbotLoading ? '...' : `$${avgChatbotCost.toFixed(5)}`, 
-      change: 'Derived from Context Size estimates', changeType: 'negative' 
+    {
+      name: 'Est. Cost / Request',
+      value: isChatbotLoading ? '...' : `$${avgChatbotCost.toFixed(5)}`,
+      change: 'Derived from Context Size estimates', changeType: 'negative'
     },
-    { 
-      name: 'Avg Response Latency', 
-      value: isChatbotLoading ? '...' : `${(chatbotLatency / 1000).toFixed(2)}s`, 
-      change: 'End-to-End Chatbot Wait', changeType: 'positive' 
+    {
+      name: 'Avg Response Latency',
+      value: isChatbotLoading ? '...' : `${(chatbotLatency / 1000).toFixed(2)}s`,
+      change: 'End-to-End Chatbot Wait', changeType: 'positive'
     },
-    { 
-      name: 'Security Interceptions', 
-      value: isChatbotLoading ? '...' : totalInterceptions.toString(), 
-      change: `Blocked Prompts: ${blocked} | Redacted: ${redacted}`, changeType: totalInterceptions > 0 ? 'negative' : 'positive' 
+    {
+      name: 'Security Interceptions',
+      value: isChatbotLoading ? '...' : totalInterceptions.toString(),
+      change: `Blocked: ${blocked} | Redacted: ${redacted}`, changeType: totalInterceptions > 0 ? 'negative' : 'positive'
+    },
+    {
+      name: 'Invocation Errors',
+      value: isChatbotLoading ? '...' : chatbotErrors.toString(),
+      change: 'Failed Bedrock converse calls (CloudWatch)',
+      changeType: chatbotErrors > 0 ? 'negative' : 'positive',
     },
   ]
 
-  const shInputTokens = selfHealingUsage?.inputTokens || 0
-  const shOutputTokens = selfHealingUsage?.outputTokens || 0
+  // ── Self-Healing ──────────────────────────────────────────────────────────────
+  const typedSelfHealing = selfHealingUsage as SelfHealingStats | undefined
+  const shInputTokens = typedSelfHealing?.inputTokens || 0
+  const shOutputTokens = typedSelfHealing?.outputTokens || 0
   const shTotalTokens = shInputTokens + shOutputTokens
   const BUDGET = 100000
   const shEstimatedCost = ((shInputTokens / 1_000_000) * inputCostPer1M) + ((shOutputTokens / 1_000_000) * outputCostPer1M)
@@ -162,8 +210,8 @@ export default function ReportContainer() {
   const isAgentActive = shTotalTokens > 0 
   const combinedTotalRequests = totalArticles + chatbotInvocations + (isAgentActive ? 1 : 0)
   const combinedEstCost = (chatbotInvocations * avgChatbotCost) + shEstimatedCost
-  const combinedInputTokens = (chatbotInvocations * estPromptTokens) + shInputTokens
-  const combinedOutputTokens = (chatbotInvocations * estResponseTokens) + shOutputTokens
+  const combinedInputTokens = pipelineInputTokens + (chatbotInvocations * estPromptTokens) + shInputTokens
+  const combinedOutputTokens = pipelineOutputTokens + pipelineThinkingTokens + (chatbotInvocations * estResponseTokens) + shOutputTokens
   const isLoadingAny = isRealtimeLoading || isCostsLoading || isArticlesLoading || isChatbotLoading || isSelfHealingLoading
 
   const combinedStats = [
@@ -314,11 +362,21 @@ export default function ReportContainer() {
 
             {/* Content Pipelines */}
             {activeTab === 'pipelines' && (
-              <div>
-                <div className="mb-4">
-                  <h2 className="text-base/7 font-semibold text-indigo-400">Content Pipelines</h2>
+              <div className="space-y-8">
+                <div>
+                  <div className="mb-4">
+                    <h2 className="text-base/7 font-semibold text-indigo-400">Pipeline Overview</h2>
+                    <p className="mt-1 text-sm text-zinc-500">Invocation counts, cost-per-article, and processing latency from CloudWatch &amp; Cost Explorer.</p>
+                  </div>
+                  <Stats stats={stats} />
                 </div>
-                <Stats stats={stats} />
+                <div>
+                  <div className="mb-4">
+                    <h2 className="text-base/7 font-semibold text-indigo-400">Bedrock Token Usage</h2>
+                    <p className="mt-1 text-sm text-zinc-500">Token counts and estimated spend from the BedrockMultiAgent CloudWatch namespace. Thinking tokens billed at output rate.</p>
+                  </div>
+                  <Stats stats={bedrockTokenStats} />
+                </div>
               </div>
             )}
 
