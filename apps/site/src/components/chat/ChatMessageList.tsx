@@ -10,9 +10,37 @@
 
 'use client'
 
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, useState } from 'react'
 
 import type { ChatMessage } from '@/lib/types/chat.types'
+
+// =============================================================================
+// LOADING MESSAGES
+// =============================================================================
+
+const LOADING_MESSAGES = [
+  'Lami is searching the knowledge base...',
+  'Pulling in project details and metrics...',
+  'Checking infrastructure and deployment data...',
+  'Almost there...',
+] as const
+
+function useLoadingMessage(isLoading: boolean): string {
+  const [index, setIndex] = useState(0)
+
+  useEffect(() => {
+    if (!isLoading) {
+      setIndex(0)
+      return
+    }
+    const id = setInterval(() => {
+      setIndex((i) => (i + 1) % LOADING_MESSAGES.length)
+    }, 2000)
+    return () => clearInterval(id)
+  }, [isLoading])
+
+  return LOADING_MESSAGES[index]
+}
 
 // =============================================================================
 // SAMPLE QUESTIONS
@@ -73,6 +101,7 @@ interface ChatMessageListProps {
  */
 export function ChatMessageList({ messages, isLoading, onSuggestionClick }: ChatMessageListProps) {
   const bottomRef = useRef<HTMLDivElement>(null)
+  const loadingMessage = useLoadingMessage(isLoading)
 
   // Auto-scroll to the latest message
   useEffect(() => {
@@ -163,15 +192,13 @@ export function ChatMessageList({ messages, isLoading, onSuggestionClick }: Chat
         </div>
       ))}
 
-      {/* Typing indicator */}
+      {/* Loading message */}
       {isLoading && (
         <div className="flex justify-start">
-          <div className="bg-zinc-100 dark:bg-zinc-700 rounded-2xl rounded-bl-md px-4 py-3">
-            <div className="flex space-x-1.5" aria-label="Agent is typing">
-              <span className="w-2 h-2 bg-zinc-400 dark:bg-zinc-500 rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
-              <span className="w-2 h-2 bg-zinc-400 dark:bg-zinc-500 rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
-              <span className="w-2 h-2 bg-zinc-400 dark:bg-zinc-500 rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
-            </div>
+          <div className="w-full bg-zinc-100 dark:bg-zinc-700 rounded-2xl rounded-bl-md px-3.5 py-2.5">
+            <p className="text-sm text-zinc-400 dark:text-zinc-500 italic" aria-live="polite">
+              {loadingMessage}
+            </p>
           </div>
         </div>
       )}
