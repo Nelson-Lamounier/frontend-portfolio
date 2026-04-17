@@ -91,10 +91,10 @@ export function ChatMessageList({ messages, isLoading, onSuggestionClick }: Chat
           </div>
 
           <h4 className="text-sm font-semibold text-zinc-800 dark:text-zinc-200 mb-1">
-            Hi! I&apos;m Nelson&apos;s Portfolio Assistant
+            Hi! I&apos;m Lami
           </h4>
           <p className="text-xs text-zinc-500 dark:text-zinc-400 mb-4 max-w-[260px]">
-            I can answer questions about projects, skills, certifications, and infrastructure.
+            Nelson&apos;s portfolio assistant. Ask me about his projects, infrastructure, and certifications.
           </p>
 
           <div className="w-full">

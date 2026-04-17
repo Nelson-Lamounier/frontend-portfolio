@@ -153,10 +153,13 @@ export function ChatWidget() {
               </div>
               <div>
                 <h3 className="text-sm font-semibold text-zinc-900 dark:text-zinc-100">
-                  Portfolio Assistant
+                  Lami
                 </h3>
-                <p className="text-[11px] text-zinc-500 dark:text-zinc-400">
-                  Powered by AWS Bedrock
+                <p className="text-[11px] text-zinc-500 dark:text-zinc-400 leading-tight">
+                  Nelson&apos;s portfolio assistant
+                </p>
+                <p className="text-[10px] text-zinc-400 dark:text-zinc-500 leading-tight mt-0.5">
+                  AWS · Kubernetes · GitOps · Observability
                 </p>
               </div>
             </div>
