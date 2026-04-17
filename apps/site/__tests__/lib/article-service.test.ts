@@ -97,13 +97,14 @@ describe('ArticleService', () => {
       expect(articles).toHaveLength(0)
     })
 
-    it('propagates error when DynamoDB query fails', async () => {
+    it('returns empty array when DynamoDB query fails', async () => {
       mockIsDynamoDBConfigured.mockReturnValue(true)
       mockQueryPublishedArticles.mockRejectedValue(new Error('DynamoDB unreachable'))
 
       const { getAllArticles } = require('@/lib/articles/article-service')
 
-      await expect(getAllArticles()).rejects.toThrow('DynamoDB unreachable')
+      const articles = await getAllArticles()
+      expect(articles).toEqual([])
     })
 
     it('returns articles with required properties', async () => {

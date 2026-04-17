@@ -20,7 +20,6 @@ interface ParsedLetter {
 }
 
 function parseCoverLetter(raw: string, targetCompany?: string): ParsedLetter {
-  const lines = raw.split('\n').map((l) => l.trimEnd())
   const paragraphs = raw
     .split(/\n{2,}/)
     .map((p) => p.trim())
