@@ -4,6 +4,8 @@ import {
   AlertCircle,
   Loader2,
   Send,
+  Wand2,
+  FileText,
 } from 'lucide-react'
 import { useForm } from '@tanstack/react-form'
 import { useApplicationsTrigger } from '../hooks/use-applications-trigger'
@@ -113,17 +115,34 @@ export function NewAnalysisPanel({ preselectedResumeId, onSuccess: _onSuccess }:
 
   return (
     <div className="mb-8 overflow-hidden rounded-lg border border-white/10 bg-white/5 shadow-sm">
-      <div className="flex items-center gap-3 px-6 py-4 border-b border-white/10">
-        <div className="flex h-10 w-10 items-center justify-center rounded-xl">
-          <Sparkles className="h-5 w-5 text-violet-400" />
+      <div className="flex items-center justify-between gap-3 px-6 py-4 border-b border-white/10">
+        <div className="flex items-center gap-3">
+          <div className="flex h-10 w-10 items-center justify-center rounded-xl">
+            <Sparkles className="h-5 w-5 text-violet-400" />
+          </div>
+          <div>
+            <h2 className="text-base font-semibold text-zinc-100">
+              Analyse New Job Description
+            </h2>
+            <p className="text-xs text-zinc-500">
+              {preselectedResumeId
+                ? 'Paste a job description to analyse against your selected resume'
+                : 'Paste a job description — the agent will build your resume from scratch'}
+            </p>
+          </div>
         </div>
-        <div>
-          <h2 className="text-base font-semibold text-zinc-100">
-            Analyse New Job Description
-          </h2>
-          <p className="text-xs text-zinc-500">
-            Paste a job description to analyse against your resume
-          </p>
+        <div className="flex-none">
+          {preselectedResumeId ? (
+            <span className="inline-flex items-center gap-1.5 rounded-full bg-indigo-500/10 px-2.5 py-1 text-xs font-medium text-indigo-400 ring-1 ring-inset ring-indigo-500/20">
+              <FileText className="size-3" />
+              Resume selected
+            </span>
+          ) : (
+            <span className="inline-flex items-center gap-1.5 rounded-full bg-violet-500/10 px-2.5 py-1 text-xs font-medium text-violet-400 ring-1 ring-inset ring-violet-500/20">
+              <Wand2 className="size-3" />
+              Building from scratch
+            </span>
+          )}
         </div>
       </div>
 

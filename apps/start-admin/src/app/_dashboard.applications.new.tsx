@@ -16,7 +16,7 @@ function ApplicationsNewRoute() {
 
   const steps: FullWidthBarStep[] = [
     {
-      name: '1. Select Resume',
+      name: selectedResumeId ? '1. Resume Selected' : '1. Select Resume',
       current: step === 1,
       onClick: () => setStep(1),
     },

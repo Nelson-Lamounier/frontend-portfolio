@@ -15,6 +15,106 @@ import { useEffect, useRef, useState } from 'react'
 import type { ChatMessage } from '@/lib/types/chat.types'
 
 // =============================================================================
+// AGENT RESPONSE PARSING
+// =============================================================================
+
+interface AgentMetric {
+  readonly label: string
+  readonly value: string
+}
+
+interface AgentResponsePayload {
+  readonly prose: string
+  readonly metrics: AgentMetric[]
+  readonly tags: string[]
+  readonly followUp: string
+}
+
+function parseAgentResponse(content: string): AgentResponsePayload | null {
+  try {
+    const parsed = JSON.parse(content) as Record<string, unknown>
+    if (typeof parsed.prose !== 'string') return null
+    return {
+      prose: parsed.prose,
+      metrics: Array.isArray(parsed.metrics)
+        ? (parsed.metrics as AgentMetric[]).filter(
+            (m) => typeof m.label === 'string' && typeof m.value === 'string',
+          )
+        : [],
+      tags: Array.isArray(parsed.tags)
+        ? (parsed.tags as unknown[]).filter((t): t is string => typeof t === 'string')
+        : [],
+      followUp: typeof parsed.followUp === 'string' ? parsed.followUp : '',
+    }
+  } catch {
+    return null
+  }
+}
+
+// =============================================================================
+// AGENT MESSAGE RENDERER
+// =============================================================================
+
+interface AgentMessageProps {
+  readonly payload: AgentResponsePayload
+  readonly onFollowUp?: (prompt: string) => void
+}
+
+function AgentMessageContent({ payload, onFollowUp }: AgentMessageProps) {
+  return (
+    <div className="space-y-2">
+      {/* Prose — main answer */}
+      <p className="text-sm leading-relaxed">{payload.prose}</p>
+
+      {/* Metrics grid */}
+      {payload.metrics.length > 0 && (
+        <div className="grid grid-cols-2 gap-1.5">
+          {payload.metrics.map((m) => (
+            <div
+              key={m.label}
+              className="rounded-lg bg-zinc-200/70 dark:bg-zinc-600/70 px-2 py-1.5"
+            >
+              <p className="text-[10px] font-medium uppercase tracking-wide text-zinc-500 dark:text-zinc-400 leading-tight">
+                {m.label}
+              </p>
+              <p className="text-xs font-semibold text-zinc-800 dark:text-zinc-100 leading-snug mt-0.5">
+                {m.value}
+              </p>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* Tags */}
+      {payload.tags.length > 0 && (
+        <div className="flex flex-wrap gap-1">
+          {payload.tags.map((tag) => (
+            <span
+              key={tag}
+              className="rounded-full bg-teal-100 dark:bg-teal-900/30 px-2 py-0.5 text-[10px] font-medium text-teal-700 dark:text-teal-400"
+            >
+              {tag}
+            </span>
+          ))}
+        </div>
+      )}
+
+      {/* Follow-up suggestion */}
+      {payload.followUp && onFollowUp && (
+        <button
+          type="button"
+          onClick={() => onFollowUp(payload.followUp)}
+          className="w-full rounded-lg border border-teal-200 dark:border-teal-800 bg-teal-50/50 dark:bg-teal-900/10 px-2.5 py-2 text-left text-xs text-teal-600 dark:text-teal-400 transition-colors hover:border-teal-300 dark:hover:border-teal-600 hover:bg-teal-50 dark:hover:bg-teal-900/20 hover:text-teal-700 dark:hover:text-teal-300"
+        >
+          <span className="font-semibold">↩ </span>
+          {payload.followUp}
+        </button>
+      )}
+    </div>
+  )
+}
+
+// =============================================================================
 // LOADING MESSAGES
 // =============================================================================
 
@@ -175,7 +275,16 @@ export function ChatMessageList({ messages, isLoading, onSuggestionClick }: Chat
               }
             `}
           >
-            <p className="whitespace-pre-wrap break-words">{msg.content}</p>
+            {msg.role === 'agent' ? (
+              (() => {
+                const payload = parseAgentResponse(msg.content)
+                return payload
+                  ? <AgentMessageContent payload={payload} onFollowUp={onSuggestionClick} />
+                  : <p className="whitespace-pre-wrap break-words">{msg.content}</p>
+              })()
+            ) : (
+              <p className="whitespace-pre-wrap break-words">{msg.content}</p>
+            )}
             <time
               className={`
                 block text-[10px] mt-1

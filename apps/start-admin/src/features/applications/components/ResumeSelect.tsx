@@ -2,7 +2,7 @@ import { ChevronRightIcon } from '@heroicons/react/20/solid'
 import { PlusCircleIcon, DocumentTextIcon } from '@heroicons/react/24/outline'
 import { useResumeVersions } from '../hooks/use-resume-versions'
 import { Link } from '@tanstack/react-router'
-import { Loader2 } from 'lucide-react'
+import { Loader2, Wand2 } from 'lucide-react'
 
 function classNames(...classes: (string | undefined | null | false)[]) {
   return classes.filter(Boolean).join(' ')
@@ -31,9 +31,9 @@ export function ResumeSelect({ onSelect }: ResumeSelectProps) {
         <DocumentTextIcon className="mx-auto h-12 w-12 text-zinc-400" />
         <h3 className="mt-2 text-sm font-semibold text-white">No resumes found</h3>
         <p className="mt-1 text-sm text-zinc-400">
-          You need to create a resume before starting an application analysis.
+          Create a resume first, or let the agent build one from your portfolio knowledge base.
         </p>
-        <div className="mt-6">
+        <div className="mt-6 flex flex-col items-center gap-3">
           <Link
             to="/resumes/new"
             className="inline-flex items-center rounded-md bg-indigo-500 px-3 py-2 text-sm font-semibold text-white shadow-xs hover:bg-indigo-400 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-500"
@@ -41,6 +41,14 @@ export function ResumeSelect({ onSelect }: ResumeSelectProps) {
             <PlusCircleIcon aria-hidden="true" className="-ml-0.5 mr-1.5 size-5" />
             Create new Resume
           </Link>
+          <button
+            type="button"
+            onClick={() => onSelect('')}
+            className="inline-flex items-center gap-1.5 text-sm text-violet-400 hover:text-violet-300 transition-colors"
+          >
+            <Wand2 className="size-4" />
+            Build from scratch with the agent
+          </button>
         </div>
       </div>
     )
@@ -96,11 +104,19 @@ export function ResumeSelect({ onSelect }: ResumeSelectProps) {
         ))}
       </ul>
       
-      <div className="mt-6 flex pl-4">
+      <div className="mt-6 flex items-center justify-between pl-4">
         <Link to="/resumes/new" className="hidden sm:inline-flex items-center text-sm font-medium text-indigo-400 hover:text-indigo-300">
           Or create a new resume
           <span aria-hidden="true" className="ml-1">&rarr;</span>
         </Link>
+        <button
+          type="button"
+          onClick={() => onSelect('')}
+          className="inline-flex items-center gap-1.5 text-sm text-zinc-500 hover:text-violet-400 transition-colors"
+        >
+          <Wand2 className="size-4" />
+          Build from scratch with the agent
+        </button>
       </div>
     </div>
   )

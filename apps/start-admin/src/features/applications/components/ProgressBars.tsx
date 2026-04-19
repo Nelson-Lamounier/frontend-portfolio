@@ -9,6 +9,7 @@ import {
   Cpu,
   FileSearch,
   FileText,
+  PenLine,
   Database,
 } from 'lucide-react'
 import { useApplicationDetail } from '@/hooks/use-admin-applications'
@@ -19,12 +20,15 @@ import { useApplicationRequeue } from '../hooks/use-application-requeue'
 //
 // Reflects the real AWS Step Function execution sequence for the Strategist
 // pipeline. Timing windows are based on observed Bedrock invocation latency:
-//   Research Agent    ~15–25 s  (job description extraction + fit analysis)
-//   Applications Agent ~10–20 s (cover letter + resume suggestion generation)
-//   Persist           ~2–5 s   (DynamoDB write + status update)
+//   Research Agent     ~30–60 s  (job description extraction + fit analysis)
+//   Strategist Agent   ~30–90 s  (cover letter + resume strategy generation)
+//   Resume Builder     ~30–90 s  (full resume rewrite with tailored bullets)
+//   Persist            ~5–10 s   (DynamoDB write + status update)
 //
 // Advancement is driven by elapsed wall-clock time, NOT by artificial
 // setTimeout chains, so the UI reflects actual pipeline pacing.
+// Windows are intentionally wider than median latency so the last stage
+// does not show complete before the real pipeline finishes.
 // =============================================================================
 
 type StageStatus = 'complete' | 'current' | 'upcoming' | 'failed'
@@ -53,23 +57,31 @@ const PIPELINE_STAGES: PipelineStage[] = [
     description: 'Claude analysing the job description against your resume profile.',
     Icon: FileSearch,
     startMs: 3_000,
-    endMs: 30_000,
+    endMs: 75_000,
   },
   {
-    id: 'applications',
-    name: 'Applications Agent',
-    description: 'Generating tailored cover letter and resume improvements.',
+    id: 'strategist',
+    name: 'Strategist Agent',
+    description: 'Generating cover letter and positioning strategy.',
     Icon: FileText,
-    startMs: 30_000,
-    endMs: 55_000,
+    startMs: 75_000,
+    endMs: 165_000,
+  },
+  {
+    id: 'resume-builder',
+    name: 'Resume Builder',
+    description: 'Rewriting resume bullets tailored to this role.',
+    Icon: PenLine,
+    startMs: 165_000,
+    endMs: 240_000,
   },
   {
     id: 'persist',
     name: 'Saving results',
     description: 'Persisting analysis output to DynamoDB and updating status.',
     Icon: Database,
-    startMs: 55_000,
-    endMs: 65_000,
+    startMs: 240_000,
+    endMs: 255_000,
   },
 ]
 
@@ -143,7 +155,7 @@ export function ProgressBars({ slug }: { slug: string }) {
     ? 'The pipeline encountered an error. Requeue via the DLQ to retry.'
     : isFinished
     ? 'Redirecting to your results…'
-    : 'Bedrock agents are running. This typically takes 60–90 seconds.'
+    : 'Bedrock agents are running. This typically takes 2–4 minutes.'
 
   // ── Render ────────────────────────────────────────────────────────────────
   return (
