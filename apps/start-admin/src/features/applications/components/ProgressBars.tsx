@@ -12,7 +12,7 @@ import {
   PenLine,
   Database,
 } from 'lucide-react'
-import { useApplicationDetail } from '@/hooks/use-admin-applications'
+import { useApplicationDetail, useExecutionStatus } from '@/hooks/use-admin-applications'
 import { useApplicationRequeue } from '../hooks/use-application-requeue'
 
 // =============================================================================
@@ -105,16 +105,28 @@ export function ProgressBars({ slug }: { slug: string }) {
   const { data } = useApplicationDetail(slug)
   const requeue = useApplicationRequeue()
 
-  const mountTimeRef = useRef(Date.now())
+  const isFailed   = data?.status === 'failed'
+  const isFinished = data != null && !['analysing', 'coaching'].includes(data.status)
+  const isActive   = !isFinished && !isFailed
+
+  // ── Real Step Functions execution state (polled every 5s while active) ───
+  const execution = useExecutionStatus(slug, isActive)
+
+  // ── Elapsed wall-clock (from SFN startDate when available, else mount) ───
+  const startEpochRef = useRef<number | null>(null)
   const [elapsedMs, setElapsedMs] = useState(0)
 
-  const isFailed  = data?.status === 'failed'
-  const isFinished = data != null && !['analysing', 'coaching'].includes(data.status)
+  useEffect(() => {
+    if (execution?.startDate && !startEpochRef.current) {
+      startEpochRef.current = new Date(execution.startDate).getTime()
+    }
+  }, [execution?.startDate])
 
-  // ── Elapsed ticker ────────────────────────────────────────────────────────
   useEffect(() => {
     if (isFinished) return
-    const iv = setInterval(() => setElapsedMs(Date.now() - mountTimeRef.current), 1_000)
+    const origin = () => startEpochRef.current ?? Date.now()
+    if (!startEpochRef.current) startEpochRef.current = Date.now()
+    const iv = setInterval(() => setElapsedMs(Date.now() - origin()), 1_000)
     return () => clearInterval(iv)
   }, [isFinished])
 
@@ -128,16 +140,31 @@ export function ProgressBars({ slug }: { slug: string }) {
   }, [isFinished, isFailed, navigate, slug])
 
   // ── Stage status resolution ───────────────────────────────────────────────
+  // Real SFN stageId takes priority over wall-clock estimation.
+  // When stageId is known: that stage is 'current', all before are 'complete',
+  // all after are 'upcoming'. Wall-clock is only used when SFN data is absent.
+  const activeStageId = execution?.stageId ?? null
+  const activeStageIdx = activeStageId
+    ? PIPELINE_STAGES.findIndex(s => s.id === activeStageId)
+    : -1
+
   function getStageStatus(idx: number): StageStatus {
     if (isFailed) {
-      // Mark the last stage that had started as failed; earlier ones complete
-      const lastStarted = PIPELINE_STAGES.reduce((acc, s, i) =>
-        elapsedMs >= s.startMs ? i : acc, 0)
+      const lastStarted = activeStageIdx >= 0
+        ? activeStageIdx
+        : PIPELINE_STAGES.reduce((acc, s, i) => elapsedMs >= s.startMs ? i : acc, 0)
       if (idx < lastStarted) return 'complete'
       if (idx === lastStarted) return 'failed'
       return 'upcoming'
     }
     if (isFinished) return 'complete'
+    // Real SFN state available
+    if (activeStageIdx >= 0) {
+      if (idx < activeStageIdx) return 'complete'
+      if (idx === activeStageIdx) return 'current'
+      return 'upcoming'
+    }
+    // Fallback: wall-clock estimation
     const s = PIPELINE_STAGES[idx]
     if (elapsedMs >= s.endMs)   return 'complete'
     if (elapsedMs >= s.startMs) return 'current'
@@ -155,7 +182,7 @@ export function ProgressBars({ slug }: { slug: string }) {
     ? 'The pipeline encountered an error. Requeue via the DLQ to retry.'
     : isFinished
     ? 'Redirecting to your results…'
-    : 'Bedrock agents are running. This typically takes 2–4 minutes.'
+    : 'Bedrock agents are running. This typically takes 4–6 minutes.'
 
   // ── Render ────────────────────────────────────────────────────────────────
   return (
@@ -171,7 +198,7 @@ export function ProgressBars({ slug }: { slug: string }) {
         {!isFinished && (
           <div className="flex-none flex items-center gap-1.5 rounded-md bg-zinc-800 px-2.5 py-1.5 font-mono text-xs text-zinc-400 tabular-nums">
             <Clock className="w-3 h-3 shrink-0" />
-            {formatElapsed(elapsedMs)}
+            {formatElapsed(execution?.elapsedMs ?? elapsedMs)}
           </div>
         )}
       </div>

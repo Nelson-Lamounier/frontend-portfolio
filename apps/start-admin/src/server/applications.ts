@@ -178,6 +178,36 @@ export const updateApplicationStatusFn = createServerFn({ method: 'POST' })
   })
 
 // =============================================================================
+// Execution Status
+// =============================================================================
+
+export interface ExecutionStatus {
+  readonly sfnStatus: 'RUNNING' | 'SUCCEEDED' | 'FAILED' | 'TIMED_OUT' | 'ABORTED' | 'UNKNOWN'
+  readonly stageId: string | null
+  readonly currentStateName: string | null
+  readonly startDate: string | null
+  readonly elapsedMs: number | null
+}
+
+/**
+ * Returns the real-time Step Functions execution stage for an in-flight pipeline.
+ * Polls GetExecutionHistory to find which Lambda task is currently running.
+ *
+ * @param data - The application slug
+ * @returns Current SFN status, stageId, and elapsed time
+ */
+export const getExecutionStatusFn = createServerFn({ method: 'GET' })
+  .inputValidator(slugSchema)
+  .handler(async ({ data: slug }) => {
+    await requireAuth()
+
+    const body = await apiFetch<ExecutionStatus>(
+      `/applications/${encodeURIComponent(slug)}/execution`,
+    )
+    return body
+  })
+
+// =============================================================================
 // Tailored Resumes
 // =============================================================================
 

@@ -3,7 +3,8 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { adminKeys } from '@/lib/api/query-keys'
 import { useToastStore } from '@/lib/stores/toast-store'
 import type { ApplicationStatus, ApplicationSummary, ApplicationDetail, InterviewStage } from '@/lib/types/applications.types'
-import { getApplicationsFn, deleteApplicationFn, getApplicationDetailFn, updateApplicationStatusFn } from '../server/applications'
+import { getApplicationsFn, deleteApplicationFn, getApplicationDetailFn, updateApplicationStatusFn, getExecutionStatusFn } from '../server/applications'
+import type { ExecutionStatus } from '../server/applications'
 
 const PIPELINE_POLL_INTERVAL = 5_000
 const POLL_TIMEOUT_MS = 10 * 60 * 1_000
@@ -187,6 +188,22 @@ export function useDeleteApplication() {
       addToast('error', `Failed to delete application: ${err.message}`)
     },
   })
+}
+
+/**
+ * Polls the real Step Functions execution state for an in-flight pipeline.
+ * Only active while `enabled` is true (i.e. status === 'analysing' | 'coaching').
+ * Returns the current SFN stageId so ProgressBars can show the real running task.
+ */
+export function useExecutionStatus(slug: string, enabled: boolean): ExecutionStatus | null {
+  const { data } = useQuery<ExecutionStatus>({
+    queryKey: [...adminKeys.applications.detail(slug), 'execution'],
+    queryFn: () => getExecutionStatusFn({ data: slug }) as Promise<ExecutionStatus>,
+    enabled: Boolean(slug) && enabled,
+    refetchInterval: enabled ? PIPELINE_POLL_INTERVAL : false,
+    staleTime: 3_000,
+  })
+  return data ?? null
 }
 
 export function useApplicationCoach() {

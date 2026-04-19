@@ -288,7 +288,7 @@ export const triggerStrategistCoachFn = createServerFn({ method: 'POST' })
  * @param data.targetCompany - Target company
  * @param data.targetRole - Target role
  * @param data.interviewStage - Stored locally; NOT forwarded to the Lambda
- * @param data.resumeId - Resume ID (required by Lambda)
+ * @param data.resumeId - Resume ID (optional — empty string triggers build-from-scratch mode)
  * @param data.includeCoverLetter - Whether to generate cover letter
  * @returns Trigger response with pipelineId and applicationSlug
  */
