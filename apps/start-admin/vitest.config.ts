@@ -12,8 +12,6 @@ import { fileURLToPath } from 'node:url'
 export default defineConfig({
   resolve: {
     alias: {
-      '@/lib': fileURLToPath(new URL('../../packages/shared/src/lib', import.meta.url)),
-      '@/types': fileURLToPath(new URL('../../packages/shared/src/types', import.meta.url)),
       '@/': fileURLToPath(new URL('./src/', import.meta.url)),
     },
   },
