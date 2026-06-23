@@ -3,8 +3,7 @@
   "private": true,
   "packageManager": "yarn@4.12.0",
   "workspaces": [
-    "apps/*",
-    "packages/*"
+    "apps/*"
   ],
   "scripts": {
     "dev": "yarn workspaces foreach -A -pi run dev",
@@ -16,7 +15,9 @@
     "@aws-sdk/client-bedrock": "^3.1024.0",
     "@aws-sdk/client-sfn": "^3.1024.0",
     "@aws-sdk/credential-providers": "^3.1024.0",
+    "@types/node": "^24.1.0",
     "@types/uuid": "^11.0.0",
-    "ts-node": "^10.9.2"
+    "ts-node": "^10.9.2",
+    "typescript": "^5.8.3"
   }
 }

@@ -67,8 +67,21 @@ const mockDynamoArticles: ArticleWithSlug[] = [
 // ========================================
 
 describe('ArticleService', () => {
+  let consoleLogSpy: jest.SpyInstance
+  let consoleWarnSpy: jest.SpyInstance
+  let consoleErrorSpy: jest.SpyInstance
+
   beforeEach(() => {
     jest.clearAllMocks()
+    consoleLogSpy = jest.spyOn(console, 'log').mockImplementation(() => {})
+    consoleWarnSpy = jest.spyOn(console, 'warn').mockImplementation(() => {})
+    consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation(() => {})
+  })
+
+  afterEach(() => {
+    consoleLogSpy.mockRestore()
+    consoleWarnSpy.mockRestore()
+    consoleErrorSpy.mockRestore()
   })
 
   describe('getAllArticles', () => {

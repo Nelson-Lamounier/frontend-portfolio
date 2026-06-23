@@ -21,16 +21,7 @@
       }
     ],
     "paths": {
-      "@/*": ["./src/*"],
-      "@/lib/*": ["../../packages/shared/src/lib/*"],
-      "@/types/*": ["../../packages/shared/src/types/*"],
-      "@/components/ui/*": ["../../packages/shared/src/components/ui/*"],
-      "@/components/ui": ["../../packages/shared/src/components/ui"],
-      "@/components/analytics/*": ["../../packages/shared/src/components/analytics/*"],
-      "@/components/analytics": ["../../packages/shared/src/components/analytics"],
-      "@/components/providers/*": ["../../packages/shared/src/components/providers/*"],
-      "@/components/providers": ["../../packages/shared/src/components/providers"],
-      "@/images/*": ["../../packages/shared/src/images/*"]
+      "@/*": ["./src/*"]
     },
     "types": ["mdx"]
   },

@@ -36,7 +36,6 @@ node_modules/
 dist/
 dist-ssr/
 *.tsbuildinfo
-apps/start-admin/server.js
 
 
 # ======================
@@ -71,12 +70,14 @@ todos.json
 YARN_MIGRATION.md
 MIGRATION_README.md
 
-# Docs (allow admin-state-management only)
+# Local/imported docs
 docs/*
-!docs/admin-state-management/
 
 # Large audio files — served from S3/CloudFront
 public/audio/*.mp3
 
 # Yarn
 .yarn/install-state.gz
+.yarn/cache/
+.yarn/unplugged/
+.yarn/build-state.yml

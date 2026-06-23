@@ -162,7 +162,7 @@ export async function queryPublishedArticles(): Promise<ArticleWithSlug[]> {
 
     if (result.Items && result.Items.length > 0) {
       const articles = result.Items.map((item) =>
-        entityToArticle(item as ArticleMetadataEntity),
+        entityToArticle(item as unknown as ArticleMetadataEntity),
       )
       cache.set(cacheKey, articles)
       return articles
@@ -405,7 +405,7 @@ export async function queryDraftArticles(): Promise<ArticleWithSlug[]> {
     })
 
     // Merge and deduplicate by slug
-    const mergedMap = new Map<string, any>()
+    const mergedMap = new Map<string, Record<string, unknown>>()
 
     for (const result of gsiResults) {
       for (const item of result.Items ?? []) {
@@ -434,7 +434,7 @@ export async function queryDraftArticles(): Promise<ArticleWithSlug[]> {
     }
 
     const merged = Array.from(mergedMap.values()).map((item) =>
-      entityToArticle(item as ArticleMetadataEntity),
+      entityToArticle(item as unknown as ArticleMetadataEntity),
     )
 
     if (merged.length > 0) {

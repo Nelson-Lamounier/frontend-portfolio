@@ -1,6 +1,5 @@
 /**
- * Resumes domain barrel — re-exports resume data models,
- * DynamoDB persistence, and DOM builder utilities.
+ * Resumes domain barrel — re-exports resume data models and DOM builder utilities.
  */
 
 export type { ResumeData } from './resume-data'

@@ -1,5 +1,5 @@
 @import 'tailwindcss';
-@source "../../../../packages/shared/src";
+@source "../";
 @import './prism.css' layer(components);
 
 @plugin '@tailwindcss/typography';

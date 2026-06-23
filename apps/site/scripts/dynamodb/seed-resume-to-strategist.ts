@@ -24,7 +24,7 @@ import { DynamoDBClient } from '@aws-sdk/client-dynamodb'
 import { DynamoDBDocumentClient, PutCommand, ScanCommand, UpdateCommand } from '@aws-sdk/lib-dynamodb'
 
 // Import the hardcoded resume data from the codebase
-import { resumeData } from '../../../../packages/shared/src/lib/resumes/resume-data'
+import { resumeData } from '../../src/lib/resumes/resume-data'
 
 // =========================================================================
 // CLI argument parsing

@@ -12,8 +12,7 @@
  * Data: fetches the active resume from /api/resume/active on mount.
  * Falls back to the ESC-tailored resume data if the API is unavailable.
  *
- * Read-only — no editing. Resume management lives in start-admin.
- * Isolated to apps/site — not shared with start-admin.
+ * Read-only public resume experience.
  */
 
 import { useCallback, useEffect, useRef, useState } from 'react'

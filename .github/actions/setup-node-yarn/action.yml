@@ -1,122 +1,98 @@
 # @format
 
-name: 'Setup Node.js with Yarn and Caching'
-description: 'Centralised composite action for Node.js, Yarn v4, and dependency caching'
+name: "Setup Environment and Dependencies"
+description: "Install Node.js and Yarn, restore dependency cache, run yarn install."
 
 inputs:
   node-version:
-    description: 'Node.js version to use'
+    description: "Node.js version (default: reads from .nvmrc, fallback 22)"
     required: false
-    default: '22'
+    default: "auto"
   install-dependencies:
-    description: 'Whether to install dependencies (default: true)'
+    description: "Whether to install dependencies"
     required: false
-    default: 'true'
-  cache-dependency-path:
-    description: 'Path to package manager lockfile (default: yarn.lock)'
-    required: false
-    default: 'yarn.lock'
+    default: "true"
 
 outputs:
   cache-hit:
-    description: 'Whether dependency cache was hit'
+    description: "Whether dependency cache was hit"
     value: ${{ steps.cache-deps.outputs.cache-hit }}
-  cache-key:
-    description: 'Dependency cache key used'
-    value: ${{ steps.cache-key.outputs.key }}
   node-version:
-    description: 'Node.js version installed'
-    value: ${{ inputs.node-version }}
+    description: "Node.js version installed"
+    value: ${{ steps.resolve-node.outputs.version }}
 
 runs:
-  using: 'composite'
+  using: "composite"
   steps:
+    # ─── Resolve Node version ──────────────────────────────────────────
+    - name: Resolve Node.js Version
+      id: resolve-node
+      shell: bash
+      run: |
+        INPUT="${{ inputs.node-version }}"
+        if [ "$INPUT" = "auto" ]; then
+          if [ -f .nvmrc ]; then
+            VERSION=$(cat .nvmrc | tr -d '[:space:]')
+          else
+            VERSION="22"
+          fi
+        else
+          VERSION="$INPUT"
+        fi
+        echo "version=$VERSION" >> $GITHUB_OUTPUT
+        echo "Node.js version: $VERSION"
+
     - name: Setup Node.js
       uses: actions/setup-node@v4
       with:
-        node-version: ${{ inputs.node-version }}
-        # No built-in caching - we handle it explicitly below
+        node-version: ${{ steps.resolve-node.outputs.version }}
 
-    - name: Enable Corepack for Yarn v4
+    - name: Enable Corepack (Yarn v4)
       shell: bash
-      run: |
-        echo "Enabling Corepack for Yarn v4+ package manager..."
-        corepack enable
-        echo "✓ Corepack enabled"
+      run: corepack enable
 
-    - name: Generate Dependency Cache Key
+    # ─── Dependency cache ──────────────────────────────────────────────
+    - name: Generate Cache Key
       id: cache-key
       shell: bash
       run: |
-        HASH=$(cat yarn.lock package.json | sha256sum | cut -d' ' -f1)
-        CACHE_KEY="deps-${{ runner.os }}-node${{ inputs.node-version }}-$HASH"
-        echo "key=$CACHE_KEY" >> $GITHUB_OUTPUT
-        echo "Generated cache key: $CACHE_KEY"
+        if [ -f yarn.lock ]; then
+          HASH=$(cat yarn.lock package.json $(find apps packages -name 'package.json' 2>/dev/null | sort) \
+            2>/dev/null | sha256sum | cut -d' ' -f1)
+        else
+          HASH="${{ github.sha }}"
+        fi
+        KEY="deps-${{ runner.os }}-node${{ steps.resolve-node.outputs.version }}-${HASH}"
+        echo "key=$KEY" >> $GITHUB_OUTPUT
+        echo "Cache key: $KEY"
 
     - name: Cache Dependencies
       id: cache-deps
-      uses: actions/cache@v4
+      uses: actions/cache@cdf6c1fa76f9f475f3d7449005a359c84ca0f306 # v5.0.3
       with:
         path: |
           node_modules
           .yarn/cache
           .yarn/unplugged
           .yarn/install-state.gz
-          .pnp.cjs
-          .pnp.loader.mjs
         key: ${{ steps.cache-key.outputs.key }}
         restore-keys: |
-          deps-${{ runner.os }}-node${{ inputs.node-version }}-
+          deps-${{ runner.os }}-node${{ steps.resolve-node.outputs.version }}-
 
-    - name: Setup Turbo Cache
-      uses: actions/cache@v4
-      with:
-        path: .turbo
-        key: ${{ runner.os }}-turbo-${{ github.sha }}
-        restore-keys: |
-          ${{ runner.os }}-turbo-
-
-    - name: Install Dependencies (with retry)
+    # ─── Install ───────────────────────────────────────────────────────
+    - name: Install Dependencies
       if: inputs.install-dependencies == 'true'
       shell: bash
       run: |
-        if [ "${{ steps.cache-deps.outputs.cache-hit }}" = "true" ]; then
-          echo "Cache hit - running install to ensure binaries are linked..."
-        else
-          echo "Cache miss - installing dependencies..."
-        fi
-
-        # Retry logic for network resilience
-        MAX_ATTEMPTS=3
-        RETRY_WAIT=10
+        MAX=3
         ATTEMPT=1
-
-        while [ $ATTEMPT -le $MAX_ATTEMPTS ]; do
-          echo "Attempt $ATTEMPT of $MAX_ATTEMPTS..."
-          
-          # --immutable ensures lockfile consistency and prevents accidental dependency changes
+        while [ $ATTEMPT -le $MAX ]; do
+          echo "yarn install attempt $ATTEMPT/$MAX..."
           if yarn install --immutable; then
-            echo "✓ Dependencies installed successfully"
+            echo "✓ Dependencies installed"
             break
-          else
-            if [ $ATTEMPT -eq $MAX_ATTEMPTS ]; then
-              echo "✗ Failed to install dependencies after $MAX_ATTEMPTS attempts"
-              exit 1
-            fi
-            echo "Install failed, waiting ${RETRY_WAIT}s before retry..."
-            sleep $RETRY_WAIT
-            ATTEMPT=$((ATTEMPT + 1))
           fi
+          [ $ATTEMPT -eq $MAX ] && exit 1
+          ATTEMPT=$((ATTEMPT + 1))
+          sleep 10
         done
-
-        echo "✓ Dependencies ready"
-
-    - name: Verify Installation
-      if: inputs.install-dependencies == 'true'
-      shell: bash
-      run: |
-        echo "Verifying installation..."
-        echo "Node version: $(node --version)"
-        echo "Yarn version: $(yarn --version)"
-        echo "NPM version: $(npm --version)"
-        echo "✓ Installation verified"

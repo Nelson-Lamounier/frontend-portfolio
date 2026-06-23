@@ -4,7 +4,6 @@ import remarkGfm from 'remark-gfm'
 
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  transpilePackages: ['@repo/shared'],
   pageExtensions: ['js', 'jsx', 'ts', 'tsx', 'mdx'],
   // Standalone output for ECS container deployments
   output: 'standalone',

@@ -49,7 +49,6 @@ jobs:
               - 'apps/site/src/**'
               - 'apps/site/public/**'
               - 'apps/site/mdx-components.tsx'
-              - 'packages/shared/src/**'
             tests:
               - 'apps/site/__tests__/**'
               - 'apps/site/jest.config.*'
@@ -58,7 +57,6 @@ jobs:
               - 'apps/site/**/*.css'
               - 'apps/site/tailwind.config.*'
               - 'apps/site/postcss.config.*'
-              - 'packages/shared/**/*.css'
             config:
               - '.github/**'
               - '.gitignore'
@@ -148,6 +146,10 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     if: |
+      needs.detect-changes.outputs.src == 'true' ||
+      needs.detect-changes.outputs.tests == 'true' ||
+      needs.detect-changes.outputs.styles == 'true' ||
+      needs.detect-changes.outputs.docker == 'true' ||
       needs.detect-changes.outputs.config == 'true' ||
       needs.detect-changes.outputs.run-all == 'true'
 
@@ -233,14 +235,14 @@ jobs:
           node-version: ${{ needs.setup.outputs.node-version }}
 
       - name: Run Tests
-        run: yarn test --ci --coverage
+        run: yarn test --ci --coverage --runInBand --watchman=false
 
       - name: Upload Coverage
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: coverage-report
-          path: coverage/
+          path: apps/site/coverage/
           retention-days: 7
           if-no-files-found: ignore
 
@@ -255,6 +257,7 @@ jobs:
     if: |
       needs.detect-changes.outputs.src == 'true' ||
       needs.detect-changes.outputs.styles == 'true' ||
+      needs.detect-changes.outputs.run-docker == 'true' ||
       needs.detect-changes.outputs.run-all == 'true'
 
     steps:
@@ -317,7 +320,11 @@ jobs:
       - name: Smoke Test Container Endpoints
         run: |
           echo "Starting container for smoke tests..."
-          docker run -d --name test-container -p 3000:3000 frontend:ci-test
+          docker run -d \
+            --name test-container \
+            -p 3000:3000 \
+            -e METRICS_BEARER_TOKEN=ci-metrics-token \
+            frontend:ci-test
 
           # Wait for Next.js server to be ready (poll for up to 30s)
           echo "Waiting for server to be ready..."
@@ -351,7 +358,16 @@ jobs:
           # timeout), the 5-second --max-time will kill curl and fail CI.
           echo ""
           echo "=== Testing /api/metrics ==="
-          METRICS_BODY=$(curl -sf --max-time 5 http://localhost:3000/api/metrics 2>&1) || {
+          METRICS_STATUS=$(curl -s -o /dev/null -w "%{http_code}" --max-time 5 http://localhost:3000/api/metrics)
+          if [ "$METRICS_STATUS" = "401" ]; then
+            echo "✓ /api/metrics rejects unauthenticated requests"
+          else
+            echo "✗ /api/metrics returned $METRICS_STATUS without auth (expected 401)"
+            docker logs test-container
+            exit 1
+          fi
+
+          METRICS_BODY=$(curl -sf --max-time 5 -H "Authorization: Bearer ci-metrics-token" http://localhost:3000/api/metrics 2>&1) || {
             echo "✗ /api/metrics timed out or returned non-200"
             echo "  This likely means SSM or another blocking call has no timeout."
             echo "  Container logs:"
@@ -417,13 +433,16 @@ jobs:
           echo "- Docker Build: ${{ needs.docker-build.result }}" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
 
-          # Critical failures check (skip 'skipped' — only fail on actual 'failure')
+          # Critical failures check (skip intentionally skipped jobs).
           FAILED=false
           for RESULT in \
+            "${{ needs.audit.result }}" \
             "${{ needs.lint.result }}" \
             "${{ needs.typecheck.result }}" \
-            "${{ needs.build.result }}"; do
-            if [[ "$RESULT" == "failure" ]]; then
+            "${{ needs.test.result }}" \
+            "${{ needs.build.result }}" \
+            "${{ needs.docker-build.result }}"; do
+            if [[ "$RESULT" == "failure" || "$RESULT" == "cancelled" ]]; then
               FAILED=true
               break
             fi
@@ -437,4 +456,3 @@ jobs:
 
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "✅ All critical CI checks passed" >> $GITHUB_STEP_SUMMARY
-

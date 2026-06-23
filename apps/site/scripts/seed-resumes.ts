@@ -30,11 +30,11 @@ import { DynamoDBDocumentClient, PutCommand } from '@aws-sdk/lib-dynamodb'
 // Resume data imports
 // ---------------------------------------------------------------------------
 
-import { resumeData } from '../../../packages/shared/src/lib/resumes/resume-data'
-import { resumeDataEsc } from '../../../packages/shared/src/lib/resumes/resume-data-esc'
-import { resumeDataFullstack } from '../../../packages/shared/src/lib/resumes/resume-data-fullstack'
+import { resumeData } from '../src/lib/resumes/resume-data'
+import { resumeDataEsc } from '../src/lib/resumes/resume-data-esc'
+import { resumeDataFullstack } from '../src/lib/resumes/resume-data-fullstack'
 
-import type { ResumeData } from '../../../packages/shared/src/lib/resumes/resume-data'
+import type { ResumeData } from '../src/lib/resumes/resume-data'
 
 // ---------------------------------------------------------------------------
 // Configuration
