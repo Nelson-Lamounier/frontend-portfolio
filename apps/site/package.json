@@ -10,18 +10,7 @@
     "lint": "eslint . --max-warnings 0",
     "test": "jest",
     "test:watch": "jest --watch",
-    "test:api": "tsx scripts/test-api.ts",
-    "migrate:setup": "tsx scripts/setup-migration.ts",
-    "migrate:setup:profiles": "tsx scripts/setup-migration.ts --list-profiles",
-    "migrate:verify": "tsx scripts/verify-table.ts",
-    "migrate:articles": "tsx scripts/dynamodb/migrate-articles-to-dynamodb.ts",
-    "migrate:articles:dry-run": "tsx scripts/dynamodb/migrate-articles-to-dynamodb.ts --dry-run",
-    "migrate:articles:force": "tsx scripts/dynamodb/migrate-articles-to-dynamodb.ts --force-update",
-    "migrate:verify-data": "tsx scripts/dynamodb/verify-migration.ts",
-    "migrate:add-tag-index": "tsx scripts/dynamodb/add-tag-index.ts",
-    "migrate:add-tag-index:dry-run": "DRY_RUN=true tsx scripts/dynamodb/add-tag-index.ts",
-    "seed:resume": "tsx scripts/dynamodb/seed-resume-to-strategist.ts",
-    "seed:resume:dry-run": "tsx scripts/dynamodb/seed-resume-to-strategist.ts --dry-run"
+    "test:api": "tsx scripts/test-api.ts"
   },
   "browserslist": "defaults, not ie <= 11",
   "dependencies": {
