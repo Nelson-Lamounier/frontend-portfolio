@@ -1,3 +1,24 @@
+---
+title: OpenTelemetry observability strategy
+type: concept
+tags: [opentelemetry, observability, x-ray, prometheus, tracing, nextjs]
+sources:
+  - apps/site/src/instrumentation.ts
+  - apps/site/src/lib/observability/metrics.ts
+created: 2026-02-10
+updated: 2026-06-23
+---
+
+> **Historical note (2026-06-23):** the "direct DynamoDB SDK" motivation below
+> reflects the architecture at the time OTel was introduced. The app has since
+> migrated to read through the in-cluster `public-api` BFF (see
+> [in-cluster BFF consumer architecture](./in-cluster-bff-consumer.md)), so the
+> AWS-SDK auto-instrumentation now captures little at runtime; HTTP spans on the
+> BFF `fetch` calls are the relevant source. The OTel/Prometheus/Faro strategy
+> itself still stands. For the current overview see
+> [observability architecture](./observability-architecture.md); this doc is the
+> deeper rationale companion.
+
 # OpenTelemetry Observability Strategy
 
 ## Why OpenTelemetry Was Added

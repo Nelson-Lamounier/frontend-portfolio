@@ -70,8 +70,8 @@ todos.json
 YARN_MIGRATION.md
 MIGRATION_README.md
 
-# Local/imported docs
-docs/*
+# Local/imported docs — track the KB, ignore the migrate-external staging area
+docs/incoming/
 
 # Large audio files — served from S3/CloudFront
 public/audio/*.mp3
