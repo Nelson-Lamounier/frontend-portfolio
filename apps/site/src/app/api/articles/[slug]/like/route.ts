@@ -10,10 +10,10 @@
 import { NextRequest, NextResponse } from 'next/server'
 
 import {
-  isEngagementDBConfigured,
+  isEngagementApiConfigured,
   getLikeStatus,
   toggleLike,
-} from '@/lib/articles/dynamodb-engagement'
+} from '@/lib/articles/public-api-engagement'
 
 interface RouteParams {
   params: Promise<{ slug: string }>
@@ -30,7 +30,7 @@ export async function GET(
   request: NextRequest,
   context: RouteParams,
 ): Promise<NextResponse> {
-  if (!isEngagementDBConfigured()) {
+  if (!isEngagementApiConfigured()) {
     return NextResponse.json({ liked: false, likeCount: 0 })
   }
 
@@ -61,7 +61,7 @@ export async function POST(
   request: NextRequest,
   context: RouteParams,
 ): Promise<NextResponse> {
-  if (!isEngagementDBConfigured()) {
+  if (!isEngagementApiConfigured()) {
     return NextResponse.json(
       { error: 'Engagement features not configured' },
       { status: 503 },
