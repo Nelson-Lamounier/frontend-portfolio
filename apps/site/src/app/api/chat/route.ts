@@ -1,14 +1,22 @@
 /**
  * @format
- * Chat API Route
+ * Chat API Route — in-cluster BFF proxy
  *
- * Server-side proxy for the Bedrock Agent API Gateway.
- * Keeps the API Key hidden from the browser — it is injected
- * from the `BEDROCK_AGENT_API_KEY` environment variable.
+ * Server-side proxy to the `public-api` BFF running in the EKS cluster.
+ * public-api owns the Bedrock API key (Secrets Manager) and forwards to the
+ * session-aware RAG Lambda. The portfolio holds no Bedrock credentials.
  *
  * Endpoint: POST /api/chat
  * Body:     { prompt: string, sessionId?: string }
  * Returns:  { message: string, sessionId: string }
+ *
+ * Upstream: POST {PUBLIC_API_URL}/api/chatbot/authenticated
+ *   accepts { prompt, sessionId?, callerRole? }
+ *   returns { response, sessionId }  (errors: { error, message })
+ *
+ * Session continuity (chat_sessions / chat_messages) is persisted in RDS by
+ * public-api / the chatbot-authenticated Lambda — the sessionId returned here
+ * must be echoed back on the next turn.
  */
 
 import { type NextRequest, NextResponse } from 'next/server'
@@ -16,43 +24,36 @@ import { type NextRequest, NextResponse } from 'next/server'
 import type { ChatErrorResponse, ChatRequest, ChatResponse } from '@/lib/types/chat.types'
 
 // =============================================================================
-// ENVIRONMENT
+// CONFIGURATION
 // =============================================================================
 
-const AGENT_API_URL = process.env.BEDROCK_AGENT_API_URL
-const AGENT_API_KEY = process.env.BEDROCK_AGENT_API_KEY
+/** In-cluster public-api BFF base URL (Kubernetes service DNS). */
+const PUBLIC_API_URL = process.env.PUBLIC_API_URL || 'http://public-api.public-api:3001'
 
-/**
- * Maximum prompt length — mirrors API Gateway request model validation.
- */
+/** Session-aware RAG endpoint on public-api. */
+const CHAT_ENDPOINT = '/api/chatbot/authenticated'
+
+/** Maximum prompt length — mirrors public-api / API Gateway request validation. */
 const MAX_PROMPT_LENGTH = 10_000
 
 /**
- * Request timeout for the upstream Bedrock call (ms).
- * The invoke Lambda has a 60s timeout; add headroom.
+ * Request timeout for the upstream call (ms).
+ * public-api aborts its own upstream at 27s; add headroom so we surface its
+ * structured error rather than racing it.
  */
-const UPSTREAM_TIMEOUT_MS = 65_000
+const UPSTREAM_TIMEOUT_MS = 30_000
 
 // =============================================================================
 // ROUTE HANDLER
 // =============================================================================
 
 /**
- * POST /api/chat — Proxy a chat prompt to the Bedrock Agent.
+ * POST /api/chat — proxy a chat prompt to the in-cluster public-api BFF.
  *
  * @param request - Incoming Next.js request with JSON body
  * @returns JSON response with the agent's reply and session ID
  */
 export async function POST(request: NextRequest): Promise<NextResponse<ChatResponse | ChatErrorResponse>> {
-  // ── Guard: missing env vars ──────────────────────────────────────────────
-  if (!AGENT_API_URL || !AGENT_API_KEY) {
-    console.error('[chat] Missing BEDROCK_AGENT_API_URL or BEDROCK_AGENT_API_KEY')
-    return NextResponse.json(
-      { error: 'Chat service is not configured.', code: 'AGENT_ERROR' as const },
-      { status: 503 },
-    )
-  }
-
   // ── Parse & validate body ────────────────────────────────────────────────
   let body: ChatRequest
 
@@ -84,7 +85,7 @@ export async function POST(request: NextRequest): Promise<NextResponse<ChatRespo
     )
   }
 
-  // ── Forward to Bedrock Agent API Gateway ─────────────────────────────────
+  // ── Forward to public-api (in-cluster) ───────────────────────────────────
   try {
     const controller = new AbortController()
     const timeout = setTimeout(() => controller.abort(), UPSTREAM_TIMEOUT_MS)
@@ -94,15 +95,10 @@ export async function POST(request: NextRequest): Promise<NextResponse<ChatRespo
       upstreamBody.sessionId = body.sessionId
     }
 
-    // Build the full invoke URL — SSM stores the stage root (e.g. .../v1/)
-    // and the API Gateway route is POST /invoke.
-    const invokeUrl = new URL('invoke', AGENT_API_URL).href
-
-    const upstream = await fetch(invokeUrl, {
+    const upstream = await fetch(`${PUBLIC_API_URL}${CHAT_ENDPOINT}`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'x-api-key': AGENT_API_KEY,
       },
       body: JSON.stringify(upstreamBody),
       signal: controller.signal,
@@ -110,52 +106,60 @@ export async function POST(request: NextRequest): Promise<NextResponse<ChatRespo
 
     clearTimeout(timeout)
 
-    // ── Handle non-2xx from API Gateway ──────────────────────────────────
+    // ── Non-2xx from public-api ──────────────────────────────────────────
     if (!upstream.ok) {
       const status = upstream.status
 
-      if (status === 429) {
-        return NextResponse.json(
-          { error: 'Too many requests. Please wait a moment.', code: 'RATE_LIMITED' as const },
-          { status: 429 },
-        )
-      }
-
-      // Attempt to extract error detail from upstream
-      let detail = 'The agent could not process your request.'
+      // Best-effort extract of public-api's { error, message } envelope.
+      let detail = 'The chatbot could not process your request.'
       try {
         const errBody = (await upstream.json()) as Record<string, unknown>
         if (typeof errBody.message === 'string') detail = errBody.message
       } catch {
-        // swallow — use default detail
+        // swallow — keep default detail
       }
 
-      console.error(`[chat] Upstream ${status}: ${detail}`)
+      if (status === 429) {
+        return NextResponse.json(
+          { error: detail, code: 'RATE_LIMITED' as const },
+          { status: 429 },
+        )
+      }
+
+      console.error(`[chat] public-api ${status}: ${detail}`)
 
       return NextResponse.json(
         { error: detail, code: 'AGENT_ERROR' as const },
-        { status: status >= 500 ? 502 : status },
+        { status },
       )
     }
 
-    // ── Success — return agent response ──────────────────────────────────
+    // ── Success — normalise { response } → { message } ───────────────────
     const data = (await upstream.json()) as Record<string, unknown>
 
     const response: ChatResponse = {
-      message: typeof data.message === 'string' ? data.message :
-               typeof data.response === 'string' ? data.response :
-               typeof data.body === 'string' ? data.body :
-               'I received your message but could not parse the response.',
+      message:
+        typeof data.response === 'string' ? data.response :
+        typeof data.message === 'string' ? data.message :
+        'I received your message but could not parse the response.',
       sessionId: typeof data.sessionId === 'string' ? data.sessionId : '',
     }
 
     return NextResponse.json(response)
   } catch (err) {
     if (err instanceof DOMException && err.name === 'AbortError') {
-      console.error('[chat] Upstream timeout')
+      console.error('[chat] public-api timeout')
       return NextResponse.json(
-        { error: 'The agent took too long to respond. Please try again.', code: 'NETWORK_ERROR' as const },
+        { error: 'The chatbot took too long to respond. Please try again.', code: 'NETWORK_ERROR' as const },
         { status: 504 },
+      )
+    }
+
+    if (err instanceof TypeError) {
+      console.error('[chat] public-api network error:', err)
+      return NextResponse.json(
+        { error: 'Unable to reach the chat service.', code: 'NETWORK_ERROR' as const },
+        { status: 502 },
       )
     }
 

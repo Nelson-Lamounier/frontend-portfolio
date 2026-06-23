@@ -20,8 +20,8 @@ import type { ArticleWithSlug } from '@/lib/types/article.types'
 import { formatDate } from '@/lib/formatDate'
 import { ResumeSection } from '@/components/resume/ResumeSection'
 
-// ISR: revalidate every hour so runtime env vars (DYNAMODB_TABLE_NAME)
-// are picked up after the Docker build, which has no DynamoDB access.
+// ISR: revalidate every hour so the in-cluster public-api BFF (PUBLIC_API_URL)
+// is reached at runtime — the Docker build has no cluster access.
 export const revalidate = 3600
 
 

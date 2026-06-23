@@ -37,29 +37,3 @@ services:
       start_period: 10s
       retries: 3
     restart: unless-stopped
-
-  start-admin:
-    build:
-      context: .
-      dockerfile: apps/start-admin/Dockerfile
-    container_name: start-admin
-    ports:
-      - "5001:5001"
-    environment:
-      - NODE_ENV=production
-      - PORT=5001
-      # Cognito auth (required for login)
-      # - AUTH_COGNITO_USER_POOL_ID=
-      # - AUTH_COGNITO_CLIENT_ID=
-      # - AUTH_COGNITO_ISSUER_URL=
-      # - JWT_SECRET=
-      # DynamoDB
-      # - DYNAMODB_TABLE_NAME=
-      # - ARTICLES_TABLE_NAME=
-    healthcheck:
-      test: ["CMD", "curl", "-sf", "http://localhost:5001/admin/", "--max-time", "3"]
-      interval: 30s
-      timeout: 5s
-      start_period: 15s
-      retries: 3
-    restart: unless-stopped

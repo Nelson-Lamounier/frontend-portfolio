@@ -11,10 +11,10 @@
 import { NextRequest, NextResponse } from 'next/server'
 
 import {
-  isEngagementDBConfigured,
+  isEngagementApiConfigured,
   getApprovedComments,
   createComment,
-} from '@/lib/articles/dynamodb-engagement'
+} from '@/lib/articles/public-api-engagement'
 
 interface RouteParams {
   params: Promise<{ slug: string }>
@@ -31,7 +31,7 @@ export async function GET(
   _request: NextRequest,
   context: RouteParams,
 ): Promise<NextResponse> {
-  if (!isEngagementDBConfigured()) {
+  if (!isEngagementApiConfigured()) {
     return NextResponse.json([])
   }
 
@@ -61,7 +61,7 @@ export async function POST(
   request: NextRequest,
   context: RouteParams,
 ): Promise<NextResponse> {
-  if (!isEngagementDBConfigured()) {
+  if (!isEngagementApiConfigured()) {
     return NextResponse.json(
       { error: 'Comments not configured' },
       { status: 503 },

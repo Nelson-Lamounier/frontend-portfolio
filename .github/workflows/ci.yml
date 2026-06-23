@@ -31,15 +31,10 @@ jobs:
       styles: ${{ steps.filter.outputs.styles }}
       config: ${{ steps.filter.outputs.config }}
       docker: ${{ steps.filter.outputs.docker }}
-      start-admin: ${{ steps.filter.outputs.start-admin }}
       # Computed: should we run all checks?
       run-all: ${{ steps.compute.outputs.run-all }}
       # Computed: should we run site docker build test?
       run-docker: ${{ steps.compute.outputs.run-docker }}
-      # Computed: should we run start-admin docker build?
-      run-start-admin-docker: ${{ steps.compute.outputs.run-start-admin-docker }}
-      # Computed: should we run start-admin checks?
-      run-start-admin: ${{ steps.compute.outputs.run-start-admin }}
 
     steps:
       - name: Checkout
@@ -54,7 +49,6 @@ jobs:
               - 'apps/site/src/**'
               - 'apps/site/public/**'
               - 'apps/site/mdx-components.tsx'
-              - 'packages/shared/src/**'
             tests:
               - 'apps/site/__tests__/**'
               - 'apps/site/jest.config.*'
@@ -63,7 +57,6 @@ jobs:
               - 'apps/site/**/*.css'
               - 'apps/site/tailwind.config.*'
               - 'apps/site/postcss.config.*'
-              - 'packages/shared/**/*.css'
             config:
               - '.github/**'
               - '.gitignore'
@@ -77,12 +70,6 @@ jobs:
             docker:
               - 'Dockerfile'
               - '.dockerignore'
-            start-admin:
-              - 'apps/start-admin/**'
-              - 'packages/shared/**'
-            start-admin-docker:
-              - 'apps/start-admin/Dockerfile'
-              - 'apps/start-admin/**'
 
       - name: Compute Run Flags
         id: compute
@@ -104,22 +91,6 @@ jobs:
             echo "run-docker=false" >> $GITHUB_OUTPUT
           fi
 
-          # Run start-admin checks if start-admin or config changed
-          if [[ "${{ steps.filter.outputs.start-admin }}" == "true" ]] || \
-             [[ "${{ steps.filter.outputs.config }}" == "true" ]]; then
-            echo "run-start-admin=true" >> $GITHUB_OUTPUT
-          else
-            echo "run-start-admin=false" >> $GITHUB_OUTPUT
-          fi
-
-          # Run start-admin docker build if its Dockerfile or source changed
-          if [[ "${{ steps.filter.outputs.start-admin-docker }}" == "true" ]] || \
-             [[ "${{ steps.filter.outputs.config }}" == "true" ]]; then
-            echo "run-start-admin-docker=true" >> $GITHUB_OUTPUT
-          else
-            echo "run-start-admin-docker=false" >> $GITHUB_OUTPUT
-          fi
-
       - name: Summary
         run: |
           echo "## Change Detection Results" >> $GITHUB_STEP_SUMMARY
@@ -131,13 +102,9 @@ jobs:
           echo "| Styles | ${{ steps.filter.outputs.styles }} |" >> $GITHUB_STEP_SUMMARY
           echo "| Config | ${{ steps.filter.outputs.config }} |" >> $GITHUB_STEP_SUMMARY
           echo "| Docker (Site) | ${{ steps.filter.outputs.docker }} |" >> $GITHUB_STEP_SUMMARY
-          echo "| Start Admin | ${{ steps.filter.outputs.start-admin }} |" >> $GITHUB_STEP_SUMMARY
-          echo "| Start Admin Docker | ${{ steps.filter.outputs.start-admin-docker }} |" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "**Run All Checks:** ${{ steps.compute.outputs.run-all }}" >> $GITHUB_STEP_SUMMARY
           echo "**Run Site Docker Build:** ${{ steps.compute.outputs.run-docker }}" >> $GITHUB_STEP_SUMMARY
-          echo "**Run Start Admin:** ${{ steps.compute.outputs.run-start-admin }}" >> $GITHUB_STEP_SUMMARY
-          echo "**Run Start Admin Docker:** ${{ steps.compute.outputs.run-start-admin-docker }}" >> $GITHUB_STEP_SUMMARY
 
   # ============================================================================
   # Dependency Installation & Caching
@@ -179,6 +146,10 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     if: |
+      needs.detect-changes.outputs.src == 'true' ||
+      needs.detect-changes.outputs.tests == 'true' ||
+      needs.detect-changes.outputs.styles == 'true' ||
+      needs.detect-changes.outputs.docker == 'true' ||
       needs.detect-changes.outputs.config == 'true' ||
       needs.detect-changes.outputs.run-all == 'true'
 
@@ -264,14 +235,14 @@ jobs:
           node-version: ${{ needs.setup.outputs.node-version }}
 
       - name: Run Tests
-        run: yarn test --ci --coverage
+        run: yarn test --ci --coverage --runInBand --watchman=false
 
       - name: Upload Coverage
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: coverage-report
-          path: coverage/
+          path: apps/site/coverage/
           retention-days: 7
           if-no-files-found: ignore
 
@@ -286,6 +257,7 @@ jobs:
     if: |
       needs.detect-changes.outputs.src == 'true' ||
       needs.detect-changes.outputs.styles == 'true' ||
+      needs.detect-changes.outputs.run-docker == 'true' ||
       needs.detect-changes.outputs.run-all == 'true'
 
     steps:
@@ -348,7 +320,11 @@ jobs:
       - name: Smoke Test Container Endpoints
         run: |
           echo "Starting container for smoke tests..."
-          docker run -d --name test-container -p 3000:3000 frontend:ci-test
+          docker run -d \
+            --name test-container \
+            -p 3000:3000 \
+            -e METRICS_BEARER_TOKEN=ci-metrics-token \
+            frontend:ci-test
 
           # Wait for Next.js server to be ready (poll for up to 30s)
           echo "Waiting for server to be ready..."
@@ -382,7 +358,16 @@ jobs:
           # timeout), the 5-second --max-time will kill curl and fail CI.
           echo ""
           echo "=== Testing /api/metrics ==="
-          METRICS_BODY=$(curl -sf --max-time 5 http://localhost:3000/api/metrics 2>&1) || {
+          METRICS_STATUS=$(curl -s -o /dev/null -w "%{http_code}" --max-time 5 http://localhost:3000/api/metrics)
+          if [ "$METRICS_STATUS" = "401" ]; then
+            echo "✓ /api/metrics rejects unauthenticated requests"
+          else
+            echo "✗ /api/metrics returned $METRICS_STATUS without auth (expected 401)"
+            docker logs test-container
+            exit 1
+          fi
+
+          METRICS_BODY=$(curl -sf --max-time 5 -H "Authorization: Bearer ci-metrics-token" http://localhost:3000/api/metrics 2>&1) || {
             echo "✗ /api/metrics timed out or returned non-200"
             echo "  This likely means SSM or another blocking call has no timeout."
             echo "  Container logs:"
@@ -407,177 +392,6 @@ jobs:
           docker stop test-container
           docker rm test-container
 
-  # ============================================================================
-  # Start-Admin — Lint
-  # ============================================================================
-  start-admin-lint:
-    name: Start Admin Lint
-    needs: [setup, detect-changes]
-    runs-on: ubuntu-latest
-    timeout-minutes: 10
-    if: |
-      needs.detect-changes.outputs.run-start-admin == 'true' ||
-      needs.detect-changes.outputs.run-all == 'true'
-
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Setup Node.js and Yarn
-        uses: ./.github/actions/setup-node-yarn
-        with:
-          node-version: ${{ needs.setup.outputs.node-version }}
-
-      - name: Run ESLint (start-admin)
-        run: yarn workspace start-admin lint
-
-  # ============================================================================
-  # Start-Admin — Type Check
-  # ============================================================================
-  start-admin-typecheck:
-    name: Start Admin Type Check
-    needs: [setup, detect-changes]
-    runs-on: ubuntu-latest
-    timeout-minutes: 10
-    if: |
-      needs.detect-changes.outputs.run-start-admin == 'true' ||
-      needs.detect-changes.outputs.run-all == 'true'
-
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Setup Node.js and Yarn
-        uses: ./.github/actions/setup-node-yarn
-        with:
-          node-version: ${{ needs.setup.outputs.node-version }}
-
-      - name: Run TypeScript Compiler (start-admin)
-        run: yarn workspace start-admin typecheck
-
-  # ============================================================================
-  # Start-Admin — Build
-  # ============================================================================
-  start-admin-build:
-    name: Start Admin Build
-    needs: [setup, detect-changes]
-    runs-on: ubuntu-latest
-    timeout-minutes: 15
-    if: |
-      needs.detect-changes.outputs.run-start-admin == 'true' ||
-      needs.detect-changes.outputs.run-all == 'true'
-
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Setup Node.js and Yarn
-        uses: ./.github/actions/setup-node-yarn
-        with:
-          node-version: ${{ needs.setup.outputs.node-version }}
-
-      - name: Build TanStack Start Application
-        run: yarn workspace start-admin build
-
-      - name: Verify Build Output
-        run: |
-          if [ -d "apps/start-admin/dist" ] && [ -f "apps/start-admin/dist/server/server.js" ]; then
-            echo "✓ Start Admin build output exists"
-            du -sh apps/start-admin/dist
-          else
-            echo "✗ Start Admin build output not found (expected dist/server/server.js)"
-            exit 1
-          fi
-
-  # ============================================================================
-  # Start-Admin — Unit Tests
-  # ============================================================================
-  start-admin-test:
-    name: Start Admin Tests
-    needs: [setup, detect-changes]
-    runs-on: ubuntu-latest
-    timeout-minutes: 15
-    if: |
-      needs.detect-changes.outputs.run-start-admin == 'true' ||
-      needs.detect-changes.outputs.run-all == 'true'
-
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Setup Node.js and Yarn
-        uses: ./.github/actions/setup-node-yarn
-        with:
-          node-version: ${{ needs.setup.outputs.node-version }}
-
-      - name: Run Tests (start-admin)
-        run: yarn workspace start-admin test
-
-  # ============================================================================
-  # Start-Admin — Docker Build Test
-  # ============================================================================
-  start-admin-docker-build:
-    name: Start Admin Docker Build
-    needs: [setup, detect-changes, start-admin-build]
-    runs-on: ubuntu-latest
-    timeout-minutes: 20
-    if: |
-      needs.detect-changes.outputs.run-start-admin-docker == 'true' &&
-      needs.start-admin-build.result == 'success'
-
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
-
-      - name: Build Docker Image (Test Only)
-        uses: docker/build-push-action@v6
-        with:
-          context: .
-          file: apps/start-admin/Dockerfile
-          push: false
-          load: true
-          tags: start-admin:ci-test
-          cache-from: type=gha,scope=start-admin
-          cache-to: type=gha,mode=max,scope=start-admin
-
-      - name: Smoke Test Container
-        run: |
-          echo "Starting start-admin container for smoke tests..."
-          docker run -d --name admin-test-container -p 5001:5001 start-admin:ci-test
-
-          # Wait for server to be ready (poll for up to 30s)
-          echo "Waiting for server to be ready..."
-          for i in $(seq 1 30); do
-            if curl -sf --max-time 2 http://localhost:5001/admin/ > /dev/null 2>&1; then
-              echo "✓ Server is ready (attempt $i)"
-              break
-            fi
-            if [ $i -eq 30 ]; then
-              echo "✗ Server failed to start within 30s"
-              docker logs admin-test-container
-              exit 1
-            fi
-            sleep 1
-          done
-
-          ADMIN_STATUS=$(curl -s -o /dev/null -w "%{http_code}" --max-time 5 http://localhost:5001/admin/)
-          if [ "$ADMIN_STATUS" -lt "500" ]; then
-            echo "✓ /admin/ returned $ADMIN_STATUS"
-          else
-            echo "✗ /admin/ returned $ADMIN_STATUS (expected < 500)"
-            docker logs admin-test-container
-            exit 1
-          fi
-
-          echo ""
-          echo "=== Start Admin smoke tests passed ==="
-
-          # Cleanup
-          docker stop admin-test-container
-          docker rm admin-test-container
 
   # ============================================================================
   # CI Summary
@@ -592,11 +406,6 @@ jobs:
       - test
       - build
       - docker-build
-      - start-admin-lint
-      - start-admin-typecheck
-      - start-admin-test
-      - start-admin-build
-      - start-admin-docker-build
     runs-on: ubuntu-latest
     timeout-minutes: 5
     if: always()
@@ -610,7 +419,6 @@ jobs:
           echo "### Change Detection" >> $GITHUB_STEP_SUMMARY
           echo "- Run All: ${{ needs.detect-changes.outputs.run-all }}" >> $GITHUB_STEP_SUMMARY
           echo "- Run Site Docker: ${{ needs.detect-changes.outputs.run-docker }}" >> $GITHUB_STEP_SUMMARY
-          echo "- Run Start Admin Docker: ${{ needs.detect-changes.outputs.run-start-admin-docker }}" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
 
           echo "### Site — Code Quality" >> $GITHUB_STEP_SUMMARY
@@ -625,25 +433,16 @@ jobs:
           echo "- Docker Build: ${{ needs.docker-build.result }}" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
 
-          echo "### Start Admin" >> $GITHUB_STEP_SUMMARY
-          echo "- Lint: ${{ needs.start-admin-lint.result }}" >> $GITHUB_STEP_SUMMARY
-          echo "- Type Check: ${{ needs.start-admin-typecheck.result }}" >> $GITHUB_STEP_SUMMARY
-          echo "- Unit Tests: ${{ needs.start-admin-test.result }}" >> $GITHUB_STEP_SUMMARY
-          echo "- Build: ${{ needs.start-admin-build.result }}" >> $GITHUB_STEP_SUMMARY
-          echo "- Docker Build: ${{ needs.start-admin-docker-build.result }}" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-
-          # Critical failures check (skip 'skipped' — only fail on actual 'failure')
+          # Critical failures check (skip intentionally skipped jobs).
           FAILED=false
           for RESULT in \
+            "${{ needs.audit.result }}" \
             "${{ needs.lint.result }}" \
             "${{ needs.typecheck.result }}" \
+            "${{ needs.test.result }}" \
             "${{ needs.build.result }}" \
-            "${{ needs.start-admin-lint.result }}" \
-            "${{ needs.start-admin-typecheck.result }}" \
-            "${{ needs.start-admin-test.result }}" \
-            "${{ needs.start-admin-build.result }}"; do
-            if [[ "$RESULT" == "failure" ]]; then
+            "${{ needs.docker-build.result }}"; do
+            if [[ "$RESULT" == "failure" || "$RESULT" == "cancelled" ]]; then
               FAILED=true
               break
             fi
@@ -657,4 +456,3 @@ jobs:
 
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "✅ All critical CI checks passed" >> $GITHUB_STEP_SUMMARY
-

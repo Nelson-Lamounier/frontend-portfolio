@@ -53,6 +53,31 @@ jest.mock('@/lib/observability/analytics', () => ({
   trackEvent: jest.fn(),
 }))
 
+jest.mock('@/components/articles/LikeButton', () => {
+  const React = require('react')
+  return {
+    LikeButton: ({ slug }: { slug: string }) =>
+      React.createElement(
+        'button',
+        {
+          type: 'button',
+          'data-testid': `like-button-${slug}`,
+        },
+        '0',
+      ),
+  }
+})
+
+jest.mock('@/components/articles/CommentSection', () => {
+  const React = require('react')
+  return {
+    CommentSection: ({ slug }: { slug: string }) =>
+      React.createElement('section', {
+        'data-testid': `comment-section-${slug}`,
+      }),
+  }
+})
+
 // Mock global fetch for LikeButton/CommentSection API calls
 beforeEach(() => {
   global.fetch = jest.fn(() =>

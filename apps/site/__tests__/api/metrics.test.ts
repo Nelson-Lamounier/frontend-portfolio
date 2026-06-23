@@ -5,7 +5,8 @@
  *
  * Tests the Prometheus metrics endpoint including:
  * - Returns valid Prometheus text format
- * - No auth required when SSM path is unset
+ * - No auth required locally when SSM path is unset
+ * - Production fails closed when SSM auth is not configured
  * - Error handling (returns fallback metrics)
  * - Cache headers
  *
@@ -18,12 +19,20 @@
 
 const mockMetrics = jest.fn();
 const mockContentType = 'text/plain; version=0.0.4; charset=utf-8';
+const mockSsmSend = jest.fn();
+const mockSSMClient = jest.fn(() => ({ send: mockSsmSend }));
+const mockGetParameterCommand = jest.fn((input: unknown) => ({ input }));
 
 jest.mock('@/lib/observability/metrics', () => ({
   register: {
     metrics: (...args: unknown[]) => mockMetrics(...args),
     contentType: mockContentType,
   },
+}));
+
+jest.mock('@aws-sdk/client-ssm', () => ({
+  SSMClient: mockSSMClient,
+  GetParameterCommand: mockGetParameterCommand,
 }));
 
 // Mock next/server with simple response objects (jsdom has no Response/Request)
@@ -59,6 +68,12 @@ jest.mock('next/server', () => {
 // ========================================
 
 const originalEnv = process.env;
+let consoleErrorSpy: jest.SpyInstance;
+let consoleWarnSpy: jest.SpyInstance;
+
+function setNodeEnv(value: 'test' | 'production') {
+  Reflect.set(process.env, 'NODE_ENV', value);
+}
 
 beforeEach(() => {
   jest.resetModules();
@@ -66,6 +81,15 @@ beforeEach(() => {
   process.env = { ...originalEnv };
   // Default: no SSM auth (METRICS_TOKEN_SSM_PATH is empty)
   delete process.env.METRICS_TOKEN_SSM_PATH;
+  delete process.env.METRICS_BEARER_TOKEN;
+  setNodeEnv('test');
+  consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
+  consoleWarnSpy = jest.spyOn(console, 'warn').mockImplementation(() => {});
+});
+
+afterEach(() => {
+  consoleErrorSpy.mockRestore();
+  consoleWarnSpy.mockRestore();
 });
 
 afterAll(() => {
@@ -138,6 +162,67 @@ describe('/api/metrics', () => {
       const response = await GET(createRequest()); // no auth header
 
       expect(response.status).toBe(200);
+    });
+  });
+
+  describe('production auth configuration', () => {
+    it('returns 503 when production has no SSM token path configured', async () => {
+      setNodeEnv('production');
+      mockMetrics.mockResolvedValue('nextjs_up 1');
+
+      const { GET } = require('@/app/api/metrics/route');
+      const response = await GET(createRequest());
+
+      expect(response.status).toBe(503);
+      expect(mockMetrics).not.toHaveBeenCalled();
+    });
+
+    it('returns 503 when the production SSM token cannot be loaded', async () => {
+      setNodeEnv('production');
+      process.env.METRICS_TOKEN_SSM_PATH = '/portfolio/metrics/token';
+      mockSsmSend.mockRejectedValue(new Error('SSM unavailable'));
+      mockMetrics.mockResolvedValue('nextjs_up 1');
+
+      const { GET } = require('@/app/api/metrics/route');
+      const response = await GET(createRequest({ authorization: 'Bearer secret-token' }));
+
+      expect(response.status).toBe(503);
+      expect(mockMetrics).not.toHaveBeenCalled();
+    });
+
+    it('requires a valid bearer token when production SSM auth is configured', async () => {
+      setNodeEnv('production');
+      process.env.METRICS_TOKEN_SSM_PATH = '/portfolio/metrics/token';
+      mockSsmSend.mockResolvedValue({ Parameter: { Value: 'secret-token' } });
+      mockMetrics.mockResolvedValue('nextjs_up 1');
+
+      const { GET } = require('@/app/api/metrics/route');
+
+      const missingAuth = await GET(createRequest());
+      expect(missingAuth.status).toBe(401);
+
+      const badAuth = await GET(createRequest({ authorization: 'Bearer wrong-token' }));
+      expect(badAuth.status).toBe(401);
+
+      const goodAuth = await GET(createRequest({ authorization: 'Bearer secret-token' }));
+      expect(goodAuth.status).toBe(200);
+      expect(await goodAuth.text()).toContain('nextjs_up 1');
+    });
+
+    it('requires a valid bearer token when a direct metrics token is configured', async () => {
+      setNodeEnv('production');
+      process.env.METRICS_BEARER_TOKEN = 'env-token';
+      mockMetrics.mockResolvedValue('nextjs_up 1');
+
+      const { GET } = require('@/app/api/metrics/route');
+
+      const missingAuth = await GET(createRequest());
+      expect(missingAuth.status).toBe(401);
+
+      const goodAuth = await GET(createRequest({ authorization: 'Bearer env-token' }));
+      expect(goodAuth.status).toBe(200);
+      expect(await goodAuth.text()).toContain('nextjs_up 1');
+      expect(mockSsmSend).not.toHaveBeenCalled();
     });
   });
 

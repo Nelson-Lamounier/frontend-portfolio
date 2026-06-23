@@ -7,8 +7,6 @@
  * Used by ResumeSection for on-screen preview inside the modal.
  * The PDF capture mirrors this layout with inline styles via
  * resume-dom-builder (html2canvas cannot capture Tailwind classes).
- *
- * Isolated to apps/site — not shared with start-admin.
  */
 
 import type { ResumeData } from '@/lib/resumes/resume-data'

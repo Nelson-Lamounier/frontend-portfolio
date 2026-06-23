@@ -1,0 +1,664 @@
+# =============================================================================
+# Orchestrator: Deploy Site Frontend (Development)
+# =============================================================================
+#
+# CD pipeline for the Next.js site application.
+#
+# Trigger methods:
+#   1. Manual: workflow_dispatch from GitHub UI
+#   2. Cross-repo: repository_dispatch from infrastructure pipelines
+#   3. On push to main: automatic deployment
+#
+# Deployment path:
+#   build-site -> push-site -> sync-assets
+#                         -> deploy-site -> promote-site -> smoke-site -> summary
+# =============================================================================
+
+name: "Deploy Site Frontend (Dev)"
+
+on:
+  push:
+    branches: [main]
+
+  workflow_dispatch:
+    inputs:
+      frontend-ref:
+        description: "Git ref to deploy (branch, tag, SHA)"
+        required: false
+        default: "main"
+        type: string
+  # Cross-repo trigger from infrastructure pipelines
+  repository_dispatch:
+    types: [deploy-nextjs-dev]
+
+permissions:
+  id-token: write
+  contents: read
+
+env:
+  ENVIRONMENT: development
+  AWS_REGION: "eu-west-1"
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+  # Composite tag prevents ECR overwrites on pipeline retries
+  IMAGE_TAG: "${{ github.sha }}-r${{ github.run_attempt }}"
+
+concurrency:
+  group: deploy-frontend-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  # ===========================================================================
+  # Resolve the git ref to deploy
+  # ===========================================================================
+  resolve-targets:
+    name: Resolve Deploy Target
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    outputs:
+      deploy-site: ${{ steps.targets.outputs.deploy-site }}
+      frontend-ref: ${{ steps.targets.outputs.frontend-ref }}
+
+    steps:
+      - name: Compute targets
+        id: targets
+        run: |
+          echo "deploy-site=true" >> $GITHUB_OUTPUT
+
+          # For push events, use the pushed SHA; otherwise use the input/payload ref
+          if [[ "${{ github.event_name }}" == "push" ]]; then
+            REF="${{ github.sha }}"
+          else
+            REF="${{ github.event.inputs.frontend-ref || github.event.client_payload.ref || 'main' }}"
+          fi
+          echo "frontend-ref=$REF" >> $GITHUB_OUTPUT
+          echo "Deploy target: site, ref=$REF"
+
+  # ===========================================================================
+  # ── SITE (Next.js) ──────────────────────────────────────────────────────────
+  # ===========================================================================
+
+  # ---------------------------------------------------------------------------
+  # Build site Docker image — checks out this repo (no cross-repo PAT needed)
+  # ---------------------------------------------------------------------------
+  build-site:
+    name: "[Site] Build Docker Image"
+    needs: [resolve-targets]
+    if: needs.resolve-targets.outputs.deploy-site == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    environment: ${{ vars.ENVIRONMENT || 'development' }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          ref: ${{ needs.resolve-targets.outputs.frontend-ref }}
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build Docker Image (site)
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: Dockerfile
+          push: false
+          load: false
+          tags: site:${{ env.IMAGE_TAG }}
+          build-args: |
+            APP_NAME=site
+            NODE_ENV=production
+            NEXT_TELEMETRY_DISABLED=1
+            NEXT_PUBLIC_API_URL=${{ vars.NEXT_PUBLIC_API_URL }}
+          cache-from: type=gha,scope=site
+          cache-to: type=gha,mode=max,scope=site
+          provenance: false
+          outputs: type=docker,dest=/tmp/site-image.tar
+
+      - name: Extract Static Assets (for S3 Sync)
+        # frontend-portfolio monorepo layout:
+        #   COPY --from=builder /app/apps/site/.next/static ./apps/site/.next/static
+        # → inside container: /app/apps/site/.next/static
+        env:
+          IMAGE_TAG: ${{ env.IMAGE_TAG }}
+        run: |
+          docker load -i /tmp/site-image.tar
+          TEMP=$(docker create "site:${IMAGE_TAG}")
+
+          mkdir -p /tmp/next-static
+
+          if docker cp "${TEMP}:/app/apps/site/.next/static" "/tmp/next-static/" 2>/dev/null; then
+            echo "[PASS] Extracted from /app/apps/site/.next/static (monorepo layout)"
+          elif docker cp "${TEMP}:/app/apps/site/.next/standalone/.next/static" "/tmp/next-static/" 2>/dev/null; then
+            echo "[PASS] Extracted from /app/apps/site/.next/standalone/.next/static"
+          else
+            echo "::error::Could not find .next/static at any known path in the container."
+            echo ""
+            echo "--- All .next paths in the image ---"
+            docker export "${TEMP}" | tar t 2>/dev/null | grep -E "\.next" | head -60 || true
+            docker rm "${TEMP}" > /dev/null 2>&1 || true
+            exit 1
+          fi
+
+          docker rm "${TEMP}" > /dev/null 2>&1 || true
+
+          ASSET_COUNT=$(find /tmp/next-static -type f | wc -l | tr -d ' ')
+          echo "[PASS] $ASSET_COUNT static assets ready for S3 sync"
+
+      - name: Cache Static Assets
+        uses: actions/cache/save@cdf6c1fa76f9f475f3d7449005a359c84ca0f306 # v5.0.3
+        with:
+          path: /tmp/next-static
+          key: site-static-${{ env.ENVIRONMENT }}-${{ github.run_id }}-${{ github.run_attempt }}
+
+      - name: Cache Site Image
+        uses: actions/cache/save@cdf6c1fa76f9f475f3d7449005a359c84ca0f306 # v5.0.3
+        with:
+          path: /tmp/site-image.tar
+          key: site-image-${{ env.ENVIRONMENT }}-${{ github.run_id }}-${{ github.run_attempt }}
+
+      - name: Build Summary
+        run: |
+          IMAGE_SIZE=$(du -sh /tmp/site-image.tar | cut -f1)
+          ASSET_COUNT=$(find /tmp/next-static -type f | wc -l | tr -d ' ')
+          echo "## [Site] Docker Build" >> $GITHUB_STEP_SUMMARY
+          echo "- **Tag**: ${{ env.IMAGE_TAG }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Size**: $IMAGE_SIZE" >> $GITHUB_STEP_SUMMARY
+          echo "- **Static assets**: $ASSET_COUNT files" >> $GITHUB_STEP_SUMMARY
+          echo "- **Ref**: ${{ needs.resolve-targets.outputs.frontend-ref }}" >> $GITHUB_STEP_SUMMARY
+
+  # ---------------------------------------------------------------------------
+  # Push site image to ECR
+  # ---------------------------------------------------------------------------
+  push-site:
+    name: "[Site] Push to ECR"
+    needs: [resolve-targets, build-site]
+    if: needs.resolve-targets.outputs.deploy-site == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    environment: ${{ vars.ENVIRONMENT || 'development' }}
+
+    permissions:
+      id-token: write
+      contents: read
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - name: Configure AWS Credentials
+        uses: ./.github/actions/configure-aws
+        with:
+          role-to-assume: ${{ secrets.AWS_OIDC_ROLE }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Restore Site Image from Cache
+        uses: actions/cache/restore@cdf6c1fa76f9f475f3d7449005a359c84ca0f306 # v5.0.3
+        with:
+          path: /tmp/site-image.tar
+          key: site-image-${{ env.ENVIRONMENT }}-${{ github.run_id }}-${{ github.run_attempt }}
+          fail-on-cache-miss: true
+
+      - name: Load Docker Image
+        run: |
+          docker load -i /tmp/site-image.tar
+          echo "[PASS] Site image loaded"
+
+      - name: Resolve ECR URL (site)
+        id: resolve-ecr
+        run: |
+          ECR_URL=$(aws ssm get-parameter \
+            --name "/shared/ecr/${{ env.ENVIRONMENT }}/repository-uri" \
+            --query 'Parameter.Value' \
+            --output text)
+
+          if [ -z "$ECR_URL" ] || [ "$ECR_URL" = "None" ]; then
+            echo "::error::Site ECR URL not found at /shared/ecr/${{ env.ENVIRONMENT }}/repository-uri"
+            exit 1
+          fi
+
+          echo "::add-mask::$ECR_URL"
+          echo "ecr-url=$ECR_URL" >> $GITHUB_OUTPUT
+
+      - name: Push Site Image to ECR
+        run: |
+          ECR_URL="${{ steps.resolve-ecr.outputs.ecr-url }}"
+          TAG="${{ env.IMAGE_TAG }}"
+          REGISTRY="${ECR_URL%%/*}"
+
+          aws ecr get-login-password --region "${{ env.AWS_REGION }}" \
+            | docker login --username AWS --password-stdin "$REGISTRY"
+
+          docker tag "site:${TAG}" "${ECR_URL}:${TAG}"
+          docker push "${ECR_URL}:${TAG}"
+
+          echo "[PASS] Site image pushed: ${ECR_URL}:${TAG}"
+
+      - name: Push Summary
+        run: |
+          echo "## [Site] ECR Push" >> $GITHUB_STEP_SUMMARY
+          echo "- **Tag**: ${{ env.IMAGE_TAG }} ✅" >> $GITHUB_STEP_SUMMARY
+
+  # ---------------------------------------------------------------------------
+  # Sync site static assets to S3 + invalidate CloudFront
+  # ---------------------------------------------------------------------------
+  sync-assets:
+    name: "[Site] Sync Static Assets"
+    needs: [resolve-targets, push-site]
+    if: needs.resolve-targets.outputs.deploy-site == 'true'
+    uses: ./.github/workflows/_sync-assets.yml
+    with:
+      environment: development
+      static-cache-path: /tmp/next-static
+      static-cache-key-prefix: site-static
+    secrets:
+      AWS_OIDC_ROLE: ${{ secrets.AWS_OIDC_ROLE }}
+
+  # ---------------------------------------------------------------------------
+  # Write SSM so ArgoCD Image Updater picks up the new site image
+  # ---------------------------------------------------------------------------
+  deploy-site:
+    name: "[Site] Update SSM → ArgoCD"
+    needs: [resolve-targets, push-site]
+    if: needs.resolve-targets.outputs.deploy-site == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    environment: development
+
+    permissions:
+      id-token: write
+      contents: read
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - name: Configure AWS Credentials
+        uses: ./.github/actions/configure-aws
+        with:
+          role-to-assume: ${{ secrets.AWS_OIDC_ROLE }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Resolve Image URI
+        id: resolve
+        run: |
+          ECR_URL=$(aws ssm get-parameter \
+            --name "/shared/ecr/${{ env.ENVIRONMENT }}/repository-uri" \
+            --query 'Parameter.Value' \
+            --output text)
+
+          IMAGE_URI="${ECR_URL}:${{ env.IMAGE_TAG }}"
+          echo "::add-mask::$ECR_URL"
+          echo "::add-mask::$IMAGE_URI"
+          echo "image-uri=$IMAGE_URI" >> $GITHUB_OUTPUT
+
+      - name: Write Image URI to SSM
+        run: |
+          aws ssm put-parameter \
+            --name "/nextjs/${{ env.ENVIRONMENT }}/image-uri" \
+            --value "${{ steps.resolve.outputs.image-uri }}" \
+            --type String \
+            --overwrite
+
+          echo "[PASS] Site image URI written to SSM — ArgoCD Image Updater will promote"
+
+      - name: Deploy Summary
+        run: |
+          echo "## [Site] Kubernetes Deployment" >> $GITHUB_STEP_SUMMARY
+          echo "- **SSM**: \`/nextjs/${{ env.ENVIRONMENT }}/image-uri\` ✅" >> $GITHUB_STEP_SUMMARY
+          echo "- **Tag**: ${{ env.IMAGE_TAG }}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "ArgoCD Image Updater will detect the new tag and trigger a BlueGreen promotion." >> $GITHUB_STEP_SUMMARY
+
+  # ---------------------------------------------------------------------------
+  # Promote the nextjs Rollout via SSM send-command
+  # (K8s API server is private — runner delegates to control-plane via SSM)
+  # ---------------------------------------------------------------------------
+  promote-site:
+    name: "[Site] Promote Rollout"
+    needs: [resolve-targets, deploy-site]
+    if: needs.resolve-targets.outputs.deploy-site == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    environment: development
+
+    permissions:
+      id-token: write
+      contents: read
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - name: Configure AWS Credentials
+        uses: ./.github/actions/configure-aws
+        with:
+          role-to-assume: ${{ secrets.AWS_OIDC_ROLE }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Resolve Control-Plane Instance ID
+        id: resolve-instance
+        run: |
+          INSTANCE_ID=$(aws ec2 describe-instances \
+            --filters \
+              "Name=tag:k8s:bootstrap-role,Values=control-plane" \
+              "Name=instance-state-name,Values=running" \
+            --query "Reservations[0].Instances[0].InstanceId" \
+            --region "${{ env.AWS_REGION }}" --output text 2>/dev/null || echo "")
+
+          if [ -z "$INSTANCE_ID" ] || [ "$INSTANCE_ID" = "None" ]; then
+            echo "::error::Could not resolve control-plane instance ID"
+            exit 1
+          fi
+
+          echo "::add-mask::$INSTANCE_ID"
+          echo "instance-id=$INSTANCE_ID" >> $GITHUB_OUTPUT
+
+      - name: Wait for Rollout Paused + Promote (via SSM)
+        env:
+          INSTANCE_ID: ${{ steps.resolve-instance.outputs.instance-id }}
+          IMAGE_TAG: ${{ env.IMAGE_TAG }}
+        run: |
+          REGION="${{ env.AWS_REGION }}"
+
+          # __IMAGE_TAG__ is substituted below — heredoc uses single-quote
+          # delimiters to prevent expansion on the GitHub runner.
+          SCRIPT=$(cat <<'REMOTE_SCRIPT'
+          set -euo pipefail
+
+          ROLLOUT="nextjs"
+          NAMESPACE="nextjs-app"
+          PLUGIN="/usr/local/bin/kubectl-argo-rollouts"
+          EXPECTED_TAG="__IMAGE_TAG__"
+
+          if ! sudo test -f "$PLUGIN"; then
+            echo "[INFO] Installing kubectl-argo-rollouts plugin..."
+            sudo curl -sSLo "$PLUGIN" \
+              https://github.com/argoproj/argo-rollouts/releases/latest/download/kubectl-argo-rollouts-linux-amd64
+            sudo chmod +x "$PLUGIN"
+          fi
+
+          # Step 0: Wait for ArgoCD Image Updater to sync the new image.
+          # Must not enter the Paused loop until the rollout SPEC already
+          # references the new tag — otherwise a still-Healthy rollout
+          # (old image) causes an early exit that lets smoke-site see
+          # the wrong image.
+          echo "[INFO] Waiting for ArgoCD to sync new image tag: $EXPECTED_TAG (up to 5 min)..."
+          for i in $(seq 1 20); do
+            SPEC_IMAGE=$(sudo kubectl get rollout "$ROLLOUT" -n "$NAMESPACE" \
+              -o jsonpath='{.spec.template.spec.containers[0].image}' 2>/dev/null || echo "")
+            if [[ "$SPEC_IMAGE" == *"$EXPECTED_TAG"* ]]; then
+              echo "[PASS] ArgoCD synced new image: $SPEC_IMAGE"
+              break
+            fi
+            echo "  [$i/20] Waiting for ArgoCD sync (spec: ${SPEC_IMAGE##*/:-none})..."
+            [[ "$i" -eq 20 ]] && { echo "[FAIL] ArgoCD did not sync within 5 min"; exit 1; }
+            sleep 15
+          done
+
+          echo "[INFO] Waiting for Paused state..."
+          for i in $(seq 1 24); do
+            PHASE=$(sudo kubectl argo rollouts get rollout "$ROLLOUT" -n "$NAMESPACE" --no-color 2>/dev/null \
+              | grep -E "^Status" | awk '{print $NF}' || true)
+            echo "  [$i/24] Phase: ${PHASE:-unknown}"
+            [[ "$PHASE" == "Paused" ]] && { echo "[PASS] Rollout Paused — promoting"; break; }
+            [[ "$PHASE" == "Healthy" ]] && { echo "[INFO] Already Healthy — no promotion needed"; exit 0; }
+            [[ "$PHASE" == "Degraded" || "$PHASE" == "Error" ]] && {
+              echo "[FAIL] Rollout $PHASE — aborting"
+              sudo kubectl argo rollouts get rollout "$ROLLOUT" -n "$NAMESPACE" --no-color || true
+              exit 1
+            }
+            sleep 15
+          done
+
+          PHASE=$(sudo kubectl argo rollouts get rollout "$ROLLOUT" -n "$NAMESPACE" --no-color 2>/dev/null \
+            | grep -E "^Status" | awk '{print $NF}' || true)
+          [[ "$PHASE" != "Paused" ]] && {
+            echo "[FAIL] Rollout did not reach Paused (current: ${PHASE:-unknown})"
+            exit 1
+          }
+
+          sudo kubectl argo rollouts promote "$ROLLOUT" -n "$NAMESPACE"
+          echo "[PASS] $ROLLOUT promoted"
+
+          echo "[INFO] Waiting for Healthy state post-promotion..."
+          for i in $(seq 1 12); do
+            PHASE=$(sudo kubectl argo rollouts get rollout "$ROLLOUT" -n "$NAMESPACE" --no-color 2>/dev/null \
+              | grep -E "^Status" | awk '{print $NF}' || true)
+            echo "  [$i/12] Phase: ${PHASE:-unknown}"
+            [[ "$PHASE" == "Healthy" ]] && { echo "[PASS] Rollout Healthy — cycle complete"; exit 0; }
+            sleep 10
+          done
+          echo "[WARN] Rollout may still be converging — promotion was issued"
+          REMOTE_SCRIPT
+          )
+
+          SCRIPT="${SCRIPT//__IMAGE_TAG__/$IMAGE_TAG}"
+
+          PARAMS_FILE=$(mktemp)
+          printf '{"commands":[%s]}' "$(printf '%s' "$SCRIPT" | jq -Rs .)" > "$PARAMS_FILE"
+
+          CMD_ID=$(aws ssm send-command \
+            --instance-ids "$INSTANCE_ID" \
+            --document-name "AWS-RunShellScript" \
+            --parameters "file://$PARAMS_FILE" \
+            --region "$REGION" \
+            --query "Command.CommandId" --output text)
+          rm -f "$PARAMS_FILE"
+
+          echo "SSM Command ID: $CMD_ID"
+
+          for i in $(seq 1 37); do
+            sleep 10
+            STATUS=$(aws ssm get-command-invocation \
+              --command-id "$CMD_ID" \
+              --instance-id "$INSTANCE_ID" \
+              --region "$REGION" \
+              --query "Status" --output text 2>/dev/null || echo "Pending")
+            echo "  [$i] SSM status: $STATUS"
+            [[ "$STATUS" == "Success" || "$STATUS" == "Failed" || "$STATUS" == "TimedOut" || "$STATUS" == "Cancelled" ]] && break
+          done
+
+          OUTPUT=$(aws ssm get-command-invocation \
+            --command-id "$CMD_ID" \
+            --instance-id "$INSTANCE_ID" \
+            --region "$REGION" \
+            --query "StandardOutputContent" --output text 2>/dev/null || echo "(no output)")
+          STDERR=$(aws ssm get-command-invocation \
+            --command-id "$CMD_ID" \
+            --instance-id "$INSTANCE_ID" \
+            --region "$REGION" \
+            --query "StandardErrorContent" --output text 2>/dev/null || echo "")
+
+          echo "--- Remote stdout ---"
+          echo "$OUTPUT"
+          [ -n "$STDERR" ] && { echo "--- Remote stderr ---"; echo "$STDERR"; }
+
+          [[ "$STATUS" != "Success" ]] && { echo "::error::SSM command finished with status: $STATUS"; exit 1; }
+
+      - name: Promote Summary
+        run: |
+          echo "## [Site] Rollout Promotion" >> $GITHUB_STEP_SUMMARY
+          echo "- **Rollout**: \`nextjs\` (namespace: \`nextjs-app\`) ✅" >> $GITHUB_STEP_SUMMARY
+          echo "- **Tag**: ${{ env.IMAGE_TAG }}" >> $GITHUB_STEP_SUMMARY
+
+  # ---------------------------------------------------------------------------
+  # Smoke-test the live site after rollout promotion
+  # Runs on k8s-runner (in-cluster) — no SSM hop needed
+  # ---------------------------------------------------------------------------
+  smoke-site:
+    name: "[Site] Smoke Test"
+    needs: [resolve-targets, promote-site, sync-assets]
+    if: needs.resolve-targets.outputs.deploy-site == 'true'
+    runs-on: k8s-runner
+    timeout-minutes: 15
+    environment: development
+
+    permissions:
+      id-token: write
+      contents: read
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - name: Configure AWS Credentials
+        uses: ./.github/actions/configure-aws
+        with:
+          role-to-assume: ${{ secrets.AWS_OIDC_ROLE }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Set up in-cluster kubeconfig
+        run: |
+          aws ssm get-parameter \
+            --name "/k8s/${{ env.ENVIRONMENT }}/kubeconfig" \
+            --with-decryption \
+            --region "${{ env.AWS_REGION }}" \
+            --query 'Parameter.Value' \
+            --output text \
+            | sed 's|https://127.0.0.1:6443|https://kubernetes.default.svc:443|g' \
+            > /tmp/kubeconfig
+          chmod 600 /tmp/kubeconfig
+
+      - name: Verify Blue/Green Rollout — Image + Pod Readiness
+        env:
+          KUBECONFIG: /tmp/kubeconfig
+        run: |
+          ROLLOUT="nextjs"
+          NAMESPACE="nextjs-app"
+          IMAGE_TAG="${{ env.IMAGE_TAG }}"
+
+          echo "=== Rollout: $ROLLOUT | Namespace: $NAMESPACE | Tag: $IMAGE_TAG ==="
+
+          # 1. Phase check
+          PHASE=$(kubectl get rollout "$ROLLOUT" -n "$NAMESPACE" \
+            -o jsonpath='{.status.phase}' 2>/dev/null || echo "unknown")
+          echo "[1/4] Rollout phase: $PHASE"
+          if [[ "$PHASE" != "Healthy" ]]; then
+            echo "::error::Rollout phase is '$PHASE' — expected Healthy"
+            kubectl describe rollout "$ROLLOUT" -n "$NAMESPACE" 2>/dev/null || true
+            exit 1
+          fi
+
+          # 2. Image check
+          CURRENT_IMAGE=$(kubectl get rollout "$ROLLOUT" -n "$NAMESPACE" \
+            -o jsonpath='{.spec.template.spec.containers[0].image}' 2>/dev/null || echo "")
+          echo "[2/4] Active image: $CURRENT_IMAGE"
+          if [[ "$CURRENT_IMAGE" != *"$IMAGE_TAG"* ]]; then
+            echo "::error::Rollout image ($CURRENT_IMAGE) does not match tag ($IMAGE_TAG)"
+            exit 1
+          fi
+          echo "[PASS] Image tag confirmed"
+
+          # 3. Stable RS pods — wait up to 60s
+          STABLE_HASH=$(kubectl get rollout "$ROLLOUT" -n "$NAMESPACE" \
+            -o jsonpath='{.status.stableRS}' 2>/dev/null || echo "")
+          echo "[3/4] Stable RS hash: ${STABLE_HASH:-unknown}"
+          if [[ -z "$STABLE_HASH" ]]; then
+            echo "::error::Could not determine stable ReplicaSet hash"
+            exit 1
+          fi
+
+          for i in $(seq 1 12); do
+            TOTAL=$(kubectl get pods -n "$NAMESPACE" -l "rollouts-pod-template-hash=$STABLE_HASH" \
+              --no-headers 2>/dev/null | wc -l | tr -d ' ')
+            RUNNING=$(kubectl get pods -n "$NAMESPACE" -l "rollouts-pod-template-hash=$STABLE_HASH" \
+              --field-selector=status.phase=Running --no-headers 2>/dev/null | wc -l | tr -d ' ')
+            echo "  [$i/12] New pods: $RUNNING/$TOTAL Running"
+            if [[ "$TOTAL" -gt 0 && "$RUNNING" -eq "$TOTAL" ]]; then
+              echo "[PASS] All $TOTAL new pod(s) Running"
+              break
+            fi
+            [[ "$i" -eq 12 ]] && {
+              echo "::error::New pods not fully Running after 60s ($RUNNING/$TOTAL)"
+              kubectl get pods -n "$NAMESPACE" -l "rollouts-pod-template-hash=$STABLE_HASH" || true
+              exit 1
+            }
+            sleep 5
+          done
+
+          # 4. Old RS drain check
+          echo "[4/4] Checking old pods are draining..."
+          ALL_PODS=$(kubectl get pods -n "$NAMESPACE" -l "app=$ROLLOUT" \
+            --no-headers 2>/dev/null | wc -l | tr -d ' ')
+          NEW_PODS=$(kubectl get pods -n "$NAMESPACE" -l "rollouts-pod-template-hash=$STABLE_HASH" \
+            --no-headers 2>/dev/null | wc -l | tr -d ' ')
+          OLD_PODS=$(( ALL_PODS - NEW_PODS ))
+          echo "  Total: $ALL_PODS | New: $NEW_PODS | Old (draining): $OLD_PODS"
+          [[ "$OLD_PODS" -gt 0 ]] && \
+            echo "::warning::$OLD_PODS old pod(s) still present (scaleDownDelay active)" || \
+            echo "[PASS] Old pods fully drained"
+
+      - name: Smoke Summary
+        if: always()
+        env:
+          KUBECONFIG: /tmp/kubeconfig
+        run: |
+          echo "## [Site] Smoke Test" >> $GITHUB_STEP_SUMMARY
+          echo "- **Image Tag**: \`${{ env.IMAGE_TAG }}\`" >> $GITHUB_STEP_SUMMARY
+          PHASE=$(kubectl get rollout nextjs -n nextjs-app \
+            -o jsonpath='{.status.phase}' 2>/dev/null || echo "unknown")
+          ICON=$( [[ "$PHASE" == "Healthy" ]] && echo "✅" || echo "❌" )
+          echo "- **Rollout Phase**: $ICON $PHASE" >> $GITHUB_STEP_SUMMARY
+          STABLE_HASH=$(kubectl get rollout nextjs -n nextjs-app \
+            -o jsonpath='{.status.stableRS}' 2>/dev/null || echo "")
+          if [[ -n "$STABLE_HASH" ]]; then
+            TOTAL=$(kubectl get pods -n nextjs-app -l "rollouts-pod-template-hash=$STABLE_HASH" \
+              --no-headers 2>/dev/null | wc -l | tr -d ' ')
+            RUNNING=$(kubectl get pods -n nextjs-app -l "rollouts-pod-template-hash=$STABLE_HASH" \
+              --field-selector=status.phase=Running --no-headers 2>/dev/null | wc -l | tr -d ' ')
+            echo "- **Active Pods (stable RS \`$STABLE_HASH\`)**: $RUNNING/$TOTAL Running" >> $GITHUB_STEP_SUMMARY
+          fi
+
+  # ===========================================================================
+  # Summary — waits for the site deployment path
+  # ===========================================================================
+  summary:
+    name: Deployment Summary
+    needs:
+      - resolve-targets
+      - build-site
+      - push-site
+      - sync-assets
+      - deploy-site
+      - promote-site
+      - smoke-site
+    if: always()
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Generate Summary
+        run: |
+          echo "## Site Deployment Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "| App | Stage | Status |" >> $GITHUB_STEP_SUMMARY
+          echo "|-----|-------|--------|" >> $GITHUB_STEP_SUMMARY
+
+          if [[ "${{ needs.resolve-targets.outputs.deploy-site }}" == "true" ]]; then
+            echo "| Site (Next.js)   | Build Image     | ${{ needs.build-site.result }} |" >> $GITHUB_STEP_SUMMARY
+            echo "| Site (Next.js)   | Push to ECR     | ${{ needs.push-site.result }} |" >> $GITHUB_STEP_SUMMARY
+            echo "| Site (Next.js)   | Sync Assets     | ${{ needs.sync-assets.result }} |" >> $GITHUB_STEP_SUMMARY
+            echo "| Site (Next.js)   | Deploy to K8s   | ${{ needs.deploy-site.result }} |" >> $GITHUB_STEP_SUMMARY
+            echo "| Site (Next.js)   | Promote Rollout | ${{ needs.promote-site.result }} |" >> $GITHUB_STEP_SUMMARY
+            echo "| Site (Next.js)   | Smoke Test      | ${{ needs.smoke-site.result }} |" >> $GITHUB_STEP_SUMMARY
+          fi
+
+          echo "" >> $GITHUB_STEP_SUMMARY
+
+          FAILED=false
+          for RESULT in \
+            "${{ needs.build-site.result }}" \
+            "${{ needs.push-site.result }}" \
+            "${{ needs.sync-assets.result }}" \
+            "${{ needs.deploy-site.result }}" \
+            "${{ needs.promote-site.result }}" \
+            "${{ needs.smoke-site.result }}"; do
+            [[ "$RESULT" == "failure" || "$RESULT" == "cancelled" ]] && { FAILED=true; break; }
+          done
+
+          if [[ "$FAILED" == "true" ]]; then
+            echo "**Result: FAILED** — check individual job logs above" >> $GITHUB_STEP_SUMMARY
+            exit 1
+          fi
+
+          echo "**Result: SUCCESS**" >> $GITHUB_STEP_SUMMARY

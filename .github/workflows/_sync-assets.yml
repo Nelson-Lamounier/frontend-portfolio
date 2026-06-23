@@ -1,0 +1,144 @@
+# =============================================================================
+# Reusable Workflow: Sync Static Assets
+# =============================================================================
+#
+# Syncs Next.js .next/static assets to S3 and invalidates CloudFront.
+# Called by deploy-frontend.yml after a successful site image build.
+#
+# Fast path: caller pre-extracts static assets and caches them separately
+# (avoids loading the full Docker image tar in this job).
+# =============================================================================
+
+name: Sync Static Assets (Reusable)
+
+on:
+  workflow_call:
+    inputs:
+      environment:
+        description: "Target environment (development, staging, production)"
+        required: true
+        type: string
+      static-cache-path:
+        description: "Local path where static assets will be restored"
+        required: false
+        type: string
+        default: ""
+      static-cache-key-prefix:
+        description: "Cache key prefix for pre-extracted static assets"
+        required: false
+        type: string
+        default: ""
+      # Legacy fallback — used when static-cache-key-prefix is empty
+      image-cache-path:
+        description: "Path to Docker image tar (legacy path)"
+        required: false
+        type: string
+        default: "/tmp/docker-image.tar"
+      image-cache-key-prefix:
+        description: "Prefix for image cache key (legacy path)"
+        required: false
+        type: string
+        default: "docker-image"
+    secrets:
+      AWS_OIDC_ROLE:
+        required: true
+
+env:
+  AWS_REGION: ${{ vars.AWS_REGION || 'eu-west-1' }}
+
+jobs:
+  sync:
+    name: Sync Assets & Invalidate Cache
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    environment: ${{ inputs.environment }}
+
+    permissions:
+      id-token: write
+      contents: read
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - name: Setup Environment and Dependencies
+        uses: ./.github/actions/setup-node-yarn
+
+      - name: Configure AWS Credentials
+        uses: ./.github/actions/configure-aws
+        with:
+          role-to-assume: ${{ secrets.AWS_OIDC_ROLE }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      # ── Fast path: restore pre-extracted static assets ──────────────
+      - name: Restore Static Assets from Cache
+        if: inputs.static-cache-key-prefix != ''
+        uses: actions/cache/restore@cdf6c1fa76f9f475f3d7449005a359c84ca0f306 # v5.0.3
+        with:
+          path: ${{ inputs.static-cache-path }}
+          key: ${{ inputs.static-cache-key-prefix }}-${{ inputs.environment }}-${{ github.run_id }}-${{ github.run_attempt }}
+          fail-on-cache-miss: true
+
+      - name: Place Static Assets in Workspace
+        if: inputs.static-cache-key-prefix != ''
+        env:
+          STATIC_CACHE_PATH: ${{ inputs.static-cache-path }}
+        run: |
+          mkdir -p .next
+          if [ -d "${STATIC_CACHE_PATH}/static" ]; then
+            cp -r "${STATIC_CACHE_PATH}/static" .next/
+          else
+            cp -r "${STATIC_CACHE_PATH}" .next/static
+          fi
+          echo "[PASS] $(find .next/static -type f | wc -l | tr -d ' ') static assets ready"
+
+      # ── Legacy path: restore full Docker image ───────────────────────
+      - name: Restore Docker Image from Cache
+        if: inputs.static-cache-key-prefix == ''
+        uses: actions/cache/restore@cdf6c1fa76f9f475f3d7449005a359c84ca0f306 # v5.0.3
+        with:
+          path: ${{ inputs.image-cache-path }}
+          key: ${{ inputs.image-cache-key-prefix }}-${{ inputs.environment }}-${{ github.run_id }}-${{ github.run_attempt }}
+          fail-on-cache-miss: true
+
+      - name: Extract Static Assets from Image
+        if: inputs.static-cache-key-prefix == ''
+        env:
+          IMAGE_CACHE_PATH: ${{ inputs.image-cache-path }}
+        run: |
+          LOADED=$(docker load -i "${IMAGE_CACHE_PATH}" | grep "Loaded image:" | awk '{print $3}')
+          echo "Loaded image: $LOADED"
+          TEMP=$(docker create "$LOADED")
+          mkdir -p .next
+
+          if docker cp "${TEMP}:/app/apps/site/.next/static" ".next/" 2>/dev/null; then
+            echo "[PASS] Extracted from /app/apps/site/.next/static"
+          elif docker cp "${TEMP}:/app/.next/static" ".next/" 2>/dev/null; then
+            echo "[PASS] Extracted from /app/.next/static"
+          else
+            echo "::error::Could not find .next/static in the image"
+            docker export "${TEMP}" | tar t 2>/dev/null | grep -E "\.next" | head -30 || true
+            docker rm "${TEMP}" > /dev/null 2>&1 || true
+            exit 1
+          fi
+
+          docker rm "${TEMP}" > /dev/null
+          echo "[PASS] $(find .next/static -type f | wc -l | tr -d ' ') static assets extracted"
+
+      # ── Sync to S3 & invalidate CloudFront ──────────────────────────
+      - name: Sync to S3 & Invalidate CloudFront
+        env:
+          DEPLOY_ENVIRONMENT: ${{ inputs.environment }}
+        run: |
+          npx tsx scripts/sync-static-to-s3.ts \
+            --env "${DEPLOY_ENVIRONMENT}" \
+            --region "${AWS_REGION}"
+
+      - name: Sync Summary
+        run: |
+          ASSET_COUNT=$(find .next/static -type f 2>/dev/null | wc -l | tr -d ' ')
+          echo "## Static Assets Synced" >> $GITHUB_STEP_SUMMARY
+          echo "- **Environment**: ${{ inputs.environment }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Assets synced**: $ASSET_COUNT files" >> $GITHUB_STEP_SUMMARY
+          echo "- **S3 upload**: ✅" >> $GITHUB_STEP_SUMMARY
+          echo "- **CloudFront invalidation**: ✅" >> $GITHUB_STEP_SUMMARY

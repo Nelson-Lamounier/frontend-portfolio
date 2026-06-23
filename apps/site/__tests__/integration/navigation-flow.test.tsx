@@ -57,9 +57,10 @@ describe('Navigation Flow Integration', () => {
     it('all pages render without errors', async () => {
       // Test that all main pages can render
       const homePage = await Home()
+      const projectsPage = await Projects()
       expect(() => render(homePage)).not.toThrow()
       expect(() => render(<About />)).not.toThrow()
-      expect(() => render(<Projects />)).not.toThrow()
+      expect(() => render(projectsPage)).not.toThrow()
       expect(() => render(<Uses />)).not.toThrow()
     })
 
