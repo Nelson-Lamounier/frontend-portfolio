@@ -2,7 +2,7 @@
  * @format
  * Chat API Route
  *
- * Server-side proxy for the Bedrock Agent API Gateway.
+ * Server-side proxy for the Bedrock Agent/RAG API Gateway.
  * Keeps the API Key hidden from the browser — it is injected
  * from the `BEDROCK_AGENT_API_KEY` environment variable.
  *
@@ -19,8 +19,9 @@ import type { ChatErrorResponse, ChatRequest, ChatResponse } from '@/lib/types/c
 // ENVIRONMENT
 // =============================================================================
 
-const AGENT_API_URL = process.env.BEDROCK_AGENT_API_URL
+const AGENT_API_URL = process.env.BEDROCK_AGENT_API_URL ?? process.env.BEDROCK_API_URL
 const AGENT_API_KEY = process.env.BEDROCK_AGENT_API_KEY
+const AGENT_API_ROUTE = process.env.BEDROCK_AGENT_API_ROUTE ?? 'invoke-authenticated'
 
 /**
  * Maximum prompt length — mirrors API Gateway request model validation.
@@ -32,6 +33,26 @@ const MAX_PROMPT_LENGTH = 10_000
  * The invoke Lambda has a 60s timeout; add headroom.
  */
 const UPSTREAM_TIMEOUT_MS = 65_000
+
+const CHATBOT_ENDPOINT_SEGMENTS = new Set([
+  'invoke',
+  'invoke-public',
+  'invoke-authenticated',
+])
+
+function resolveInvokeUrl(apiUrl: string): string {
+  const url = new URL(apiUrl)
+  const lastSegment = url.pathname.replace(/\/+$/, '').split('/').pop()
+
+  if (lastSegment && CHATBOT_ENDPOINT_SEGMENTS.has(lastSegment)) {
+    return url.href
+  }
+
+  const base = url.href.endsWith('/') ? url.href : `${url.href}/`
+  const route = AGENT_API_ROUTE.replace(/^\/+/, '')
+
+  return new URL(route, base).href
+}
 
 // =============================================================================
 // ROUTE HANDLER
@@ -94,9 +115,7 @@ export async function POST(request: NextRequest): Promise<NextResponse<ChatRespo
       upstreamBody.sessionId = body.sessionId
     }
 
-    // Build the full invoke URL — SSM stores the stage root (e.g. .../v1/)
-    // and the API Gateway route is POST /invoke.
-    const invokeUrl = new URL('invoke', AGENT_API_URL).href
+    const invokeUrl = resolveInvokeUrl(AGENT_API_URL)
 
     const upstream = await fetch(invokeUrl, {
       method: 'POST',
@@ -156,6 +175,14 @@ export async function POST(request: NextRequest): Promise<NextResponse<ChatRespo
       return NextResponse.json(
         { error: 'The agent took too long to respond. Please try again.', code: 'NETWORK_ERROR' as const },
         { status: 504 },
+      )
+    }
+
+    if (err instanceof TypeError) {
+      console.error('[chat] Upstream network error:', err)
+      return NextResponse.json(
+        { error: 'Unable to reach the chat service.', code: 'NETWORK_ERROR' as const },
+        { status: 502 },
       )
     }
 

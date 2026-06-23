@@ -1,5 +1,7 @@
 /** @format */
 
+export {};
+
 /**
  * Unit tests for /api/metrics route handler.
  *
