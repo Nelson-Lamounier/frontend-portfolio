@@ -21,33 +21,16 @@ export {
   prefetchArticle,
   calculateReadingTime,
   getDataSource,
-  isS3Article,
   ArticleServiceError,
 } from './article-service'
 
 export { generateArticleJsonLd, generateArticleMetadata } from './article-structured-data'
 
+// RDS-backed data layer (reads via the in-cluster public-api BFF).
 export {
-  isDynamoDBConfigured,
+  isArticlesApiConfigured,
   queryPublishedArticles,
   getArticleMetadataBySlug,
   getArticleDetailBySlug,
   queryArticlesByTag,
-  queryDraftArticles,
-  publishArticle,
-  unpublishArticle,
-  deleteArticle,
-  updateArticleMetadata,
-} from './dynamodb-articles'
-
-export type { UpdatableArticleMetadata } from './dynamodb-articles'
-
-export {
-  fetchArticleContent,
-  buildContentRef,
-  putArticleContent,
-  fetchImageSidecar,
-  isS3Configured,
-} from './s3-content'
-
-export type { ImageSidecar } from './s3-content'
+} from './public-api-articles'
