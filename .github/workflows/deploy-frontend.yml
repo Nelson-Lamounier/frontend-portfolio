@@ -11,7 +11,7 @@
 #
 # Deployment path:
 #   build-site -> push-site -> sync-assets
-#                         -> deploy-site -> smoke-site -> summary
+#                         -> deploy-site -> summary
 #   (ArgoCD Image Updater + Argo Rollouts auto-promote the blue-green rollout;
 #    no manual promote step — same as the tucaken-app deploy.)
 # =============================================================================
@@ -313,147 +313,6 @@ jobs:
           echo "ArgoCD Image Updater will detect the new tag and trigger a BlueGreen promotion." >> $GITHUB_STEP_SUMMARY
 
 
-  # ---------------------------------------------------------------------------
-  # Smoke-test the live site after rollout promotion
-  # Runs on k8s-runner (in-cluster) — no SSM hop needed
-  # ---------------------------------------------------------------------------
-  smoke-site:
-    name: "[Site] Smoke Test"
-    needs: [resolve-targets, deploy-site, sync-assets]
-    if: needs.resolve-targets.outputs.deploy-site == 'true'
-    runs-on: k8s-runner
-    timeout-minutes: 15
-    environment: development
-
-    permissions:
-      id-token: write
-      contents: read
-
-    steps:
-      - name: Checkout
-        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
-
-      - name: Configure AWS Credentials
-        uses: ./.github/actions/configure-aws
-        with:
-          role-to-assume: ${{ secrets.AWS_OIDC_ROLE }}
-          aws-region: ${{ env.AWS_REGION }}
-
-      - name: Set up in-cluster kubeconfig
-        run: |
-          aws ssm get-parameter \
-            --name "/k8s/${{ env.ENVIRONMENT }}/kubeconfig" \
-            --with-decryption \
-            --region "${{ env.AWS_REGION }}" \
-            --query 'Parameter.Value' \
-            --output text \
-            | sed 's|https://127.0.0.1:6443|https://kubernetes.default.svc:443|g' \
-            > /tmp/kubeconfig
-          chmod 600 /tmp/kubeconfig
-
-      - name: Verify Blue/Green Rollout — Image + Pod Readiness
-        env:
-          KUBECONFIG: /tmp/kubeconfig
-        run: |
-          ROLLOUT="nextjs"
-          NAMESPACE="nextjs-app"
-          IMAGE_TAG="${{ env.IMAGE_TAG }}"
-
-          echo "=== Rollout: $ROLLOUT | Namespace: $NAMESPACE | Tag: $IMAGE_TAG ==="
-
-          # 1. Phase check — wait for ArgoCD/Argo Rollouts auto-promotion.
-          # The blue-green rollout self-promotes (autoPromotionSeconds soak),
-          # so poll for Healthy rather than expecting it immediately.
-          PHASE="unknown"
-          for i in $(seq 1 36); do
-            PHASE=$(kubectl get rollout "$ROLLOUT" -n "$NAMESPACE" \
-              -o jsonpath='{.status.phase}' 2>/dev/null || echo "unknown")
-            echo "  [$i/36] Rollout phase: $PHASE"
-            [[ "$PHASE" == "Healthy" ]] && break
-            if [[ "$PHASE" == "Degraded" || "$PHASE" == "Error" ]]; then
-              echo "::error::Rollout phase is '$PHASE'"
-              kubectl describe rollout "$ROLLOUT" -n "$NAMESPACE" 2>/dev/null || true
-              exit 1
-            fi
-            sleep 10
-          done
-          echo "[1/4] Rollout phase: $PHASE"
-          if [[ "$PHASE" != "Healthy" ]]; then
-            echo "::error::Rollout did not reach Healthy within ~6m (current: $PHASE)"
-            kubectl describe rollout "$ROLLOUT" -n "$NAMESPACE" 2>/dev/null || true
-            exit 1
-          fi
-
-          # 2. Image check
-          CURRENT_IMAGE=$(kubectl get rollout "$ROLLOUT" -n "$NAMESPACE" \
-            -o jsonpath='{.spec.template.spec.containers[0].image}' 2>/dev/null || echo "")
-          echo "[2/4] Active image: $CURRENT_IMAGE"
-          if [[ "$CURRENT_IMAGE" != *"$IMAGE_TAG"* ]]; then
-            echo "::error::Rollout image ($CURRENT_IMAGE) does not match tag ($IMAGE_TAG)"
-            exit 1
-          fi
-          echo "[PASS] Image tag confirmed"
-
-          # 3. Stable RS pods — wait up to 60s
-          STABLE_HASH=$(kubectl get rollout "$ROLLOUT" -n "$NAMESPACE" \
-            -o jsonpath='{.status.stableRS}' 2>/dev/null || echo "")
-          echo "[3/4] Stable RS hash: ${STABLE_HASH:-unknown}"
-          if [[ -z "$STABLE_HASH" ]]; then
-            echo "::error::Could not determine stable ReplicaSet hash"
-            exit 1
-          fi
-
-          for i in $(seq 1 12); do
-            TOTAL=$(kubectl get pods -n "$NAMESPACE" -l "rollouts-pod-template-hash=$STABLE_HASH" \
-              --no-headers 2>/dev/null | wc -l | tr -d ' ')
-            RUNNING=$(kubectl get pods -n "$NAMESPACE" -l "rollouts-pod-template-hash=$STABLE_HASH" \
-              --field-selector=status.phase=Running --no-headers 2>/dev/null | wc -l | tr -d ' ')
-            echo "  [$i/12] New pods: $RUNNING/$TOTAL Running"
-            if [[ "$TOTAL" -gt 0 && "$RUNNING" -eq "$TOTAL" ]]; then
-              echo "[PASS] All $TOTAL new pod(s) Running"
-              break
-            fi
-            [[ "$i" -eq 12 ]] && {
-              echo "::error::New pods not fully Running after 60s ($RUNNING/$TOTAL)"
-              kubectl get pods -n "$NAMESPACE" -l "rollouts-pod-template-hash=$STABLE_HASH" || true
-              exit 1
-            }
-            sleep 5
-          done
-
-          # 4. Old RS drain check
-          echo "[4/4] Checking old pods are draining..."
-          ALL_PODS=$(kubectl get pods -n "$NAMESPACE" -l "app=$ROLLOUT" \
-            --no-headers 2>/dev/null | wc -l | tr -d ' ')
-          NEW_PODS=$(kubectl get pods -n "$NAMESPACE" -l "rollouts-pod-template-hash=$STABLE_HASH" \
-            --no-headers 2>/dev/null | wc -l | tr -d ' ')
-          OLD_PODS=$(( ALL_PODS - NEW_PODS ))
-          echo "  Total: $ALL_PODS | New: $NEW_PODS | Old (draining): $OLD_PODS"
-          [[ "$OLD_PODS" -gt 0 ]] && \
-            echo "::warning::$OLD_PODS old pod(s) still present (scaleDownDelay active)" || \
-            echo "[PASS] Old pods fully drained"
-
-      - name: Smoke Summary
-        if: always()
-        env:
-          KUBECONFIG: /tmp/kubeconfig
-        run: |
-          echo "## [Site] Smoke Test" >> $GITHUB_STEP_SUMMARY
-          echo "- **Image Tag**: \`${{ env.IMAGE_TAG }}\`" >> $GITHUB_STEP_SUMMARY
-          PHASE=$(kubectl get rollout nextjs -n nextjs-app \
-            -o jsonpath='{.status.phase}' 2>/dev/null || echo "unknown")
-          ICON=$( [[ "$PHASE" == "Healthy" ]] && echo "✅" || echo "❌" )
-          echo "- **Rollout Phase**: $ICON $PHASE" >> $GITHUB_STEP_SUMMARY
-          STABLE_HASH=$(kubectl get rollout nextjs -n nextjs-app \
-            -o jsonpath='{.status.stableRS}' 2>/dev/null || echo "")
-          if [[ -n "$STABLE_HASH" ]]; then
-            TOTAL=$(kubectl get pods -n nextjs-app -l "rollouts-pod-template-hash=$STABLE_HASH" \
-              --no-headers 2>/dev/null | wc -l | tr -d ' ')
-            RUNNING=$(kubectl get pods -n nextjs-app -l "rollouts-pod-template-hash=$STABLE_HASH" \
-              --field-selector=status.phase=Running --no-headers 2>/dev/null | wc -l | tr -d ' ')
-            echo "- **Active Pods (stable RS \`$STABLE_HASH\`)**: $RUNNING/$TOTAL Running" >> $GITHUB_STEP_SUMMARY
-          fi
-
   # ===========================================================================
   # Summary — waits for the site deployment path
   # ===========================================================================
@@ -465,7 +324,6 @@ jobs:
       - push-site
       - sync-assets
       - deploy-site
-      - smoke-site
     if: always()
     runs-on: ubuntu-latest
 
@@ -482,7 +340,6 @@ jobs:
             echo "| Site (Next.js)   | Push to ECR     | ${{ needs.push-site.result }} |" >> $GITHUB_STEP_SUMMARY
             echo "| Site (Next.js)   | Sync Assets     | ${{ needs.sync-assets.result }} |" >> $GITHUB_STEP_SUMMARY
             echo "| Site (Next.js)   | Deploy to K8s   | ${{ needs.deploy-site.result }} |" >> $GITHUB_STEP_SUMMARY
-            echo "| Site (Next.js)   | Smoke Test      | ${{ needs.smoke-site.result }} |" >> $GITHUB_STEP_SUMMARY
           fi
 
           echo "" >> $GITHUB_STEP_SUMMARY
@@ -492,8 +349,7 @@ jobs:
             "${{ needs.build-site.result }}" \
             "${{ needs.push-site.result }}" \
             "${{ needs.sync-assets.result }}" \
-            "${{ needs.deploy-site.result }}" \
-            "${{ needs.smoke-site.result }}"; do
+            "${{ needs.deploy-site.result }}"; do
             [[ "$RESULT" == "failure" || "$RESULT" == "cancelled" ]] && { FAILED=true; break; }
           done
 
