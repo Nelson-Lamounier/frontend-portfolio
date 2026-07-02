@@ -8,6 +8,8 @@ import { Container } from '@/components/layout'
 import { Prose } from '@/components/ui'
 import { LikeButton } from '@/components/articles/LikeButton'
 import { CommentSection } from '@/components/articles/CommentSection'
+import { TableOfContents } from '@/components/articles/TableOfContents'
+import type { TocItem } from '@/lib/articles/extract-toc'
 import { formatDate } from '@/lib/formatDate'
 import { trackArticleView } from '@/lib/observability/analytics'
 
@@ -45,9 +47,11 @@ function GitHubIcon(props: React.ComponentPropsWithoutRef<'svg'>) {
 export function ArticleLayout({
   article,
   children,
+  toc,
 }: {
   article: ArticleWithSlug
   children: React.ReactNode
+  toc?: readonly TocItem[]
 }) {
   const router = useRouter()
   const { previousPathname } = useContext(AppContext)
@@ -60,6 +64,13 @@ export function ArticleLayout({
   return (
     <Container className="mt-16 lg:mt-32">
       <div className="xl:relative">
+        {toc && toc.length >= 3 && (
+          <div className="hidden xl:block xl:absolute xl:top-2 xl:left-[max(0px,calc(50%+24rem+2rem))] xl:w-56">
+            <div className="sticky top-24 max-h-[calc(100vh-8rem)] overflow-y-auto">
+              <TableOfContents items={toc} />
+            </div>
+          </div>
+        )}
         <div className="mx-auto max-w-3xl">
           {previousPathname && (
             <button

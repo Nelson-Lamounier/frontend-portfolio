@@ -12,6 +12,7 @@
 
 import { MDXRemote } from 'next-mdx-remote/rsc'
 import remarkGfm from 'remark-gfm'
+import rehypeSlug from 'rehype-slug'
 
 import { Callout } from './Callout'
 import { CodeBlock } from './CodeBlock'
@@ -105,10 +106,17 @@ export function MDXRenderer({ source }: MDXRendererProps) {
   // The next-mdx-remote Acorn parser notoriously silently drops multi-line template literals
   // in JSX props, causing Mermaid props to evaluate to `{}`. We intercept and rewrite these 
   // custom formats directly to conventional MDX codeblocks prior to AST compilation.
-  const sanitizedSource = source.replace(
-    /<MermaidChart\s+chart=\{\s*`([\s\S]*?)`\s*\}\s*\/>/g,
-    '```mermaid\n$1\n```'
-  )
+  const sanitizedSource = source
+    .replace(
+      /<MermaidChart\s+chart=\{\s*`([\s\S]*?)`\s*\}\s*\/>/g,
+      '```mermaid\n$1\n```'
+    )
+    // The article pipeline's evidence-gap markers are HTML comments
+    // (`<!-- EVIDENCE_GAP: ... -->`). They are internal signals grepped by QA,
+    // never reader content, and MDX v2 rejects raw HTML comments — strip them
+    // before compilation. Targeted to the marker so genuine `<!-- -->` inside
+    // code samples is left intact.
+    .replace(/<!--\s*EVIDENCE_GAP[\s\S]*?-->/gi, '')
 
   return (
     <MDXRemote
@@ -118,6 +126,8 @@ export function MDXRenderer({ source }: MDXRendererProps) {
         parseFrontmatter: true,
         mdxOptions: {
           remarkPlugins: [remarkGfm],
+          // Stamp heading `id`s so the generated TOC anchors resolve.
+          rehypePlugins: [rehypeSlug],
         },
       }}
     />
