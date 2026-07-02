@@ -63,6 +63,7 @@
     "react": "^19",
     "react-dom": "^19",
     "rehype-prism-plus": "2",
+    "rehype-slug": "^6.0.0",
     "remark-gfm": "4",
     "tailwindcss": "^4.1.15",
     "typescript": "^5.8.3",

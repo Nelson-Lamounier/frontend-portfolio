@@ -17,6 +17,7 @@ import { notFound } from 'next/navigation'
 import type { Metadata } from 'next'
 
 import { ArticleLayout, MDXRenderer } from '@/components/articles'
+import { extractToc } from '@/lib/articles/extract-toc'
 import {
   generateArticleJsonLd,
   generateArticleMetadata,
@@ -105,7 +106,10 @@ export default async function DynamicArticlePage({
   // 3. Generate JSON-LD structured data
   const jsonLd = generateArticleJsonLd(metadata)
 
-  // 4. Build the article object for ArticleLayout
+  // 4. Table of contents from the heading tree (the pipeline no longer emits one)
+  const toc = extractToc(detail.content.content)
+
+  // 5. Build the article object for ArticleLayout
   const article = {
     slug: metadata.slug,
     title: metadata.title,
@@ -126,7 +130,7 @@ export default async function DynamicArticlePage({
         dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
       />
 
-      <ArticleLayout article={article}>
+      <ArticleLayout article={article} toc={toc}>
         <MDXRenderer source={detail.content.content} />
       </ArticleLayout>
     </>

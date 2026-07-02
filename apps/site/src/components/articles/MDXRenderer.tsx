@@ -12,6 +12,7 @@
 
 import { MDXRemote } from 'next-mdx-remote/rsc'
 import remarkGfm from 'remark-gfm'
+import rehypeSlug from 'rehype-slug'
 
 import { Callout } from './Callout'
 import { CodeBlock } from './CodeBlock'
@@ -118,6 +119,8 @@ export function MDXRenderer({ source }: MDXRendererProps) {
         parseFrontmatter: true,
         mdxOptions: {
           remarkPlugins: [remarkGfm],
+          // Stamp heading `id`s so the generated TOC anchors resolve.
+          rehypePlugins: [rehypeSlug],
         },
       }}
     />
