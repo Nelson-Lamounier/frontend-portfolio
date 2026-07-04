@@ -2,8 +2,9 @@
 /**
  * Static Assets S3 Sync Script
  *
- * Syncs Next.js static assets (.next/static) to S3 for CloudFront serving
- * and invalidates the CloudFront cache.
+ * Syncs Next.js static assets (.next/static) to S3. (CloudFront has been
+ * retired — the Next.js pod serves static assets directly — so there is no
+ * cache invalidation step; see docs/concepts/request-routing-dns-to-pod.md.)
  *
  * Usage:
  *   npx tsx scripts/sync-static-to-s3.ts --env development --region eu-west-1
@@ -24,10 +25,6 @@ import {
     ListObjectsV2Command,
     DeleteObjectsCommand,
 } from '@aws-sdk/client-s3'
-import {
-    CloudFrontClient,
-    CreateInvalidationCommand,
-} from '@aws-sdk/client-cloudfront'
 import { SSMClient, GetParameterCommand } from '@aws-sdk/client-ssm'
 import { lookup as mimeType } from 'mime-types'
 
@@ -57,7 +54,6 @@ function parseArgs(): Record<string, string | boolean> {
 const args = parseArgs()
 const region = (args['region'] as string) || 'eu-west-1'
 const environment = (args['env'] as string) || 'development'
-const skipInvalidation = Boolean(args['skip-invalidation'])
 
 // =============================================================================
 // Helpers
@@ -102,10 +98,10 @@ async function main(): Promise<void> {
         process.exit(1)
     }
     const allFiles = getAllFiles(staticDir)
-    console.log(`[1/5] Found ${allFiles.length} static assets`)
+    console.log(`[1/4] Found ${allFiles.length} static assets`)
 
     // ── Step 2: Resolve S3 bucket from SSM ─────────────────────────────────
-    console.log('[2/5] Resolving S3 bucket from SSM...')
+    console.log('[2/4] Resolving S3 bucket from SSM...')
     const bucketRaw =
         (await getSSMParam(`/nextjs/${environment}/assets-bucket-name`)) ??
         (await getSSMParam(`/nextjs/${environment}/s3/static-assets-bucket`))
@@ -116,12 +112,12 @@ async function main(): Promise<void> {
         process.exit(1)
     }
     const bucket = bucketRaw.replace(/^s3:\/\//, '').replace(/\/$/, '')
-    console.log(`[2/5] Bucket: ${bucket}`)
+    console.log(`[2/4] Bucket: ${bucket}`)
 
     const s3 = new S3Client({ region })
 
     // ── Step 3: Upload static assets ───────────────────────────────────────
-    console.log('[3/5] Uploading .next/static → S3 _next/static/...')
+    console.log('[3/4] Uploading .next/static → S3 _next/static/...')
     let uploaded = 0
     for (const filePath of allFiles) {
         const rel = relative(staticDir, filePath)
@@ -138,12 +134,12 @@ async function main(): Promise<void> {
         )
         uploaded++
     }
-    console.log(`[3/5] Uploaded ${uploaded} files`)
+    console.log(`[3/4] Uploaded ${uploaded} files`)
 
     // ── Step 4: BlueGreen-safe cleanup ─────────────────────────────────────
     // Keep current build ID + most recent previous build ID.
     // Shared dirs (chunks/css/media) are never deleted.
-    console.log('[4/5] Cleaning stale build IDs from S3...')
+    console.log('[4/4] Cleaning stale build IDs from S3...')
 
     const sharedDirs = new Set(['chunks', 'css', 'media'])
 
@@ -191,39 +187,9 @@ async function main(): Promise<void> {
                 }),
             )
         }
-        console.log(`[4/5] Deleted ${stale.length} stale files (kept build IDs: ${[...keep].join(', ')})`)
+        console.log(`[4/4] Deleted ${stale.length} stale files (kept build IDs: ${[...keep].join(', ')})`)
     } else {
-        console.log('[4/5] No stale files to delete')
-    }
-
-    // ── Step 5: CloudFront invalidation ────────────────────────────────────
-    if (skipInvalidation) {
-        console.log('[5/5] Skipping CloudFront invalidation (--skip-invalidation)')
-    } else {
-        console.log('[5/5] Invalidating CloudFront...')
-        // CloudFront SSM param lives in us-east-1 (global service)
-        const distId = await getSSMParam(
-            `/nextjs/${environment}/cloudfront/distribution-id`,
-            'us-east-1',
-        )
-        if (!distId) {
-            console.warn('[WARN] CloudFront distribution ID not found in SSM — skipping invalidation')
-        } else {
-            const cf = new CloudFrontClient({ region: 'us-east-1' })
-            const res = await cf.send(
-                new CreateInvalidationCommand({
-                    DistributionId: distId,
-                    InvalidationBatch: {
-                        CallerReference: `sync-${Date.now()}`,
-                        Paths: {
-                            Quantity: 3,
-                            Items: ['/_next/static/*', '/_next/data/*', '/images/*'],
-                        },
-                    },
-                }),
-            )
-            console.log(`[5/5] Invalidation created: ${res.Invalidation?.Id}`)
-        }
+        console.log('[4/4] No stale files to delete')
     }
 
     console.log(`\n✓ Sync complete — ${uploaded} files → s3://${bucket}/_next/static/\n`)

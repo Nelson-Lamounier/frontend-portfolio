@@ -2,7 +2,7 @@
  * @format
  * Chat Types
  *
- * TypeScript interfaces for the Bedrock Agent chatbot feature.
+ * TypeScript interfaces for the Bedrock RAG chatbot feature.
  * Covers message models, API request/response contracts, and widget state.
  */
 
@@ -13,7 +13,7 @@
 /**
  * Roles in a chat conversation.
  * - `user`  — the site visitor
- * - `agent` — the Bedrock Agent (Claude 3.5 Haiku + Portfolio KB)
+ * - `agent` — the Bedrock RAG chatbot (Claude Sonnet 4.6 + Portfolio KB)
  */
 export type ChatRole = 'user' | 'agent'
 

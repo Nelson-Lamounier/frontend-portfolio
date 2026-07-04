@@ -242,7 +242,7 @@ jobs:
           echo "- **Tag**: ${{ env.IMAGE_TAG }} ✅" >> $GITHUB_STEP_SUMMARY
 
   # ---------------------------------------------------------------------------
-  # Sync site static assets to S3 + invalidate CloudFront
+  # Sync site static assets to S3
   # ---------------------------------------------------------------------------
   sync-assets:
     name: "[Site] Sync Static Assets"

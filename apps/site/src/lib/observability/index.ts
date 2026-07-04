@@ -18,8 +18,6 @@ export { initialiseFaro } from './faro'
 
 export {
   trackArticleRequest,
-  trackDynamoDBCache,
-  trackDynamoDB,
   httpRequestSize,
   httpResponseSize,
 } from './metrics'

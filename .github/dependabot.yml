@@ -1,0 +1,50 @@
+# Dependabot configuration.
+#
+# Automates dependency and security updates as grouped, CI-verified PRs. This is
+# the sustainable path for the transitive vulnerabilities in yarn.lock (AWS SDK,
+# OpenTelemetry/gRPC, and build tooling) — each PR runs the full CI gate, so a
+# bump that breaks the suite is caught before merge instead of hand-patching the
+# lockfile in bulk.
+version: 2
+
+updates:
+  # ---- Application & tooling dependencies (Yarn workspaces) ----
+  - package-ecosystem: "npm"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    open-pull-requests-limit: 10
+    labels:
+      - "dependencies"
+    groups:
+      # Roll all security fixes (mostly transitive) into a single PR to cut noise.
+      security-updates:
+        applies-to: security-updates
+        patterns:
+          - "*"
+      # Cluster the noisy multi-package SDKs so they update together.
+      aws-sdk:
+        applies-to: version-updates
+        patterns:
+          - "@aws-sdk/*"
+          - "@smithy/*"
+      opentelemetry:
+        applies-to: version-updates
+        patterns:
+          - "@opentelemetry/*"
+          - "@grpc/*"
+      # Everything else: batch minor/patch bumps; leave majors as individual PRs.
+      minor-and-patch:
+        applies-to: version-updates
+        update-types:
+          - "minor"
+          - "patch"
+
+  # ---- GitHub Actions used by the CI/CD workflows ----
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    labels:
+      - "dependencies"
+      - "github-actions"

@@ -14,6 +14,8 @@ import { MDXRemote } from 'next-mdx-remote/rsc'
 import remarkGfm from 'remark-gfm'
 import rehypeSlug from 'rehype-slug'
 
+import { sanitizeMdx } from '@/lib/articles/sanitize-mdx'
+
 import { Callout } from './Callout'
 import { CodeBlock } from './CodeBlock'
 import { ImageRequest } from './ImageRequest'
@@ -102,21 +104,9 @@ interface MDXRendererProps {
  * ```
  */
 export function MDXRenderer({ source }: MDXRendererProps) {
-  // AWS Bedrock occasionally injects diagrams via <MermaidChart chart={`...`} />
-  // The next-mdx-remote Acorn parser notoriously silently drops multi-line template literals
-  // in JSX props, causing Mermaid props to evaluate to `{}`. We intercept and rewrite these 
-  // custom formats directly to conventional MDX codeblocks prior to AST compilation.
-  const sanitizedSource = source
-    .replace(
-      /<MermaidChart\s+chart=\{\s*`([\s\S]*?)`\s*\}\s*\/>/g,
-      '```mermaid\n$1\n```'
-    )
-    // The article pipeline's evidence-gap markers are HTML comments
-    // (`<!-- EVIDENCE_GAP: ... -->`). They are internal signals grepped by QA,
-    // never reader content, and MDX v2 rejects raw HTML comments — strip them
-    // before compilation. Targeted to the marker so genuine `<!-- -->` inside
-    // code samples is left intact.
-    .replace(/<!--\s*EVIDENCE_GAP[\s\S]*?-->/gi, '')
+  // Rewrite the pipeline's acorn-hostile constructs (Mermaid template-literal
+  // props, EVIDENCE_GAP HTML comments, `{#anchor}` heading IDs) before compile.
+  const sanitizedSource = sanitizeMdx(source)
 
   return (
     <MDXRemote
