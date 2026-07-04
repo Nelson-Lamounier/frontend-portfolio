@@ -4168,6 +4168,17 @@ __metadata:
   languageName: node
   linkType: hard
 
+"@opentelemetry/core@npm:^2.8.0":
+  version: 2.8.0
+  resolution: "@opentelemetry/core@npm:2.8.0"
+  dependencies:
+    "@opentelemetry/semantic-conventions": "npm:^1.29.0"
+  peerDependencies:
+    "@opentelemetry/api": ">=1.0.0 <1.10.0"
+  checksum: 10c0/35b8a464b359a0699fcbcea8c11a883f0f634ee7638719b89fa0c0cbbaaa38c57db22e9ac19ffb15ce18014751dc7db11a26d7fb6ad6259f89a26bdc4d167e4b
+  languageName: node
+  linkType: hard
+
 "@opentelemetry/exporter-logs-otlp-grpc@npm:0.217.0":
   version: 0.217.0
   resolution: "@opentelemetry/exporter-logs-otlp-grpc@npm:0.217.0"
@@ -15760,7 +15771,7 @@ __metadata:
     "@next/mdx": "npm:~15.5.18"
     "@opentelemetry/api": "npm:^1.9.0"
     "@opentelemetry/auto-instrumentations-node": "npm:^0.75.0"
-    "@opentelemetry/core": "npm:^2.0.0"
+    "@opentelemetry/core": "npm:^2.8.0"
     "@opentelemetry/exporter-prometheus": "npm:^0.217.0"
     "@opentelemetry/exporter-trace-otlp-grpc": "npm:^0.211.0"
     "@opentelemetry/id-generator-aws-xray": "npm:^2.1.0"
