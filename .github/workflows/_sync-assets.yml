@@ -73,7 +73,7 @@ jobs:
       # ── Fast path: restore pre-extracted static assets ──────────────
       - name: Restore Static Assets from Cache
         if: inputs.static-cache-key-prefix != ''
-        uses: actions/cache/restore@cdf6c1fa76f9f475f3d7449005a359c84ca0f306 # v5.0.3
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: ${{ inputs.static-cache-path }}
           key: ${{ inputs.static-cache-key-prefix }}-${{ inputs.environment }}-${{ github.run_id }}-${{ github.run_attempt }}
@@ -95,7 +95,7 @@ jobs:
       # ── Legacy path: restore full Docker image ───────────────────────
       - name: Restore Docker Image from Cache
         if: inputs.static-cache-key-prefix == ''
-        uses: actions/cache/restore@cdf6c1fa76f9f475f3d7449005a359c84ca0f306 # v5.0.3
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: ${{ inputs.image-cache-path }}
           key: ${{ inputs.image-cache-key-prefix }}-${{ inputs.environment }}-${{ github.run_id }}-${{ github.run_attempt }}
