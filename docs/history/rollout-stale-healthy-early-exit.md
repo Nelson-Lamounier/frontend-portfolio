@@ -1,12 +1,21 @@
 ---
-title: Rollout promotion exits early on a stale-Healthy rollout
-type: troubleshooting
-tags: [argo-rollouts, kubernetes, ci-cd, ssm, deployment]
+title: Rollout promotion exits early on a stale-Healthy rollout (archived)
+type: history
+status: superseded
+tags: [argo-rollouts, kubernetes, ci-cd, ssm, deployment, archived]
 sources:
   - .github/workflows/deploy-frontend.yml
 created: 2026-06-23
-updated: 2026-06-23
+updated: 2026-07-04
 ---
+
+> [!NOTE]
+> **Archived — the failure it describes no longer exists.** This was a
+> troubleshooting note for the `promote-site` job's spec-sync-before-Paused race.
+> That GitHub-driven promote step was **removed** (PR #9); the blue-green cutover
+> is now auto-promoted in-cluster by ArgoCD + Argo Rollouts. See
+> [CD pipeline](../concepts/cd-pipeline.md). Kept for provenance; line references
+> point at a removed version of `deploy-frontend.yml`.
 
 ## Symptom
 

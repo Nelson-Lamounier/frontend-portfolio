@@ -1,94 +1,120 @@
 ---
-title: Frontend deploy pipeline (Argo Rollouts blue-green via SSM)
+title: Frontend deploy pipeline (GitHub Actions → ECR → ArgoCD blue-green)
 type: runbook
-tags: [operations, ci-cd, argo-rollouts, kubernetes, aws, ecr, cloudfront, ssm, github-actions]
+tags: [operations, ci-cd, github-actions, ecr, ssm, argocd, argo-rollouts, kubernetes, s3]
 sources:
   - .github/workflows/deploy-frontend.yml
+  - .github/workflows/_sync-assets.yml
 created: 2026-06-23
-updated: 2026-06-23
+updated: 2026-07-04
 ---
 
 ## When to run this
 
-The pipeline runs automatically on push to the deploy branch, via
-`workflow_dispatch`, or via `repository_dispatch` from an upstream
-infrastructure pipeline
-([deploy-frontend.yml:20-31](../../.github/workflows/deploy-frontend.yml#L20-L31)).
-Use this doc to understand the stages, to dispatch a manual deploy, or to
-intervene when a rollout stalls.
+The [`deploy-frontend.yml`](../../.github/workflows/deploy-frontend.yml) pipeline
+is GitHub-led: it builds and publishes the image, then hands off to ArgoCD (see
+[CD pipeline](../concepts/cd-pipeline.md) for the design). It runs on
+([deploy-frontend.yml:21-34](../../.github/workflows/deploy-frontend.yml#L21-L34)):
+
+- a **push to `main`** (normally a merged PR) — auto-deploys to development;
+- **`workflow_dispatch`** — a manual run with an optional `frontend-ref`;
+- **`repository_dispatch`** (`deploy-nextjs-dev`) — a cross-repo trigger.
+
+Use this doc to understand the stages, dispatch a manual deploy, or intervene when
+a rollout stalls.
 
 ## Prerequisites
 
 - A GitHub OIDC role assumable by the workflow (`secrets.AWS_OIDC_ROLE`); no
-  static AWS keys.
-- SSM parameters present: the shared ECR repository URI and the per-environment
-  image URI / kubeconfig parameters the jobs read and write.
-- A running control-plane EC2 node (tagged for discovery) reachable via SSM, and
-  an in-cluster `k8s-runner` GitHub Actions runner for the smoke test.
-- The `nextjs` Argo Rollout in namespace `nextjs-app`
-  ([deploy-frontend.yml:369-370](../../.github/workflows/deploy-frontend.yml#L369-L370)).
+  static AWS keys ([configure-aws/action.yml](../../.github/actions/configure-aws/action.yml)).
+- SSM parameters present: the shared ECR repository URI
+  (`/shared/ecr/<env>/repository-uri`) which the jobs read, and the per-environment
+  image URI (`/nextjs/<env>/image-uri`) which `deploy-site` writes.
+- **In the cluster** (not GitHub's concern): ArgoCD Image Updater watching the
+  `nextjs` image, and the `nextjs` Argo Rollout in its namespace configured for
+  blue-green with auto-promotion.
 
-## Procedure
+## Procedure — the GitHub-led jobs
 
-The workflow executes these jobs in order
-([deploy-frontend.yml:53-616](../../.github/workflows/deploy-frontend.yml#L53-L616)):
+The workflow runs six jobs in order
+([deploy-frontend.yml:51-361](../../.github/workflows/deploy-frontend.yml#L51-L361)):
 
-1. **resolve-targets** — decide whether the site should deploy.
-2. **build-site** — build the Docker image and extract the static Next.js
-   assets for S3.
-3. **push-site** — resolve the ECR URL from SSM and push the image.
-4. **sync-assets** — sync the extracted static assets to S3/CloudFront.
-5. **deploy-site** — write the promoted image URI to SSM.
-6. **promote-site** — over an SSM `AWS-RunShellScript` document
-   ([deploy-frontend.yml:443](../../.github/workflows/deploy-frontend.yml#L443)),
-   wait for ArgoCD Image Updater to set the rollout spec to the new tag, wait
-   for the rollout to reach `Paused`, then run `kubectl argo rollouts promote`
-   ([deploy-frontend.yml:421](../../.github/workflows/deploy-frontend.yml#L421)).
-   It must not enter the Paused loop until the spec already references the new
-   tag, or a still-`Healthy` (old image) rollout causes an early exit.
-7. **smoke-site** — on the in-cluster `k8s-runner`, build a kubeconfig from SSM
-   (rewriting the API server to `kubernetes.default.svc`)
-   ([deploy-frontend.yml:519](../../.github/workflows/deploy-frontend.yml#L519))
-   and assert the rollout phase is `Healthy` and the active image matches the
-   deployed tag
-   ([deploy-frontend.yml:527-528](../../.github/workflows/deploy-frontend.yml#L527-L528)).
+1. **resolve-targets** — resolve the git ref to deploy
+   ([:55-76](../../.github/workflows/deploy-frontend.yml#L55-L76)).
+2. **build-site** — build the Docker image (Buildx + GHA cache) and extract the
+   Next.js static assets for the S3 sync. The image tag is
+   `${github.sha}-r${run_attempt}` so retries never overwrite an ECR tag
+   ([:85-170](../../.github/workflows/deploy-frontend.yml#L85-L170)).
+3. **push-site** — assume the OIDC role, resolve the ECR URI from SSM, push the
+   image ([:175-242](../../.github/workflows/deploy-frontend.yml#L175-L242)).
+4. **sync-assets** — the reusable
+   [`_sync-assets.yml`](../../.github/workflows/_sync-assets.yml) uploads static
+   assets to S3. (CloudFront has been retired and its invalidation step removed;
+   the pod serves static assets directly, so this sync is outside the request path)
+   ([:247-257](../../.github/workflows/deploy-frontend.yml#L247-L257)).
+5. **deploy-site** — write the new image URI to `/nextjs/<env>/image-uri` in SSM.
+   **This is the hand-off to ArgoCD**
+   ([:262-313](../../.github/workflows/deploy-frontend.yml#L262-L313)).
+6. **summary** — report per-stage results
+   ([:319-361](../../.github/workflows/deploy-frontend.yml#L319-L361)).
+
+After job 5, GitHub's work is done. **ArgoCD Image Updater** detects the new tag
+and **Argo Rollouts auto-promotes** the blue-green cutover in-cluster — there is
+no GitHub-driven `promote` or in-cluster smoke step.
 
 To trigger manually: run the workflow via `workflow_dispatch` from the Actions
-tab.
+tab (optionally set `frontend-ref`).
 
 ## Verification
 
-The smoke-site job is the built-in verification. To check by hand from a host
-with cluster access:
+The GitHub side is verified by the pipeline itself: a green `summary` job means
+the image is in ECR, static assets are synced to S3, and the SSM parameter is
+updated. To confirm the **in-cluster** rollout from a host with cluster access:
 
 ```bash
+# Is the SSM hand-off value what you expect?
+aws ssm get-parameter --name /nextjs/development/image-uri --query 'Parameter.Value' --output text
+
+# Did ArgoCD/Argo Rollouts promote it?
 kubectl argo rollouts get rollout nextjs -n nextjs-app
-kubectl get rollout nextjs -n nextjs-app -o jsonpath='{.status.phase}'
+kubectl get rollout nextjs -n nextjs-app -o jsonpath='{.status.phase}{"\n"}'
+kubectl get rollout nextjs -n nextjs-app -o jsonpath='{.spec.template.spec.containers[0].image}{"\n"}'
 ```
 
 A successful deploy ends with the rollout `Healthy` and the active image
-referencing the new tag.
+referencing the tag GitHub pushed.
 
 ## Rollback
 
-The promote job aborts automatically if the rollout reports `Degraded` or
-`Error`. To roll back manually:
+Because GitHub only publishes the artifact, rollback happens on the cluster side.
+Blue-green keeps the previous (stable) ReplicaSet serving until promotion, so a
+failed candidate never takes over. To roll back a completed promotion:
 
 ```bash
 kubectl argo rollouts undo nextjs -n nextjs-app
 kubectl argo rollouts get rollout nextjs -n nextjs-app   # confirm Healthy on prior revision
 ```
 
-Because the strategy is blue-green, aborting before promotion keeps the stable
-(previous) ReplicaSet serving traffic, so a failed candidate never takes over.
+To redeploy a known-good build, re-run the workflow via `workflow_dispatch` with
+that commit's `frontend-ref`.
 
-## Deeper detail
+## Troubleshooting
 
-- (planned) docs/concepts/blue-green-rollout-via-ssm.md — why promotion is
-  driven over SSM Run Command and the Paused-loop race it avoids
-- (planned) docs/troubleshooting/rollout-stale-healthy-early-exit.md
+- **Green pipeline but ArgoCD didn't promote** — check ArgoCD Image Updater is
+  running and watching the repository, and that `/nextjs/<env>/image-uri` holds
+  the new tag. The hand-off is asynchronous; GitHub reports success once SSM is
+  written, not once the rollout is Healthy.
+- **ECR push denied** — confirm `AWS_OIDC_ROLE` and that
+  `/shared/ecr/<env>/repository-uri` resolves
+  ([:209-223](../../.github/workflows/deploy-frontend.yml#L209-L223)).
+
+## Related
+
+- [CD pipeline](../concepts/cd-pipeline.md) — the GitHub-leads / ArgoCD-follows design
+- [CI pipeline & branch strategy](../concepts/ci-pipeline.md) — what runs before a merge to `main`
 
 <!--
-Evidence trail (auto-generated):
-- Source: .github/workflows/deploy-frontend.yml (read on 2026-06-23)
+Evidence trail:
+- Source: .github/workflows/deploy-frontend.yml (read 2026-07-04) — 6 jobs; promote-site & smoke-site removed (PRs #9, #10)
+- Source: .github/workflows/_sync-assets.yml (read 2026-07-04)
 -->

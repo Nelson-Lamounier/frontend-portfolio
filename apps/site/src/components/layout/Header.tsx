@@ -1,5 +1,22 @@
 'use client'
 
+/**
+ * Site header — three concerns in one client component:
+ *
+ * 1. Navigation — a Headless UI `Popover` on mobile (`MobileNavigation`) and an
+ *    inline nav on desktop (`DesktopNavigation`); `NavItem` underlines the route
+ *    matching the current `usePathname()`.
+ * 2. Theme toggle — `ThemeToggle` flips `next-themes` between light/dark.
+ * 3. Scroll-driven layout — on the home page the large avatar shrinks and slides
+ *    into the header bar as the user scrolls.
+ *
+ * The scroll effect (see the `useEffect` in `Header`) does NOT animate elements
+ * directly. It writes CSS custom properties (`--header-height`,
+ * `--avatar-image-transform`, …) onto `document.documentElement`, and the JSX /
+ * stylesheet reads those vars via `style={{ ... 'var(--…)' }}`. So the movement
+ * you see lives in CSS; this file only computes the numbers on scroll/resize.
+ */
+
 import { useEffect, useRef, useState } from 'react'
 import Image from 'next/image'
 import Link from 'next/link'
@@ -177,6 +194,9 @@ function DesktopNavigation(props: React.ComponentPropsWithoutRef<'nav'>) {
 function ThemeToggle() {
   const { resolvedTheme, setTheme } = useTheme()
   const otherTheme = resolvedTheme === 'dark' ? 'light' : 'dark'
+  // `resolvedTheme` is unknown during SSR/first paint, so the aria-label would
+  // differ between server and client. Gate on `mounted` to render a neutral
+  // label until after hydration, avoiding a React hydration mismatch warning.
   const [mounted, setMounted] = useState(false)
 
   useEffect(() => {
@@ -250,9 +270,19 @@ export function Header() {
 
   const headerRef = useRef<React.ElementRef<'div'>>(null)
   const avatarRef = useRef<React.ElementRef<'div'>>(null)
+  // Distinguishes the very first `updateStyles()` pass (on mount) from later
+  // scroll/resize passes so the initial paint sets positions without a
+  // transition flash. Flipped to false at the end of the first `updateStyles()`.
   const isInitial = useRef(true)
 
+  // Scroll/resize engine: recompute the CSS custom properties that drive the
+  // sticky header height and the home-page avatar shrink. Runs once on mount,
+  // then on every passive scroll and resize; re-subscribes when `isHomePage`
+  // changes (the avatar effect only applies on the home page).
   useEffect(() => {
+    // `downDelay` = the avatar's natural offset from the top; scrolling past it
+    // is what pins the header. `upDelay` = px of upward scroll tolerated before
+    // the header starts collapsing.
     const downDelay = avatarRef.current?.offsetTop ?? 0
     const upDelay = 64
 
@@ -282,6 +312,9 @@ export function Header() {
 
       setProperty('--content-offset', `${downDelay}px`)
 
+      // Three regimes: (1) at/near the top — header spans avatar + bar height;
+      // (2) scrolled well past the header — grow height to keep it pinned;
+      // (3) header just touching the top edge — track scroll 1:1 during handoff.
       if (isInitial.current || scrollY < downDelay) {
         setProperty('--header-height', `${downDelay + height}px`)
         setProperty('--header-mb', `${-downDelay}px`)
@@ -310,6 +343,11 @@ export function Header() {
         return
       }
 
+      // Linearly interpolate the avatar from full size (64px) down to the
+      // header-bar size (36px) and nudge it right as the user scrolls from the
+      // top (scrollY 0) down to `downDelay`. The border ring is scaled by the
+      // inverse so its stroke width stays visually constant, then faded in only
+      // once the avatar reaches its final (docked) scale.
       const fromScale = 1
       const toScale = 36 / 64
       const fromX = 0
