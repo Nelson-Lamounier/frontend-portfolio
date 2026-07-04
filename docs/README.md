@@ -11,6 +11,8 @@ single self-contained topic, optimised for retrieval.
   — what CI does and why; trunk-based branch/PR/trigger model (GitHub leads)
 - [The "Lami" chatbot — RAG architecture, workflow & guardrails](./concepts/chatbot-architecture.md)
   — the portfolio's differentiator: full RAG pipeline, model stack, owner scoping, guardrails
+- [Dependency security — Dependabot & transitive-vuln triage](./concepts/dependency-security.md)
+  — the two audit sources, grouped CI-verified auto-updates, and the verified manual bump recipe
 - [CD pipeline — GitHub Actions to ECR, then ArgoCD](./concepts/cd-pipeline.md)
   — GitHub builds & pushes to ECR/SSM; ArgoCD + Argo Rollouts auto-promote downstream
 - [Request routing — DNS to EKS pod](./concepts/request-routing-dns-to-pod.md)
@@ -46,6 +48,8 @@ single self-contained topic, optimised for retrieval.
   — how to troubleshoot the app, the `justfile` automation inventory, and a symptom → fix map
 - [Local dev & cluster access (networking)](./troubleshooting/local-dev-and-cluster-access.md)
   — SSO, kube context, the `just site-rds` BFF port-forward, and its failure modes
+- [MDX test suites fail with "Unexpected token 'export'" (next/jest + ESM)](./troubleshooting/next-jest-esm-transform.md)
+  — the flaky, hoisting-dependent Jest ESM-transform failure and the deterministic fix
 - [prom-client metrics break under Next.js bundling](./troubleshooting/prom-client-singleton-registry.md)
   — duplicate registry / Edge-runtime warnings and the fix
 

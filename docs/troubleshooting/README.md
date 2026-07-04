@@ -68,6 +68,7 @@ Climb only as far as the symptom requires:
 | Symptom | Likely area | Start here |
 | --- | --- | --- |
 | Lint / type / test / build fails | code | `just ci`, then the failing step |
+| MDX test suite fails "Unexpected token 'export'" (flaky) | jest ESM transform | [next/jest ESM transform](./next-jest-esm-transform.md) |
 | Container builds but won't boot / `/api/health` fails | runtime / env | `just site-up` logs; [CI pipeline](../concepts/ci-pipeline.md) |
 | `/api/metrics` hangs or 500s | metrics / SSM | [prom-client singleton registry](./prom-client-singleton-registry.md) |
 | Articles list empty, resume 204, chat 502/504 | BFF unreachable | [cluster-access runbook](./local-dev-and-cluster-access.md); [BFF consumer](../concepts/in-cluster-bff-consumer.md) |
@@ -97,8 +98,13 @@ for the full `kubectl`/`aws` command set.
 
 - [Local dev & cluster access (networking)](./local-dev-and-cluster-access.md) —
   SSO, kube context, the `just site-rds` port-forward, and its failure modes
+- [MDX test suites fail with "Unexpected token 'export'"](./next-jest-esm-transform.md) —
+  the flaky, hoisting-dependent next/jest ESM-transform failure and the fix
 - [prom-client metrics break under Next.js bundling](./prom-client-singleton-registry.md) —
   duplicate registry / Edge-runtime warnings and the fix
+
+For dependency/security-advisory handling (Dependabot, transitive-vuln triage),
+see [dependency security](../concepts/dependency-security.md).
 
 Historical (removed mechanisms) live in [docs/history/](../history/).
 
