@@ -17,6 +17,14 @@ Most personal portfolios are static pages you scroll. This one you can **talk to
 
 Ask it *"What has he built with Kubernetes?"* or *"Show me evidence of CI/CD design"* and it answers with specifics from the repos. **Full design → [The "Lami" chatbot — RAG architecture, workflow & guardrails](docs/concepts/chatbot-architecture.md).**
 
+## Live walkthrough
+
+A short tour of the live production site at **[nelsonlamounier.com](https://nelsonlamounier.com)** — the homepage hero with an interactive CI → Build → Test → Deploy animation, project case studies, technical articles, and the Lami chat assistant.
+
+<video src="https://github.com/Nelson-Lamounier/frontend-portfolio/raw/main/docs/assets/site-walkthrough.mp4" poster="https://github.com/Nelson-Lamounier/frontend-portfolio/raw/main/docs/assets/site-walkthrough-poster.png" controls muted width="100%"></video>
+
+> ▶️ If the player doesn't load in your viewer, [watch the walkthrough](docs/assets/site-walkthrough.mp4) or visit the [live site](https://nelsonlamounier.com).
+
 ## What it does
 
 Serves Nelson Lamounier's portfolio and technical-writing site: the **Lami RAG chatbot** (above), MDX articles, project case studies, a downloadable resume, and article engagement (likes/comments). The app holds **no AWS data credentials** — chat, articles, resume, and engagement are all read from an in-cluster `public-api` BFF backed by RDS Postgres, with the producer side (content + embedding pipeline) owned by separate services.
@@ -130,6 +138,10 @@ pod** with no CDN (CloudFront retired); see
 (`workflow_dispatch`, with an optional ref) or triggered cross-repo
 (`repository_dispatch`). See the
 [frontend deploy pipeline runbook](docs/runbooks/frontend-deploy-pipeline.md).
+
+![The deploy-frontend.yml CD pipeline: Resolve Deploy Target → Build Docker Image → Push to ECR → Sync Static Assets → Update SSM → ArgoCD → Deployment Summary, succeeding in under 5 minutes](docs/assets/deploy-pipeline.png)
+
+*A real `deploy-frontend.yml` run — build → push to ECR → SSM hand-off to ArgoCD, green in 4m 54s.*
 
 ## Related projects
 
