@@ -244,35 +244,19 @@ export function trackExternalApi(
 }
 
 // ============================================
-// DynamoDB & Article Service Metrics
+// Article Service Metrics
 // ============================================
+//
+// The site reads all article data from the in-cluster `public-api` BFF (RDS
+// Postgres) — it makes no direct DynamoDB/S3 calls at runtime (see
+// docs/concepts/in-cluster-bff-consumer.md). The `source` label therefore
+// reports the live data source, currently `rds-public-api`, or `none` when the
+// BFF is unreachable and reads degrade to empty. Metric names keep the
+// `nextjs_article_service_*` prefix (they are scraped identifiers).
 
 /**
- * DynamoDB SDK query/get duration in seconds.
- * Labels: operation (Query, GetItem), index (primary, gsi1, gsi2)
- */
-export const dynamoDBDuration = new Histogram({
-  name: 'nextjs_dynamodb_query_duration_seconds',
-  help: 'DynamoDB SDK call duration in seconds',
-  labelNames: ['operation', 'index'],
-  buckets: metricsConfig.buckets.dbQueryDuration,
-  registers: [register],
-});
-
-/**
- * DynamoDB SDK errors.
- * Labels: operation, error_type
- */
-export const dynamoDBErrors = new Counter({
-  name: 'nextjs_dynamodb_errors_total',
-  help: 'DynamoDB SDK call errors',
-  labelNames: ['operation', 'error_type'],
-  registers: [register],
-});
-
-/**
- * Article service requests.
- * Labels: operation, source (dynamodb-sdk, file-based, file-based-fallback), status (success, error)
+ * Article service requests, by operation and data source.
+ * Labels: operation, source ('rds-public-api' | 'none'), status ('success' | 'error')
  */
 export const articleServiceRequests = new Counter({
   name: 'nextjs_article_service_requests_total',
@@ -283,7 +267,7 @@ export const articleServiceRequests = new Counter({
 
 /**
  * Article service latency in seconds.
- * Labels: operation, source
+ * Labels: operation, source ('rds-public-api' | 'none')
  */
 export const articleServiceDuration = new Histogram({
   name: 'nextjs_article_service_duration_seconds',
@@ -293,56 +277,18 @@ export const articleServiceDuration = new Histogram({
   registers: [register],
 });
 
-/**
- * Current data source gauge (1 = active).
- * Labels: source (dynamodb-sdk, file-based, none)
- */
-export const articleDataSource = new Gauge({
-  name: 'nextjs_article_data_source',
-  help: 'Currently active data source (1 = active)',
-  labelNames: ['source'],
-  registers: [register],
-});
-
-/**
- * In-memory TTL cache hit/miss counts for the DynamoDB data layer.
- * Labels: cache_key_prefix (published-articles, metadata, tag)
- */
-export const dynamoDBCacheHits = new Counter({
-  name: 'nextjs_dynamodb_cache_hits_total',
-  help: 'DynamoDB TTL cache hits',
-  labelNames: ['cache_key_prefix'],
-  registers: [register],
-});
-
-export const dynamoDBCacheMisses = new Counter({
-  name: 'nextjs_dynamodb_cache_misses_total',
-  help: 'DynamoDB TTL cache misses',
-  labelNames: ['cache_key_prefix'],
-  registers: [register],
-});
-
 // ============================================
-// DynamoDB & Article Service Helpers
+// Article Service Helpers
 // ============================================
 
 /**
- * Track a DynamoDB SDK call
- */
-export function trackDynamoDB(
-  operation: string,
-  index: string,
-  durationSeconds: number,
-  error?: string
-) {
-  dynamoDBDuration.observe({ operation, index }, durationSeconds);
-  if (error) {
-    dynamoDBErrors.inc({ operation, error_type: error });
-  }
-}
-
-/**
- * Track an article service request
+ * Track an article service request: increments the request counter and
+ * observes latency, both labelled by operation and data source.
+ *
+ * @param operation - e.g. 'getAllArticles', 'getArticleBySlug'
+ * @param source - live data source, e.g. 'rds-public-api' or 'none'
+ * @param status - 'success' or 'error'
+ * @param durationSeconds - elapsed wall-clock time in seconds
  */
 export function trackArticleRequest(
   operation: string,
@@ -352,16 +298,5 @@ export function trackArticleRequest(
 ) {
   articleServiceRequests.inc({ operation, source, status });
   articleServiceDuration.observe({ operation, source }, durationSeconds);
-}
-
-/**
- * Track DynamoDB TTL cache hit/miss
- */
-export function trackDynamoDBCache(cacheKeyPrefix: string, hit: boolean) {
-  if (hit) {
-    dynamoDBCacheHits.inc({ cache_key_prefix: cacheKeyPrefix });
-  } else {
-    dynamoDBCacheMisses.inc({ cache_key_prefix: cacheKeyPrefix });
-  }
 }
 
