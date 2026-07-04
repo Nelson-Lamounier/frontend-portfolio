@@ -153,10 +153,11 @@ what shipped. Gaps 6–7 are Faro SDK capture-config changes, left as follow-up.
    the **Faro receiver going down** (which silently blinds all of RUM).
    *Shipped:* `observability:rum` rule group — **FaroReceiverAbsent** and
    **FaroReceiverIngestLatencyHigh**. (A CWV-regression alert is still open.)
-6. **INP/CLS lack attribution.** INP is a single p75 with no breakdown by
-   interaction target; CLS has no "which elements shifted". This is a Faro
-   capture-config question, but worth noting — the current panels tell you *that*
-   INP/CLS are poor, not *what* to fix.
+6. ✅ **CLS lacked page attribution** (INP still does). The rating pie said
+   "needs-improvement" without a *where*. *Shipped* (kb #186): a **CLS p75 by
+   page** table in the Slowest-pages row — live data pins it on the article
+   pages (worst p75 0.44). INP interaction-target attribution remains a Faro
+   capture-config follow-up.
 7. **No connection/geo dimension.** Faro can capture connection `effectiveType`
    (2G/3G/4G) and coarse geo; neither is shown. Low priority for a portfolio, but
    it's often the explanation for a "poor LCP on mobile" tail.
@@ -168,13 +169,36 @@ While reviewing this (RUM) dashboard live, the **server-side** companion
 Prometheus `up{job="nextjs-app"}=0`, scrape error `HTTP 503`, because
 `/api/metrics` fails closed in production and no bearer token was wired on EKS.
 So **RUM was healthy but every `nextjs_*` application metric was uncollected** —
-the single biggest observability gap. This is fixed in
-`kubernetes-bootstrap` PR #183 (shared bearer token via ESO on both the pod and
-Prometheus). Once deployed, gap #4 above (RUM↔server correlation) becomes
-possible.
+the single biggest observability gap. Fixed in `kubernetes-bootstrap` PR #183
+(shared bearer token via ESO on both the pod and Prometheus). **Verified live
+2026-07-04: `up{job="nextjs-app"}=1`** — server runtime metrics now flow (RSS
+128 MB, event-loop lag p90 10 ms, GC p95 15 ms). One residual coverage gap
+remains: `nextjs_api_*` HTTP RED metrics are defined but never incremented (no
+request middleware) — see the quality report.
+
+## Fixes applied — 2026-07-04 iteration
+
+All verified live (renderer PNGs / Prometheus / Loki):
+
+| Fix | PR | Verified |
+|:----|:---|:---------|
+| RUM→trace pivot: live Tempo trace table | kb #184 | ✅ |
+| Client API p95 by endpoint + status | kb #184 | ✅ `/api/chat` p95 ~8 s |
+| JS errors per session + dashboard links | kb #184 | ✅ |
+| `observability:rum` alert group | kb #184 | ✅ loaded |
+| Piechart legends "Value #A" → real labels | kb #184 | ✅ `good/ni/poor`, `Chrome/GSA` |
+| CLS p75 **by page** (attribution) | kb #186 | ✅ pins article pages |
+| Row-4 tables: real header + drop Time column | kb #187 | ✅ |
+| Grafana image renderer (enables PNG export) | kb #185 | ✅ rendering live |
+| Server `nextjs_*` metrics scrape auth | kb #183 | ✅ `up=1` |
+| Mermaid exception | — | ✅ stale (fixed at source 07-02 14:00, 0 recurrences) |
 
 ## Related
 
+- [Frontend application quality assessment](./frontend-quality-assessment.md) —
+  every metric benchmarked vs the industry-standard bar, quantified as %.
+- [RUM & metrics pipeline](../concepts/rum-metrics-pipeline.md) — what's
+  collected, how it's scraped, and how it flows to Grafana.
 - [Observability architecture](../concepts/observability-architecture.md) — the
   OTel + Prometheus + Faro stack this dashboard sits on top of.
 
