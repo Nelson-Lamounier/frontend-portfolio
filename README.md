@@ -17,6 +17,12 @@ Most personal portfolios are static pages you scroll. This one you can **talk to
 
 Ask it *"What has he built with Kubernetes?"* or *"Show me evidence of CI/CD design"* and it answers with specifics from the repos. **Full design → [The "Lami" chatbot — RAG architecture, workflow & guardrails](docs/concepts/chatbot-architecture.md).**
 
+Lami in action — a grounded answer with structured **metric chips**, **technology tags**, and a **follow-up suggestion** (the model's `{ prose, metrics, tags, followUp }` response), all retrieved from the repo knowledge base:
+
+<video src="https://github.com/Nelson-Lamounier/frontend-portfolio/raw/main/docs/assets/lami-chatbot-demo.mp4" poster="https://github.com/Nelson-Lamounier/frontend-portfolio/raw/main/docs/assets/lami-chatbot-demo-poster.png" controls muted width="100%"></video>
+
+> ▶️ If the player doesn't load in your viewer, [watch the Lami demo](docs/assets/lami-chatbot-demo.mp4) or try it on the [live site](https://nelsonlamounier.com).
+
 ## Live walkthrough
 
 A short tour of the live production site at **[nelsonlamounier.com](https://nelsonlamounier.com)** — the homepage hero with an interactive CI → Build → Test → Deploy animation, project case studies, technical articles, and the Lami chat assistant.
