@@ -70,3 +70,8 @@ Archived records of removed/superseded designs, kept for provenance.
 Evidence trail (auto-generated):
 - Index of docs/ generated 2026-06-23; links verified against files in this tree
 -->
+
+## Reports
+
+- [GitHub account review & DORA report](./reports/github-dora-review.md)
+  — commit/PR/branch percentage metrics, the four DORA metrics, and the gaps closed
