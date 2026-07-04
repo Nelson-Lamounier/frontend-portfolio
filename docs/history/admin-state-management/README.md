@@ -1,7 +1,16 @@
 # Admin State Management — Engineering Documentation
 
-> Comprehensive technical reference for the Zustand + TanStack Query state management
-> architecture adopted in the portfolio admin dashboard.
+> [!NOTE]
+> **Archived — describes a separate app, not this repo.** This documents the
+> Zustand and TanStack Query architecture of the **admin dashboard**, which lives
+> in a separate application (the `/admin/*` routes are proxied to it — see
+> `next.config.mjs`). The frontend-portfolio repo has **no admin route**; the
+> unused `QueryProvider` / `query-client` scaffolding and the `@tanstack/react-query`
+> and `zustand` dependencies were removed from this repo on 2026-07-04. Kept for
+> provenance; maintain it from the admin app's own repository.
+
+Comprehensive technical reference for the Zustand and TanStack Query state
+management architecture adopted in the portfolio admin dashboard.
 
 ## Table of Contents
 

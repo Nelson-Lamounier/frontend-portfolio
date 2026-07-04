@@ -80,14 +80,15 @@ should be documented.
 
 ## Enforcement owned by the producer (ai-applications)
 
-Several defence layers live in the RAG Lambda and the BFF, not in this repo,
-and were reviewed during this session's investigation (2026-06-23):
-input prompt-injection sanitisation, Bedrock Guardrails, output PII redaction,
-audit logging, and row-level security scoping the authenticated chatbot to the
-owner's data. Because these are implemented in the sibling `ai-applications`
-repository, they must be documented from there — this doc references them only
-to complete the threat model. Treat their exact behaviour as authoritative only
-once documented against that repo's code.
+Several defence layers live in the RAG Lambda and the BFF, not in this repo
+(verified against `ai-applications` on 2026-07-04): input prompt-injection
+sanitisation, a **non-negotiable system-prompt scope boundary** with a fixed
+refusal, output PII/infrastructure redaction, and row-level security scoping the
+authenticated chatbot to the owner's data. These guardrails are **code +
+system-prompt controls** — the managed *AWS Bedrock Guardrails* resource is not
+currently wired into the Converse call (a natural hardening step, not a present
+control). See [chatbot architecture](./chatbot-architecture.md) for the full,
+verified breakdown; the exact code lives in the `ai-applications` repository.
 
 ## Hardening recommendations
 
