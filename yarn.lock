@@ -3895,9 +3895,9 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@next/mdx@npm:~15.5.18":
-  version: 15.5.19
-  resolution: "@next/mdx@npm:15.5.19"
+"@next/mdx@npm:~16.2.10":
+  version: 16.2.10
+  resolution: "@next/mdx@npm:16.2.10"
   dependencies:
     source-map: "npm:^0.7.0"
   peerDependencies:
@@ -3908,7 +3908,7 @@ __metadata:
       optional: true
     "@mdx-js/react":
       optional: true
-  checksum: 10c0/89291e890e48182a1562be8f026c72448fc91fa60fb55140678d4cb69a820e63cb95d5a8c64802753f11b33a4df592687041d1205940c1b2c1e7bec6a0b92e8c
+  checksum: 10c0/93229c084d2893b5a9fc3b0ad5e67c98afba441ec7068c36348251553a17f78f147cce8754b84c62d861fe6972339af49ecf655e35415c05184fe65a24f34d07
   languageName: node
   linkType: hard
 
@@ -15774,7 +15774,7 @@ __metadata:
     "@headlessui/react": "npm:^2.2.6"
     "@mdx-js/loader": "npm:^3.1.0"
     "@mdx-js/react": "npm:^3.1.0"
-    "@next/mdx": "npm:~15.5.18"
+    "@next/mdx": "npm:~16.2.10"
     "@opentelemetry/api": "npm:^1.9.0"
     "@opentelemetry/auto-instrumentations-node": "npm:^0.75.0"
     "@opentelemetry/core": "npm:^2.9.0"
