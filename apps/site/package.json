@@ -73,7 +73,7 @@
     "@testing-library/user-event": "^14.6.1",
     "@types/jest": "^30.0.0",
     "@types/mdx": "^2.0.13",
-    "@types/mime-types": "^2.1.4",
+    "@types/mime-types": "^3.0.1",
     "@types/node": "^24.1.0",
     "@types/react": "^19",
     "@types/react-dom": "^19",
