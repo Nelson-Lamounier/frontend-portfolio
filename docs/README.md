@@ -73,5 +73,7 @@ Evidence trail (auto-generated):
 
 ## Reports
 
+- [GitHub account review & DORA report](./reports/github-dora-review.md)
+  — commit/PR/branch percentage metrics, the four DORA metrics, and the gaps closed
 - ["Frontend & RUM" dashboard — panel review & gaps](./reports/frontend-rum-dashboard-review.md)
   — live per-panel review of the RUM dashboard (web vitals, errors, audience, pipeline health) and the observability gaps found (applied in kubernetes-bootstrap #184)

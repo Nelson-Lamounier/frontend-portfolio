@@ -15,6 +15,28 @@ const config: Config = {
   moduleNameMapper: {
     '^@/(.*)$': '<rootDir>/src/$1',
   },
+  // Only measure application source (exclude type-only files, barrels, and
+  // generated/instrumentation code that skews the ratio).
+  collectCoverageFrom: [
+    'src/**/*.{ts,tsx}',
+    '!src/**/*.d.ts',
+    '!src/**/index.ts',
+    '!src/instrumentation.ts',
+    '!src/**/*.types.ts',
+  ],
+  // Ratchet floor set just below the honest all-source coverage (measured across
+  // ALL src via collectCoverageFrom, incl. untested files: statements/lines ~46%,
+  // branches ~68%, functions ~40%). Gates against regression; raise as coverage
+  // grows. Coverage was collected but ungated before — see the DORA report
+  // (docs/reports/github-dora-review.md).
+  coverageThreshold: {
+    global: {
+      statements: 42,
+      branches: 60,
+      functions: 35,
+      lines: 42,
+    },
+  },
 }
 
 // The MDX renderer pulls the unified/rehype/remark ecosystem, which ships pure
