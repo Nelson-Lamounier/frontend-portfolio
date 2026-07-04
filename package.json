@@ -12,10 +12,10 @@
     "test": "yarn workspaces foreach -A -pt run test"
   },
   "devDependencies": {
-    "@aws-sdk/client-bedrock": "^3.1024.0",
-    "@aws-sdk/client-sfn": "^3.1024.0",
-    "@aws-sdk/credential-providers": "^3.1024.0",
-    "@types/node": "^24.1.0",
+    "@aws-sdk/client-bedrock": "^3.1079.0",
+    "@aws-sdk/client-sfn": "^3.1079.0",
+    "@aws-sdk/credential-providers": "^3.1079.0",
+    "@types/node": "^26",
     "@types/uuid": "^11.0.0",
     "ts-node": "^10.9.2",
     "typescript": "^6.0.3"
