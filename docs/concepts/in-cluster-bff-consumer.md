@@ -140,8 +140,8 @@ unchanged, since MDX is a superset of Markdown.
 
 ## Related concepts
 
-- [bff_gap_analysis.md](../incoming/bff_gap_analysis.md) — earlier BFF gap
-  analysis (pre-migration; partially superseded)
+- [BFF migration gap analysis](../history/bff-migration-gap-analysis.md) —
+  archived pre-migration decision record (producer side; partially superseded)
 
 <!--
 Evidence trail (auto-generated):
