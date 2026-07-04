@@ -1,6 +1,4 @@
-import rehypePrism from 'rehype-prism-plus'
 import nextMDX from '@next/mdx'
-import remarkGfm from 'remark-gfm'
 
 /** @type {import('next').NextConfig} */
 const nextConfig = {
@@ -49,11 +47,14 @@ const nextConfig = {
   ],
 }
 
+// Next 16 / Turbopack requires MDX plugin options to be serializable, so remark
+// and rehype plugins are referenced by module name (strings) rather than imported
+// functions. See https://nextjs.org/docs/app/api-reference/config/next-config-js/mdx
 const withMDX = nextMDX({
   extension: /\.mdx?$/,
   options: {
-    remarkPlugins: [remarkGfm],
-    rehypePlugins: [rehypePrism],
+    remarkPlugins: [['remark-gfm']],
+    rehypePlugins: [['rehype-prism-plus']],
   },
 })
 

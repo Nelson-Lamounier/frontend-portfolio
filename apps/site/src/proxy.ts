@@ -21,11 +21,13 @@ const SECURITY_HEADERS: Record<string, string> = {
 }
 
 // =============================================================================
-// Middleware
+// Proxy (Next.js middleware convention, renamed to `proxy` in Next 16)
 // =============================================================================
 
 /**
- * Next.js middleware — runs in Edge Runtime on every matched request.
+ * Next.js proxy — runs in Edge Runtime on every matched request.
+ * (Formerly `middleware`; the file/function convention was renamed to `proxy`
+ * in Next 16.)
  *
  * Responsibilities:
  * 1. Security headers: applied to every response
@@ -36,7 +38,7 @@ const SECURITY_HEADERS: Record<string, string> = {
  *
  * @param request - Incoming Next.js request
  */
-export default function middleware(_request: NextRequest) {
+export default function proxy(_request: NextRequest) {
   const response = NextResponse.next()
 
   for (const [header, value] of Object.entries(SECURITY_HEADERS)) {
