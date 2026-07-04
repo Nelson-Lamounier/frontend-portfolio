@@ -65,6 +65,72 @@ flowchart TD
   SSM -.->|pull| AICD["ArgoCD Image Updater"] --> Rollout["Argo Rollout (blue-green)"] --> Next
 ```
 
+## Observability & Monitoring
+
+The application is monitored end-to-end on a **self-hosted Grafana stack**
+(Grafana + Prometheus + Loki + Tempo, fed by Grafana Alloy) — no third-party
+APM. Every layer of the request is observable: what the **real user's browser**
+experienced, what the **pod** did, and the **distributed trace** that ties them
+together. The single pane is the **"Frontend & RUM — portfolio + tucaken"**
+dashboard shown below.
+
+<video src="https://github.com/Nelson-Lamounier/frontend-portfolio/raw/main/docs/assets/observability-monitoring-demo.mp4" poster="https://github.com/Nelson-Lamounier/frontend-portfolio/raw/main/docs/assets/observability-monitoring-demo-poster.png" controls muted width="100%"></video>
+
+> ▶️ If the player doesn't load in your viewer, [watch the observability walkthrough](docs/assets/observability-monitoring-demo.mp4) or open the [live site](https://nelsonlamounier.com).
+
+### Three telemetry planes — what's collected and why
+
+| Plane | Signals | Why |
+|:------|:--------|:----|
+| **Browser RUM** (Grafana Faro) | Core Web Vitals p75 (LCP/INP/CLS/TTFB/FCP), JS errors & console, sessions, page loads, `fetch` spans | The performance/quality truth from real devices — the numbers Google ranks on |
+| **Server metrics** (`prom-client`) | Node.js runtime: heap, GC, event-loop lag, CPU, FDs (`nextjs_*`) | Is the pod healthy under load |
+| **Distributed traces** (OpenTelemetry) | Browser → SSR → `admin-api` → Postgres spans, correlated by W3C `traceparent` | Follow one slow page load across every hop in Tempo |
+
+### How the metrics flow to Grafana
+
+The transport is deliberately split by data shape — **RUM is pushed** (a browser
+can't be scraped), **server metrics are pulled** (the Prometheus model):
+
+```mermaid
+flowchart LR
+  Browser["Browser<br/>Faro Web SDK"] -->|HTTPS push| Alloy["Grafana Alloy<br/>faro.receiver (CORS)"]
+  Alloy -->|vitals / errors / events| Loki[("Loki")]
+  Alloy -->|traces| Tempo[("Tempo")]
+  Pod["nextjs pod<br/>/api/metrics (Bearer)"] -->|scrape| Prom[("Prometheus")]
+  Prom -->|scrape faro_receiver_*| Alloy
+  Loki --> Graf["Grafana"]
+  Prom --> Graf
+  Tempo --> Graf
+```
+
+- **Browser RUM lands in Loki as logs** (not Prometheus): each vital carries
+  per-session/page/browser context, so it is stored as logfmt (`{job="faro"}`)
+  and percentiles are computed at query time (`quantile_over_time … | unwrap`),
+  avoiding a Prometheus cardinality explosion.
+- **The `/api/metrics` scrape is authenticated** — the endpoint fails closed in
+  production and Prometheus sends a bearer token; the same secret is provisioned
+  to both the pod and Prometheus from one SSM SecureString via the External
+  Secrets Operator.
+- **Alloy is the single front door** — it enforces the CORS allow-list, routes
+  each signal (logs → Loki, traces → Tempo), and exposes its own
+  `faro_receiver_*` pipeline-health metrics.
+
+### What the dashboard surfaces
+
+Core Web Vitals p75 against Google thresholds; the good/needs-improvement/poor
+rating split; **per-page** LCP and CLS tables (which URL to fix first);
+client-perceived `/api/*` latency and status from Faro `fetch` spans; a **live
+Tempo trace table** for the RUM→backend pivot; audience (browser/OS/device); and
+Alloy receiver health. Prometheus alert rules guard the pipeline itself
+(`FaroReceiverAbsent` / `FaroReceiverIngestLatencyHigh`) so a RUM outage pages
+instead of silently blanking the board.
+
+**Deep dives:** [RUM & metrics pipeline — collection, scraping, flow](docs/concepts/rum-metrics-pipeline.md)
+· [observability architecture](docs/concepts/observability-architecture.md)
+· [dashboard panel review & gaps](docs/reports/frontend-rum-dashboard-review.md)
+· [application quality assessment (metrics vs industry standard)](docs/reports/frontend-quality-assessment.md)
+· [authenticated `/api/metrics`](docs/tools/metrics-endpoint.md)
+
 ## Tech stack
 
 - **Framework:** Next.js 15 App Router, React 19, TypeScript
