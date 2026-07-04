@@ -2,7 +2,7 @@
  * @format
  * Chat Widget
  *
- * Floating chat component that connects to the Bedrock Agent.
+ * Floating chat component that connects to the Bedrock RAG chatbot backend.
  * Renders as a circular button in the bottom-right corner.
  * Expands to a full chat panel with message history and input.
  */
@@ -46,7 +46,7 @@ const INITIAL_STATE: ChatWidgetState = {
 
 /**
  * Floating chat widget that provides a conversational interface
- * to the Bedrock Agent (Claude 3.5 Haiku + Portfolio Knowledge Base).
+ * to the Bedrock RAG chatbot (Claude Sonnet 4.6 + a GitHub-repo knowledge base).
  *
  * @returns Chat bubble button + expandable chat panel
  */

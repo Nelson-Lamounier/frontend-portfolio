@@ -15,8 +15,64 @@ const config: Config = {
   moduleNameMapper: {
     '^@/(.*)$': '<rootDir>/src/$1',
   },
-  transformIgnorePatterns: ['node_modules/(?!next-mdx-remote)'],
 }
 
-// createJestConfig is exported this way to ensure that next/jest can load the Next.js config which is async
-export default createJestConfig(config)
+// The MDX renderer pulls the unified/rehype/remark ecosystem, which ships pure
+// ESM. next/jest hard-sets transformIgnorePatterns to ignore ~all of node_modules,
+// and Jest ignores a file if it matches ANY pattern — so appending can't un-ignore
+// them. We therefore override the RESOLVED config to allow-list that ESM family for
+// transformation. This makes the suite deterministic regardless of how those
+// packages are hoisted (a narrow pattern breaks whenever a lockfile change
+// re-hoists e.g. rehype-slug to the top level).
+const ESM_ALLOWLIST = [
+  'next-mdx-remote',
+  '@mdx-js',
+  'unified',
+  'bail',
+  'trough',
+  'is-plain-obj',
+  'zwitch',
+  'ccount',
+  'longest-streak',
+  'escape-string-regexp',
+  'markdown-table',
+  'devlop',
+  'github-slugger',
+  'refractor',
+  'parse-entities',
+  'property-information',
+  'space-separated-tokens',
+  'comma-separated-tokens',
+  'web-namespaces',
+  'html-void-elements',
+  'html-url-attributes',
+  'decode-named-character-reference',
+  'character-entities.*',
+  'stringify-entities',
+  'trim-lines',
+  'unist-util-.*',
+  'vfile',
+  'vfile-.*',
+  'remark-.*',
+  'rehype-.*',
+  'mdast-.*',
+  'micromark',
+  'micromark-.*',
+  'hast-util-.*',
+  'hastscript',
+  'estree-util-.*',
+].join('|')
+
+// next/jest exports config as an async factory so it can load next.config; we wrap
+// it to post-process the resolved transformIgnorePatterns.
+const buildConfig = async (): Promise<Config> => {
+  const jestConfig = await createJestConfig(config)()
+  jestConfig.transformIgnorePatterns = [
+    `node_modules/(?!(${ESM_ALLOWLIST})/)`,
+    // Preserve next/jest's CSS-modules handling.
+    '^.+\\.module\\.(css|sass|scss)$',
+  ]
+  return jestConfig
+}
+
+export default buildConfig

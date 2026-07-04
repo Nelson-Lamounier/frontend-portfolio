@@ -1,12 +1,23 @@
 ---
-title: Blue-green rollout promotion via SSM Run Command
-type: concept
-tags: [argo-rollouts, kubernetes, ssm, blue-green, ci-cd, deployment]
+title: Blue-green rollout promotion via SSM Run Command (archived)
+type: history
+status: superseded
+tags: [argo-rollouts, kubernetes, ssm, blue-green, ci-cd, deployment, archived]
 sources:
   - .github/workflows/deploy-frontend.yml
 created: 2026-06-23
-updated: 2026-06-23
+updated: 2026-07-04
 ---
+
+> [!NOTE]
+> **Archived — describes a removed mechanism.** This documents an earlier design
+> where GitHub Actions drove `kubectl argo rollouts promote` **over an SSM Run
+> Command**, plus an in-cluster smoke job. Both the `promote-site` and
+> `smoke-site` jobs were **removed** (PRs #9 and #10); promotion is now handled
+> in-cluster by ArgoCD Image Updater + Argo Rollouts auto-promotion. GitHub's
+> responsibility now ends at the ECR push + SSM write. For the current design see
+> [CD pipeline](../concepts/cd-pipeline.md). Kept for provenance; line references
+> below point at a version of `deploy-frontend.yml` that no longer exists.
 
 ## Overview
 
@@ -52,7 +63,7 @@ Without this gate, a rollout still `Healthy` on the *old* image would satisfy an
 "Already Healthy → no promotion needed" early-exit
 ([deploy-frontend.yml:405](../../.github/workflows/deploy-frontend.yml#L405)),
 and the smoke test would then verify the wrong image. The failure mode this
-prevents has its own [troubleshooting doc](../troubleshooting/rollout-stale-healthy-early-exit.md).
+prevents has its own [troubleshooting doc](./rollout-stale-healthy-early-exit.md).
 
 ## Tradeoffs
 
@@ -66,7 +77,7 @@ rollback by aborting before promotion.
 
 - [Frontend deploy pipeline](../runbooks/frontend-deploy-pipeline.md) — the full
   job sequence and how to operate it
-- [Rollout stale-Healthy early exit](../troubleshooting/rollout-stale-healthy-early-exit.md)
+- [Rollout stale-Healthy early exit](./rollout-stale-healthy-early-exit.md)
   — the race this ordering defends against
 
 ## Related concepts

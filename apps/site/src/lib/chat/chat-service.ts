@@ -2,7 +2,7 @@
  * @format
  * Chat Service
  *
- * Client-side service for communicating with the Bedrock Agent
+ * Client-side service for communicating with the Bedrock RAG chatbot
  * via the `/api/chat` proxy route. Manages session state for
  * multi-turn conversations.
  */
@@ -21,7 +21,7 @@ export type ChatResult =
   | { ok: false; error: ChatErrorResponse }
 
 /**
- * Send a prompt to the Bedrock Agent via the server-side proxy.
+ * Send a prompt to the Bedrock RAG chatbot via the server-side proxy.
  *
  * @param prompt    - The user's message text
  * @param sessionId - Optional session ID for conversation continuity
