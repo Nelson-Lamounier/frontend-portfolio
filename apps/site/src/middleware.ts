@@ -8,7 +8,8 @@ import { type NextRequest, NextResponse } from 'next/server'
 
 /**
  * Standard security headers applied to every response.
- * These provide defence-in-depth alongside CloudFront/WAF edge protections.
+ * Applied at the app tier (the pod), which sits directly behind the ALB — there
+ * is no CDN in front of the site, so these are the edge protections.
  */
 const SECURITY_HEADERS: Record<string, string> = {
   'X-Content-Type-Options': 'nosniff',

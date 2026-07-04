@@ -2,7 +2,7 @@
 # Reusable Workflow: Sync Static Assets
 # =============================================================================
 #
-# Syncs Next.js .next/static assets to S3 and invalidates CloudFront.
+# Syncs Next.js .next/static assets to S3.
 # Called by deploy-frontend.yml after a successful site image build.
 #
 # Fast path: caller pre-extracts static assets and caches them separately
@@ -125,8 +125,8 @@ jobs:
           docker rm "${TEMP}" > /dev/null
           echo "[PASS] $(find .next/static -type f | wc -l | tr -d ' ') static assets extracted"
 
-      # ── Sync to S3 & invalidate CloudFront ──────────────────────────
-      - name: Sync to S3 & Invalidate CloudFront
+      # ── Sync static assets to S3 ─────────────────────────────────────
+      - name: Sync Static Assets to S3
         env:
           DEPLOY_ENVIRONMENT: ${{ inputs.environment }}
         run: |
@@ -141,4 +141,3 @@ jobs:
           echo "- **Environment**: ${{ inputs.environment }}" >> $GITHUB_STEP_SUMMARY
           echo "- **Assets synced**: $ASSET_COUNT files" >> $GITHUB_STEP_SUMMARY
           echo "- **S3 upload**: ✅" >> $GITHUB_STEP_SUMMARY
-          echo "- **CloudFront invalidation**: ✅" >> $GITHUB_STEP_SUMMARY

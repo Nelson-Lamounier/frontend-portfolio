@@ -94,9 +94,19 @@ export function Mermaid({ chart, children, caption }: MermaidProps) {
         })
 
         const id = `mermaid-${Math.random().toString(36).slice(2, 9)}`
-        
+
         if (!resolvedChart) {
           throw new Error('Mermaid component requires a "chart" prop or children containing valid mermaid syntax.')
+        }
+
+        // Validate BEFORE rendering. A failed mermaid.render() leaves an orphan
+        // "Syntax error in text" SVG appended to <body> that overflows the page
+        // and shoves the layout sideways. parse() validates without touching the
+        // DOM, so an invalid diagram (e.g. `style` in a sequenceDiagram) degrades
+        // to our own contained error box instead of a page-breaking orphan.
+        const parsed = await mermaid.parse(resolvedChart, { suppressErrors: true })
+        if (parsed === false) {
+          throw new Error('Invalid mermaid syntax — the diagram could not be parsed.')
         }
 
         const { svg: renderedSvg } = await mermaid.render(id, resolvedChart)
