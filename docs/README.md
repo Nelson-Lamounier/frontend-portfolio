@@ -70,3 +70,8 @@ Archived records of removed/superseded designs, kept for provenance.
 Evidence trail (auto-generated):
 - Index of docs/ generated 2026-06-23; links verified against files in this tree
 -->
+
+## Reports
+
+- ["Frontend & RUM" dashboard — panel review & gaps](./reports/frontend-rum-dashboard-review.md)
+  — live per-panel review of the RUM dashboard (web vitals, errors, audience, pipeline health) and the observability gaps found (applied in kubernetes-bootstrap #184)
