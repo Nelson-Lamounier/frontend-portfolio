@@ -15,6 +15,7 @@ import {
   getApprovedComments,
   createComment,
 } from '@/lib/articles/public-api-engagement'
+import { getClientIp } from '@/lib/client-ip'
 
 interface RouteParams {
   params: Promise<{ slug: string }>
@@ -70,11 +71,9 @@ export async function POST(
 
   const { slug } = await context.params
 
-  // Extract IP address from headers
-  const ipAddress =
-    request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ||
-    request.headers.get('x-real-ip') ||
-    'unknown'
+  // Trust only the ALB-appended (rightmost) XFF entry so a caller cannot spoof
+  // a per-request IP to dodge the downstream public-api comment rate limit.
+  const ipAddress = getClientIp(request.headers)
 
   try {
     const body = await request.json() as {
