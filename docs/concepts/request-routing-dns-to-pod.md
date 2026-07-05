@@ -6,7 +6,7 @@ sources:
   - Live AWS (development account, eu-west-1) verified 2026-07-04
   - docs/concepts/in-cluster-bff-consumer.md
 created: 2026-07-04
-updated: 2026-07-04
+updated: 2026-07-05
 ---
 
 ## Overview
@@ -31,7 +31,7 @@ flowchart LR
   ALB -->|3. TLS terminate + host-header match| Rule{"Host =<br/>nelsonlamounier.com?"}
   Rule -->|forward| TG["Target group<br/>type: ip · port 3000 · /api/health"]
   TG -->|4. direct to pod IP<br/>(VPC CNI)| Pod["nextjs pod<br/>Next.js standalone :3000"]
-  Pod -->|5a. server-side data| BFF["public-api BFF<br/>(api.nelsonlamounier.com / in-cluster DNS)"]
+  Pod -->|5a. server-side data| BFF["public-api BFF<br/>(in-cluster DNS: public-api.public-api:3001)"]
   Pod -->|5b. HTML + /_next/static| User
 ```
 
@@ -60,20 +60,22 @@ public host. It is provisioned declaratively by the **AWS Load Balancer
 Controller** from a shared `public` IngressGroup — the site's Kubernetes Ingress
 is one member of that group, so it does not get its own load balancer.
 
-- **Why one shared ALB:** every public host (the site, the `public-api`, the
-  ops/observability tools, other apps) is a rule on **one** load balancer instead
-  of one ALB each — a single TLS endpoint, a single DNS target, and far lower
-  cost. The Ingress objects stay in Kubernetes and are reconciled into ALB
-  listener rules automatically.
+- **Why one shared ALB:** every public host (the site, the ops/observability
+  tools, other apps) is a rule on **one** load balancer instead of one ALB each
+  — a single TLS endpoint, a single DNS target, and far lower cost. The Ingress
+  objects stay in Kubernetes and are reconciled into ALB listener rules
+  automatically. (`public-api` is **not** among them: it is a ClusterIP service
+  with no public rule — see [in-cluster BFF consumer](./in-cluster-bff-consumer.md).)
 
 ### 3. TLS termination + host-based routing
 
 The ALB exposes **HTTPS on port 443** and **terminates TLS** using an
 AWS Certificate Manager (ACM) certificate. Routing is **host-header based**: each
 public hostname maps to its own Kubernetes Service via a listener rule —
-`nelsonlamounier.com` forwards to the site's target group, `api.nelsonlamounier.com`
-to the `public-api` BFF, and so on. A request whose `Host` matches no rule gets a
-fixed **HTTP 404** rather than being routed anywhere.
+`nelsonlamounier.com` forwards to the site's target group, the ops/observability
+hosts to their services, and so on. (`public-api` intentionally has **no** public
+rule; the site reaches it in-cluster.) A request whose `Host` matches no rule
+gets a fixed **HTTP 404** rather than being routed anywhere.
 
 - **Why terminate TLS at the ALB:** certificates are managed and auto-renewed by
   ACM and never live in the application pods; the app speaks plain HTTP inside the

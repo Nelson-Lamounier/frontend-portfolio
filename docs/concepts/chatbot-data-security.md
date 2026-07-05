@@ -6,7 +6,7 @@ sources:
   - apps/site/src/app/api/chat/route.ts
   - apps/site/src/lib/articles/public-api-engagement.ts
 created: 2026-06-23
-updated: 2026-06-23
+updated: 2026-07-05
 ---
 
 ## Overview
@@ -63,9 +63,12 @@ body — no `x-api-key`
 ([chat/route.ts:98](../../apps/site/src/app/api/chat/route.ts#L98)); the
 Bedrock key is owned by `public-api` (Secrets Manager) in the sibling
 `ai-applications` repo. For comment submission the consumer forwards the
-original client IP as `x-forwarded-for`
+trusted-hop client IP (the ALB-appended rightmost `X-Forwarded-For`, resolved by
+[getClientIp](../../apps/site/src/lib/client-ip.ts) and not the spoofable
+leftmost value) as `x-forwarded-for`
 ([public-api-engagement.ts:107](../../apps/site/src/lib/articles/public-api-engagement.ts#L107))
-so server-side rate limiting applies to the visitor, not the pod.
+so server-side rate limiting applies to the real visitor, not the pod and not a
+forged IP.
 
 ## What data is even reachable
 
