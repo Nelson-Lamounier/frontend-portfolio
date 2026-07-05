@@ -1,8 +1,12 @@
 /**
- * Article Types for DynamoDB + S3 Integration
+ * Article Types — RDS via the in-cluster public-api BFF
  *
- * DynamoDB stores only the lightweight "Brain" metadata entity.
- * Article content (MDX body, componentData, images) lives in S3.
+ * Metadata and Markdown content are served together by the public-api
+ * BFF (backed by platform RDS); the site makes no direct DynamoDB/S3
+ * calls at runtime. `contentRef` survives from the earlier DynamoDB+S3
+ * design as a synthetic `rds://<slug>` pointer so the Zod schema and
+ * generateStaticParams filters keep working unchanged (see
+ * lib/articles/public-api-articles.ts).
  *
  * These types maintain compatibility with the existing ArticleLayout
  * and rendering components.
