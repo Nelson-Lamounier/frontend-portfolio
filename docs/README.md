@@ -29,6 +29,18 @@ single self-contained topic, optimised for retrieval.
   — OpenTelemetry + Prometheus + Grafana Faro across browser and server
 - [OpenTelemetry observability strategy](./concepts/opentelemetry-strategy.md)
   — deeper rationale (OTel vs aws-xray-sdk, before/after visibility)
+- [Projects page as a Tucaken case-study consumer](./concepts/projects-case-study-consumer.md)
+  — repo sync → case-study pipeline → owner-pinned BFF → grid + native detail page
+
+## Patterns
+
+- [Graceful-degradation consumer (consume-don't-crash)](./patterns/graceful-degradation-consumer.md)
+  — every BFF read returns []/null on failure so builds, ISR, and outages degrade instead of crash
+
+## Decisions
+
+- [0002 — Pin public project routes to the owner's user id](./decisions/0002-owner-id-isolation.md)
+  — why a GitHub username is not an isolation key, and the fail-closed owner pinning chosen instead
 
 ## Runbooks
 
