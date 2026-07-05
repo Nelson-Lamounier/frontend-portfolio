@@ -8,15 +8,18 @@
  * module can only ever see what the owner deliberately published.
  *
  * Upstream contract (ai-applications api/public-api/src/routes/projects.ts):
- *   GET /public/projects/:username        → { items: PublicProjectCard[], count }
- *   GET /public/projects/:username/:slug  → PublicCaseStudy | 404
+ *   GET /api/projects        → { items: PublicProjectCard[], count }
+ *   GET /api/projects/:slug  → PublicCaseStudy | 404
+ *
+ * Owner isolation: the BFF pins both routes to PORTFOLIO_OWNER_USER_ID
+ * (its own in-cluster config), so this site can only ever receive the
+ * owner's public projects — the frontend deliberately names no identity
+ * (no username, no user id), leaving nothing here to misconfigure into
+ * showing another user's projects.
  *
  * Env:
- *   PUBLIC_API_URL              — in-cluster BFF base URL
- *                                 (default: http://public-api.public-api:3001)
- *   PORTFOLIO_GITHUB_USERNAME   — the owner's GitHub username, the public
- *                                 identity the BFF keys projects on
- *                                 (default: Nelson-Lamounier)
+ *   PUBLIC_API_URL — in-cluster BFF base URL
+ *                    (default: http://public-api.public-api:3001)
  *
  * Gotchas: runs at build time with no cluster access — every read
  * degrades gracefully ([] / null) so Docker builds and ISR prerenders
@@ -28,10 +31,6 @@
 const PUBLIC_API_URL =
   process.env.PUBLIC_API_URL || 'http://public-api.public-api:3001'
 
-/** The BFF keys public projects on the owner's GitHub username. */
-const PORTFOLIO_GITHUB_USERNAME =
-  process.env.PORTFOLIO_GITHUB_USERNAME || 'Nelson-Lamounier'
-
 /** ISR fetch-cache TTL — matches the BFF's s-maxage=300. */
 const REVALIDATE_SECONDS = 300
 
@@ -39,7 +38,7 @@ const REVALIDATE_SECONDS = 300
 // Upstream response types (JSON-stable contract with public-api)
 // ========================================
 
-/** One grid card from GET /public/projects/:username. */
+/** One grid card from GET /api/projects. */
 export interface PublicProjectCard {
   slug: string
   name: string
@@ -110,9 +109,10 @@ export interface CaseStudyResumeBullets {
   bullets: string[]
 }
 
-/** Full case study from GET /public/projects/:username/:slug. */
+/** Full case study from GET /api/projects/:slug. */
 export interface PublicCaseStudy {
-  username: string
+  /** Owner's GitHub handle; null if the oauth connection was removed. */
+  username: string | null
   slug: string
   name: string
   tagline: string | null
@@ -164,7 +164,7 @@ async function getJson<T>(path: string): Promise<T | null> {
 export async function queryPublicProjects(): Promise<PublicProjectCard[]> {
   try {
     const data = await getJson<{ items: PublicProjectCard[]; count: number }>(
-      `/public/projects/${encodeURIComponent(PORTFOLIO_GITHUB_USERNAME)}`,
+      '/api/projects',
     )
     return data?.items ?? []
   } catch (error) {
@@ -182,7 +182,7 @@ export async function getPublicCaseStudy(
 ): Promise<PublicCaseStudy | null> {
   try {
     return await getJson<PublicCaseStudy>(
-      `/public/projects/${encodeURIComponent(PORTFOLIO_GITHUB_USERNAME)}/${encodeURIComponent(slug)}`,
+      `/api/projects/${encodeURIComponent(slug)}`,
     )
   } catch (error) {
     console.error('[public-api-projects] getPublicCaseStudy failed:', error)

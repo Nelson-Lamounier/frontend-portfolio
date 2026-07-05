@@ -49,10 +49,10 @@ describe('queryPublicProjects', () => {
     const items = await queryPublicProjects()
     expect(items).toHaveLength(1)
     expect(items[0].slug).toBe('tucaken')
-    // The owner username is part of the request path — the BFF keys
-    // public projects on GitHub identity, not internal user ids.
+    // The frontend names no identity — owner pinning happens in the BFF
+    // via PORTFOLIO_OWNER_USER_ID, so nothing here can select a user.
     const url = String(fetchMock.mock.calls[0]?.[0])
-    expect(url).toMatch(/\/public\/projects\/[A-Za-z0-9-]+$/)
+    expect(url).toMatch(/\/api\/projects$/)
   })
 
   it('returns [] on a non-OK response (graceful degradation)', async () => {
