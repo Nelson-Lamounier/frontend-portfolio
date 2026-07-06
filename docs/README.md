@@ -31,6 +31,15 @@ single self-contained topic, optimised for retrieval.
   — what metrics are collected & why, how they're scraped, and how they flow (browser→Alloy→Loki/Tempo, pod→Prometheus) to Grafana
 - [OpenTelemetry observability strategy](./concepts/opentelemetry-strategy.md)
   — deeper rationale (OTel vs aws-xray-sdk, before/after visibility)
+- [Article SEO structured data](./concepts/seo-structured-data.md)
+  — JSON-LD TechArticle, Metadata API, and OG cards generated from one Zod-validated source
+- [In-memory sliding-window rate limiting](./concepts/in-memory-rate-limiting.md)
+  — the zero-dependency per-IP limiter on /api/track-error and its single-process tradeoffs
+
+## Decisions
+
+- [0001 — Coordinated Next 16 + TypeScript 6 migration; ESLint 10 deferred](./decisions/0001-next16-typescript6-migration.md)
+  — why four Dependabot majors merged as one commit, and why ESLint stayed on 9
 
 ## Runbooks
 
@@ -54,6 +63,8 @@ single self-contained topic, optimised for retrieval.
   — the flaky, hoisting-dependent Jest ESM-transform failure and the deterministic fix
 - [prom-client metrics break under Next.js bundling](./troubleshooting/prom-client-singleton-registry.md)
   — duplicate registry / Edge-runtime warnings and the fix
+- [Article edits not visible on the site (ISR staleness)](./troubleshooting/article-edits-not-visible-isr.md)
+  — the two stacked caches + stale-while-revalidate, and the on-demand revalidation fix
 
 ## History
 
