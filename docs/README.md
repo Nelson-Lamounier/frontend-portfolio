@@ -27,6 +27,8 @@ single self-contained topic, optimised for retrieval.
   — RAG-not-SQL access model, RDS private posture, hardening recommendations
 - [Observability architecture](./concepts/observability-architecture.md)
   — OpenTelemetry + Prometheus + Grafana Faro across browser and server
+- [RUM & metrics pipeline](./concepts/rum-metrics-pipeline.md)
+  — what metrics are collected & why, how they're scraped, and how they flow (browser→Alloy→Loki/Tempo, pod→Prometheus) to Grafana
 - [OpenTelemetry observability strategy](./concepts/opentelemetry-strategy.md)
   — deeper rationale (OTel vs aws-xray-sdk, before/after visibility)
 
@@ -77,3 +79,5 @@ Evidence trail (auto-generated):
   — commit/PR/branch percentage metrics, the four DORA metrics, and the gaps closed
 - ["Frontend & RUM" dashboard — panel review & gaps](./reports/frontend-rum-dashboard-review.md)
   — live per-panel review of the RUM dashboard (web vitals, errors, audience, pipeline health) and the observability gaps found (applied in kubernetes-bootstrap #184)
+- [Frontend application quality assessment](./reports/frontend-quality-assessment.md)
+  — every live metric benchmarked vs the industry-standard bar ("what it should be" vs "what it is"), quantified as %; overall ≈85%
