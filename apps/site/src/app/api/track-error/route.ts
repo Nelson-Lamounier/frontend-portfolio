@@ -11,6 +11,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { trackError } from '@/lib/observability/metrics'
 import { createRateLimiter } from '@/lib/rate-limiter'
+import { getClientIp } from '@/lib/client-ip'
 
 // =============================================================================
 // CONSTANTS
@@ -46,10 +47,9 @@ const rateLimiter = createRateLimiter({
  */
 export async function POST(request: NextRequest) {
   // ── Rate limiting ─────────────────────────────────────────────────────
-  const clientIp =
-    request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ||
-    request.headers.get('x-real-ip') ||
-    'unknown'
+  // Trust only the ALB-appended (rightmost) XFF entry; the leftmost is
+  // caller-controlled and would let anyone rotate IPs to bypass the limiter.
+  const clientIp = getClientIp(request.headers)
 
   const limit = rateLimiter.check(clientIp)
   if (!limit.allowed) {

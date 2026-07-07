@@ -10,7 +10,7 @@ sources:
   - apps/site/src/middleware.ts
   - apps/site/next.config.mjs
 created: 2026-07-04
-updated: 2026-07-04
+updated: 2026-07-05
 ---
 
 ## Overview
@@ -171,10 +171,15 @@ Full update/delete/moderation CRUD (editing and approving articles/comments) liv
 in the **separate admin app + `admin-api`**, not in this repository.
 
 Writes forward the real client IP so per-IP rate limiting at the BFF applies to
-the visitor, not the pod
+the visitor, not the pod. The IP is resolved from the **trusted proxy hop** — the
+rightmost `X-Forwarded-For` entry appended by the shared ALB
+(`xff_header_processing.mode=append`) via
+[getClientIp](../../apps/site/src/lib/client-ip.ts) — never the caller-supplied
+leftmost value, so a client cannot spoof it to dodge the limit
 ([public-api-engagement.ts:96-111](../../apps/site/src/lib/articles/public-api-engagement.ts#L96-L111)):
 
 ```ts
+const ipAddress = getClientIp(request.headers) // rightmost XFF = trusted client
 headers: { 'Content-Type': 'application/json', 'x-forwarded-for': ipAddress },
 body: JSON.stringify({ name, email, body }),
 ```
@@ -218,9 +223,10 @@ client-side `propagateTraceHeaderCorsUrls` allowlist.
   `Referrer-Policy`, `Permissions-Policy`, and a two-year `Strict-Transport-Security`.
 - **Rate limiting** — an in-memory sliding-window limiter
   ([rate-limiter.ts](../../apps/site/src/lib/rate-limiter.ts)) guards
-  `/api/track-error` (10 req / 60s / IP, `429` + `Retry-After`). Comment and chat
-  rate limiting is enforced **upstream in the BFF** (per-IP) — which is why the
-  write layer forwards `x-forwarded-for`.
+  `/api/track-error` (10 req / 60s / IP, `429` + `Retry-After`, keyed on the
+  trusted-proxy IP). Comment and chat rate limiting is enforced **upstream in the
+  BFF** (per-IP) — which is why the write layer forwards the trusted-hop
+  `x-forwarded-for`.
 
 ## Related
 
