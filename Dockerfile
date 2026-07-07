@@ -55,8 +55,9 @@ ENV ESLINT_NO_DEV_ERRORS=true
 # Runtime will use API when NEXT_PUBLIC_API_URL is configured
 ENV USE_FILE_FALLBACK=true
 
-# Build Next.js application (skip lint/typecheck - validated in CI)
-RUN yarn workspace ${APP_NAME} build --no-lint
+# Build Next.js application. Next 16 removed the --no-lint flag (next build
+# no longer runs ESLint at all); lint/typecheck are validated in CI.
+RUN yarn workspace ${APP_NAME} build
 
 # ── Stage 4: Production runner (Amazon Linux 2023) ────────────────
 FROM amazonlinux:2023 AS runner

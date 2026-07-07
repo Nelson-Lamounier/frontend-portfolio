@@ -85,6 +85,15 @@ quality gate ([sonarqube.yml](../../.github/workflows/sonarqube.yml)).
   role. All AWS interaction is the CD pipeline's job — see
   [CD pipeline](./cd-pipeline.md). This keeps the blast radius of a compromised CI
   run to the repository, not the cloud account.
+- **Coverage is gated, not just collected.** The test job runs with
+  `--coverage` ([ci.yml:238](../../.github/workflows/ci.yml#L238)) and Jest
+  enforces a global `coverageThreshold` — statements 42%, branches 60%,
+  functions 35%, lines 42%
+  ([jest.config.ts](../../apps/site/jest.config.ts)). The thresholds sit
+  just below measured coverage so they act as a regression floor, to be
+  raised as coverage grows; coverage was collected-but-ungated before —
+  the gap surfaced in the [DORA review](../reports/github-dora-review.md)
+  and was closed in commit `2a6bdd9`.
 
 ## Git & branch strategy
 

@@ -27,8 +27,28 @@ single self-contained topic, optimised for retrieval.
   — RAG-not-SQL access model, RDS private posture, hardening recommendations
 - [Observability architecture](./concepts/observability-architecture.md)
   — OpenTelemetry + Prometheus + Grafana Faro across browser and server
+- [RUM & metrics pipeline](./concepts/rum-metrics-pipeline.md)
+  — what metrics are collected & why, how they're scraped, and how they flow (browser→Alloy→Loki/Tempo, pod→Prometheus) to Grafana
 - [OpenTelemetry observability strategy](./concepts/opentelemetry-strategy.md)
   — deeper rationale (OTel vs aws-xray-sdk, before/after visibility)
+- [Projects page as a Tucaken case-study consumer](./concepts/projects-case-study-consumer.md)
+  — repo sync → case-study pipeline → owner-pinned BFF → grid + native detail page
+- [Article SEO structured data](./concepts/seo-structured-data.md)
+  — JSON-LD TechArticle, Metadata API, and OG cards generated from one Zod-validated source
+- [In-memory sliding-window rate limiting](./concepts/in-memory-rate-limiting.md)
+  — the zero-dependency per-IP limiter on /api/track-error and its single-process tradeoffs
+
+## Patterns
+
+- [Graceful-degradation consumer (consume-don't-crash)](./patterns/graceful-degradation-consumer.md)
+  — every BFF read returns []/null on failure so builds, ISR, and outages degrade instead of crash
+
+## Decisions
+
+- [0001 — Coordinated Next 16 + TypeScript 6 migration; ESLint 10 deferred](./decisions/0001-next16-typescript6-migration.md)
+  — why four Dependabot majors merged as one commit, and why ESLint stayed on 9
+- [0002 — Pin public project routes to the owner's user id](./decisions/0002-owner-id-isolation.md)
+  — why a GitHub username is not an isolation key, and the fail-closed owner pinning chosen instead
 
 ## Runbooks
 
@@ -52,6 +72,8 @@ single self-contained topic, optimised for retrieval.
   — the flaky, hoisting-dependent Jest ESM-transform failure and the deterministic fix
 - [prom-client metrics break under Next.js bundling](./troubleshooting/prom-client-singleton-registry.md)
   — duplicate registry / Edge-runtime warnings and the fix
+- [Article edits not visible on the site (ISR staleness)](./troubleshooting/article-edits-not-visible-isr.md)
+  — the two stacked caches + stale-while-revalidate, and the on-demand revalidation fix
 
 ## History
 
@@ -77,3 +99,5 @@ Evidence trail (auto-generated):
   — commit/PR/branch percentage metrics, the four DORA metrics, and the gaps closed
 - ["Frontend & RUM" dashboard — panel review & gaps](./reports/frontend-rum-dashboard-review.md)
   — live per-panel review of the RUM dashboard (web vitals, errors, audience, pipeline health) and the observability gaps found (applied in kubernetes-bootstrap #184)
+- [Frontend application quality assessment](./reports/frontend-quality-assessment.md)
+  — every live metric benchmarked vs the industry-standard bar ("what it should be" vs "what it is"), quantified as %; overall ≈85%
