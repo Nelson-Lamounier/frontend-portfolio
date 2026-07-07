@@ -5,11 +5,12 @@ tags: [kubernetes, eks, backend-for-frontend, rds, nextjs, distributed-systems, 
 sources:
   - apps/site/src/lib/articles/public-api-articles.ts
   - apps/site/src/lib/articles/public-api-engagement.ts
+  - apps/site/src/lib/client-ip.ts
   - apps/site/src/app/api/chat/route.ts
   - apps/site/src/app/api/resume/active/route.ts
   - apps/site/src/lib/articles/article-service.ts
 created: 2026-06-23
-updated: 2026-06-23
+updated: 2026-07-05
 ---
 
 ## Overview
@@ -56,16 +57,25 @@ that the consumer layer maps to its own types.
 ## Routing model — why server-side proxy, not browser-direct
 
 Ingress is **AWS ALB, host-based** (a shared `public` IngressGroup defined in
-the `kubernetes-bootstrap` repo): `api.nelsonlamounier.com` routes to
-`public-api`, while the main site host routes to the `nextjs` service at path
-`/`. Because routing is by host rather than path, the site's own `/api/*`
-handlers are always reached at the site host — they are not transparently
-rewritten to `public-api`. The portfolio therefore uses the **Next-proxy
-model**: route handlers fetch `public-api` in-cluster and re-serve the result,
-exactly as the pre-existing resume route does
+the `kubernetes-bootstrap` repo). The site host (`nelsonlamounier.com`) routes
+to the `nextjs` service at path `/`. **`public-api` has no public ALB route of
+its own**: it is a ClusterIP service addressable only from inside the cluster at
+`http://public-api.public-api:3001`. Nothing outside the cluster can reach the
+BFF. The browser talks only to the site's own same-origin `/api/*` handlers, and
+those handlers fetch `public-api` server-to-server over Kubernetes DNS — the
+**Next-proxy model**, exactly as the pre-existing resume route does
 ([resume/active/route.ts:16,25](../../apps/site/src/app/api/resume/active/route.ts#L16)).
-This keeps the browser same-origin and keeps the BFF (and its secrets) off the
-public surface.
+Keeping the BFF in-cluster-only is what actually holds it (and its secrets) off
+the public surface.
+
+> **Lifecycle note.** An earlier setup exposed `public-api` publicly at
+> `api.nelsonlamounier.com` on the shared ALB. That host had **no consumer** —
+> the browser forms use a separate API Gateway (`NEXT_PUBLIC_API_URL`) and the
+> server-side site uses in-cluster DNS — so it only widened the attack surface
+> (its unauthenticated write endpoints, and the comment rate limit, were
+> publicly reachable). The Ingress was therefore **disabled**; `public-api` is
+> now reachable **in-cluster only**. Do not describe `api.nelsonlamounier.com`
+> as a current public endpoint.
 
 ## Implementation in this codebase
 
@@ -107,12 +117,17 @@ chat and like writes use `cache: 'no-store'`.
 
 The consumer holds no privileged credentials. The Bedrock API key is owned by
 `public-api` (Secrets Manager), not the site, so the chat route sends no
-`x-api-key`. For comment submission the consumer forwards the original client
-IP as `x-forwarded-for`
-([public-api-engagement.ts:107](../../apps/site/src/lib/articles/public-api-engagement.ts#L107))
-so the BFF's per-IP rate limit applies to the visitor rather than the pod, and
-it surfaces the upstream error message so the route can map rate-limit and
-validation failures
+`x-api-key`. For comment submission the consumer resolves the real client IP
+from the **trusted proxy hop** — the rightmost `X-Forwarded-For` entry, which
+the shared ALB appends (`xff_header_processing.mode=append`) — and forwards that
+single value to the BFF
+([client-ip.ts](../../apps/site/src/lib/client-ip.ts),
+[public-api-engagement.ts:107](../../apps/site/src/lib/articles/public-api-engagement.ts#L107)).
+The BFF likewise trusts only the proxy-appended value (mirrored in
+`api/public-api/src/lib/client-ip.ts`, ai-applications) before applying its
+per-IP rate limit, so a caller **cannot spoof `X-Forwarded-For`** to mint a
+fresh IP per request and bypass the limit. The route also surfaces the upstream
+error message so it can map rate-limit and validation failures
 ([public-api-engagement.ts:121](../../apps/site/src/lib/articles/public-api-engagement.ts#L121)).
 RDS itself is private (no public IP) and reachable only from inside the VPC.
 
