@@ -3,9 +3,11 @@
  *
  * Resolves article images via CloudFront with extension fallback:
  *   1. `/images/articles/{id}.jpeg` — most common for photographs
- *   2. `/images/articles/{id}.png` — screenshots and diagrams with transparency
- *   3. `/images/articles/{id}.webp` — modern format for optimised delivery
- *   4. Fallback: amber placeholder showing the AI instruction
+ *   2. `/images/articles/{id}.jpg` — legacy JPEG format
+ *   3. `/images/articles/{id}.png` — screenshots and diagrams with transparency
+ *   4. `/images/articles/{id}.webp` — modern format for optimised delivery
+ *   5. `/images/articles/{id}.gif` — animated images
+ *   6. Fallback: amber placeholder showing the AI instruction
  *
  * In both development and production, images are served via CloudFront
  * paths (`/images/*`) which route to the S3 assets bucket. This works
@@ -22,7 +24,7 @@
 import { useState } from 'react'
 
 /** Supported image extensions, tried in priority order */
-const IMAGE_EXTENSIONS = ['jpeg', 'png', 'webp'] as const
+const IMAGE_EXTENSIONS = ['jpeg', 'jpg', 'png', 'webp', 'gif'] as const
 
 interface ImageRequestProps {
   /** Unique image identifier — maps to `/images/articles/{id}.{ext}` */
