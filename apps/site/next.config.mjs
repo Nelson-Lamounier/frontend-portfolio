@@ -32,6 +32,14 @@ const nextConfig = {
         source: '/admin/:path*',
         destination: 'http://localhost:3001/admin/:path*',
       },
+      // Article media by shot-list ID: files committed under public/ win
+      // (Next checks the filesystem before afterFiles rewrites); anything
+      // else streams from S3 via the public-api BFF — the pod holds no AWS
+      // credentials.
+      {
+        source: '/images/articles/:file',
+        destination: `${process.env.PUBLIC_API_URL || 'http://public-api.public-api:3001'}/api/articles/images/:file`,
+      },
     ]
   },
 
